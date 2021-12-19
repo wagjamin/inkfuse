@@ -1,4 +1,4 @@
-#include "imlab/storage/relation.h"
+#include "storage/relation.h"
 
 namespace imlab {
 

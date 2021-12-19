@@ -2,7 +2,7 @@
 # IMLAB
 # ---------------------------------------------------------------------------
 
-project(imlab)
+project(inkfuse)
 cmake_minimum_required(VERSION 3.7)
 # ---------------------------------------------------------------------------
 # Environment
@@ -14,28 +14,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -fsanitize=address")
 
-# Unfortunately, macOS (<= High Sierra) ships with a too old bison version.
-# You need to manually install bison and flex via homebrew.
-# (It's a good thing to have homebrew installed anyway)
-# https://brew.sh/index_de.html
-# - brew update
-# - brew install bison flex
-#
-# As homebrew won't override the system's default bison, we need to tell
-# cmake where it should look.
-if (APPLE)
-    list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/bison)
-    list(APPEND CMAKE_PREFIX_PATH /usr/local/opt/flex)
-endif (APPLE)
-
 # ---------------------------------------------------------------------------
 # Dependencies
 # ---------------------------------------------------------------------------
 
 find_package(Threads REQUIRED)
-find_package(BISON REQUIRED)
-find_package(FLEX REQUIRED)
-find_package(TBB REQUIRED)
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 
@@ -43,15 +26,12 @@ include("${CMAKE_SOURCE_DIR}/cmake/clang-tidy.cmake")
 include("${CMAKE_SOURCE_DIR}/vendor/googletest.cmake")
 include("${CMAKE_SOURCE_DIR}/vendor/gflags.cmake")
 
-include("${CMAKE_SOURCE_DIR}/tools/schemac/local.cmake")
-include("${CMAKE_SOURCE_DIR}/tools/queryc/local.cmake")
-
 # ---------------------------------------------------------------------------
 # Includes
 # ---------------------------------------------------------------------------
 
 include_directories(
-    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
     ${GTEST_INCLUDE_DIR}
     ${GMOCK_INCLUDE_DIR}
     ${GFLAGS_INCLUDE_DIR}
@@ -62,77 +42,46 @@ include_directories(
 # ---------------------------------------------------------------------------
 
 set(INCLUDE_H
-        "${CMAKE_SOURCE_DIR}/include/gen/tpcc.h"
-        "${CMAKE_SOURCE_DIR}/include/imlab/algebra/expression.h"
-        "${CMAKE_SOURCE_DIR}/include/imlab/algebra/codegen_helper.h"
-    "${CMAKE_SOURCE_DIR}/include/imlab/algebra/inner_join.h"
-    "${CMAKE_SOURCE_DIR}/include/imlab/algebra/iu.h"
-    "${CMAKE_SOURCE_DIR}/include/imlab/algebra/operator.h"
-    "${CMAKE_SOURCE_DIR}/include/imlab/algebra/print.h"
-    "${CMAKE_SOURCE_DIR}/include/imlab/algebra/selection.h"
-    "${CMAKE_SOURCE_DIR}/include/imlab/algebra/table_scan.h"
-    "${CMAKE_SOURCE_DIR}/include/imlab/infra/bits.h"
-        "${CMAKE_SOURCE_DIR}/include/imlab/infra/settings.h"
-    "${CMAKE_SOURCE_DIR}/include/imlab/infra/error.h"
-    "${CMAKE_SOURCE_DIR}/include/imlab/infra/hash.h"
-    "${CMAKE_SOURCE_DIR}/include/imlab/infra/hash_table.h"
-    "${CMAKE_SOURCE_DIR}/include/imlab/infra/template.h"
-    "${CMAKE_SOURCE_DIR}/include/imlab/infra/types.h"
-    "${CMAKE_SOURCE_DIR}/include/imlab/storage/relation.h"
-    "${CMAKE_SOURCE_DIR}/include/imlab/schemac/schema_compiler.h"
-    "${CMAKE_SOURCE_DIR}/include/imlab/schemac/schema_parse_context.h"
-    "${CMAKE_SOURCE_DIR}/include/imlab/test/data.h"
-    "${CMAKE_SOURCE_DIR}/include/imlab/database.h"
-    "${CMAKE_SOURCE_DIR}/include/imlab/schema.h"
-        "${CMAKE_SOURCE_DIR}/include/imlab/semana.h"
+        "${CMAKE_SOURCE_DIR}/src/infra/types.h"
+        "${CMAKE_SOURCE_DIR}/src/storage/relation.h"
 )
 
 set(SRC_CC
-        "${CMAKE_SOURCE_DIR}/src/gen/tpcc.cc"
-    "${CMAKE_SOURCE_DIR}/src/database.cc"
-        "${CMAKE_SOURCE_DIR}/src/semana.cc"
-    "${CMAKE_SOURCE_DIR}/src/infra/types.cc"
+        "${CMAKE_SOURCE_DIR}/src/infra/types.cc"
         "${CMAKE_SOURCE_DIR}/src/storage/relation.cc"
-        "${CMAKE_SOURCE_DIR}/src/storage/relation.cc"
-        "${CMAKE_SOURCE_DIR}/src/algebra/codegen_helper.cc"
-        "${CMAKE_SOURCE_DIR}/src/algebra/expression.cc"
-        "${CMAKE_SOURCE_DIR}/src/algebra/inner_join.cc"
-        "${CMAKE_SOURCE_DIR}/src/algebra/iu.cc"
-        "${CMAKE_SOURCE_DIR}/src/algebra/print.cc"
-        "${CMAKE_SOURCE_DIR}/src/algebra/selection.cc"
-        "${CMAKE_SOURCE_DIR}/src/algebra/table_scan.cc"
 )
 
 set(TEST_CC
-    "${CMAKE_SOURCE_DIR}/test/data.cc"
-    "${CMAKE_SOURCE_DIR}/test/database_test.cc"
 )
 
 set(TOOLS_SRC
-    "${CMAKE_SOURCE_DIR}/tools/imlabdb.cc"
+    "${CMAKE_SOURCE_DIR}/tools/inkfuse_runner.cc"
 )
 
 # ---------------------------------------------------------------------------
 # Targets
 # ---------------------------------------------------------------------------
 
-add_library(imlab STATIC ${SRC_CC})
-target_link_libraries(imlab PUBLIC queryc_lib TBB::tbb)
-target_link_libraries(imlab PRIVATE gflags dl Threads::Threads)
+# Core inkfuse library
+add_library(inkfuse STATIC ${SRC_CC})
+# target_link_libraries(inkfuse PUBLIC )
+# Need to link to dl in order to open compiled code at runtime
+target_link_libraries(inkfuse PRIVATE gflags dl Threads::Threads)
 
-add_executable(imlabdb tools/imlabdb.cc)
-set_property(TARGET imlabdb PROPERTY ENABLE_EXPORTS 1)
-target_link_libraries(imlabdb PUBLIC imlab queryc_lib)
-target_link_libraries(imlabdb PRIVATE gflags Threads::Threads)
+# inkfuse benchmarking binary for running TPC-H queries
+add_executable(inkfuse_runner tools/inkfuse_runner.cc)
+set_property(TARGET inkfuse_runner PROPERTY ENABLE_EXPORTS 1)
+target_link_libraries(inkfuse_runner PUBLIC inkfuse)
+target_link_libraries(inkfuse_runner PRIVATE gflags Threads::Threads)
 
 # ---------------------------------------------------------------------------
 # Tests
 # ---------------------------------------------------------------------------
 
 add_executable(tester test/tester.cc ${TEST_CC})
-target_link_libraries(tester imlab gtest gmock Threads::Threads)
+target_link_libraries(tester PRIVATE inkfuse gtest gmock Threads::Threads)
 enable_testing()
-add_test(imlab tester)
+add_test(inkfuse tester)
 
 # ---------------------------------------------------------------------------
 # Linting
