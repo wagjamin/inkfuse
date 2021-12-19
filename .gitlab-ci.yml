@@ -1,5 +1,5 @@
 # ---------------------------------------------------------------------------
-# IMLAB
+# Inkfuse Gitlab CI
 # ---------------------------------------------------------------------------
 
 stages:
@@ -13,8 +13,6 @@ tests:
         - cmake -GNinja -DCMAKE_BUILD_TYPE=Debug ..
         - ninja
         - ./tester
-        - ./tester_schema
-        - ./tester_queryc
 
 linter:
     stage: test
@@ -25,14 +23,3 @@ linter:
         - ninja
         - ninja lint
     allow_failure: true
-
-leaderboard:
-    when: manual
-    script:
-        - mkdir -p build
-        - cd build
-        - cmake -GNinja -DCMAKE_BUILD_TYPE=Release ..
-        - ninja
-        - python3 ../submit_result.py /data/imlab
-    tags:
-        - leaderboard-imlab
