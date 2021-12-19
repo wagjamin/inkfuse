@@ -1,6 +1,6 @@
-#include "storage/relation.h"
+#include "storage/Relation.h"
 
-namespace imlab {
+namespace inkfuse {
 
     BaseColumn::BaseColumn(bool nullable_) : nullable(nullable_) {
     }
@@ -78,15 +78,6 @@ namespace imlab {
     }
 
     void StoredRelation::appendRow() {
-        tombstones.push_back(true);
-    }
-
-    void StoredRelation::dropRow(size_t idx) {
-        tombstones[idx] = false;
-    }
-
-    size_t StoredRelation::getSize() const {
-        return tombstones.size();
     }
 
 } // namespace imlab

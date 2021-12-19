@@ -42,21 +42,27 @@ include_directories(
 # ---------------------------------------------------------------------------
 
 set(INCLUDE_H
+        "${CMAKE_SOURCE_DIR}/src/algebra/Operator.h"
+        "${CMAKE_SOURCE_DIR}/src/algebra/Pipeline.h"
+        "${CMAKE_SOURCE_DIR}/src/codegen/FragmentCache.h"
+        "${CMAKE_SOURCE_DIR}/src/codegen/FragmentGenerator.h"
+        "${CMAKE_SOURCE_DIR}/src/codegen/IR.h"
         "${CMAKE_SOURCE_DIR}/src/infra/types.h"
-        "${CMAKE_SOURCE_DIR}/src/storage/relation.h"
-)
+        "${CMAKE_SOURCE_DIR}/src/runtime/QueryExecutor.h"
+        "${CMAKE_SOURCE_DIR}/src/storage/Relation.h"
+        )
 
 set(SRC_CC
         "${CMAKE_SOURCE_DIR}/src/infra/types.cc"
-        "${CMAKE_SOURCE_DIR}/src/storage/relation.cc"
-)
+        "${CMAKE_SOURCE_DIR}/src/storage/Relation.cc"
+        )
 
 set(TEST_CC
-)
+        )
 
 set(TOOLS_SRC
     "${CMAKE_SOURCE_DIR}/tools/inkfuse_runner.cc"
-)
+        )
 
 # ---------------------------------------------------------------------------
 # Targets

@@ -1,5 +1,5 @@
-#ifndef DBIMPL_TASKS_COLUMN_H
-#define DBIMPL_TASKS_COLUMN_H
+#ifndef INKFUSE_COLUMN_H
+#define INKFUSE_COLUMN_H
 
 #include <cstddef>
 #include <istream>
@@ -8,16 +8,12 @@
 #include <unordered_map>
 #include <vector>
 
-/// I think column stores are way cooler than row stores, so I'm trying to build that.
-namespace imlab {
-
-/// Tuned to provided files.
-static const size_t SIZE_HINT = 150000;
+namespace inkfuse {
 
 /// Base column class over a certain type.
 class BaseColumn {
    public:
-   /// Constructor with size hint.
+   /// Constructor.
    explicit BaseColumn(bool nullable_);
 
    /// Virtual base destructor
@@ -40,8 +36,8 @@ class BaseColumn {
 template <typename T>
 class TypedColumn final : public BaseColumn {
    public:
-   explicit TypedColumn(bool nullable_, size_t capacity = SIZE_HINT) : BaseColumn(nullable_) {
-      storage.reserve(capacity);
+   explicit TypedColumn(bool nullable_) : BaseColumn(nullable_) {
+      storage.reserve(10'000'000);
    };
 
    /// Get number of rows within the column.
@@ -85,13 +81,13 @@ class StoredRelation {
 
    /// Emplace a new column into a relation.
    template <typename T>
-   void attachTypedColumn(std::string_view name, bool nullable = false, size_t size_hint = SIZE_HINT) {
+   void attachTypedColumn(std::string_view name, bool nullable = false) {
       for (const auto& [n, _] : columns) {
          if (n == name) {
             throw std::runtime_error("Column name in StoredRelation must be unique");
          }
       }
-      columns.template emplace_back(name, std::make_unique<TypedColumn<T>>(nullable, size_hint));
+      columns.template emplace_back(name, std::make_unique<TypedColumn<T>>(nullable));
    }
 
    /// Set the primary key of the table.
@@ -109,21 +105,14 @@ class StoredRelation {
    /// Add the last row to the indexes.
    virtual void addLastRowToIndex() = 0;
 
-   /// Remove a row from the active bitset.
-   void dropRow(size_t idx);
-
-   size_t getSize() const;
-
    private:
    /// Backing columns.
    /// We use a vector to exploit ordering during the scan.
    std::vector<std::pair<std::string, std::unique_ptr<BaseColumn>>> columns;
-   /// Tombstone vector for delted rows.
-   std::vector<bool> tombstones;
    /// Primary key, index vector into columns.
    std::vector<size_t> pk;
 };
 
-} // namespace imlab
+} // namespace inkfuse
 
-#endif //DBIMPL_TASKS_COLUMN_H
+#endif // INKFUSE_COLUMN_H

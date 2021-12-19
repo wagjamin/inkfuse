@@ -2,8 +2,8 @@
 // HyPer
 // (c) Thomas Neumann 2010
 // ---------------------------------------------------------------------------
-#ifndef INCLUDE_IMLAB_INFRA_TYPES_H_
-#define INCLUDE_IMLAB_INFRA_TYPES_H_
+#ifndef INKFUSE_INFRA_TYPES_H_
+#define INKFUSE_INFRA_TYPES_H_
 //---------------------------------------------------------------------------
 #include <algorithm>
 #include <cassert>
@@ -665,4 +665,4 @@ inline uint64_t hashKey(T first, Args... args) {
    return first.hash() ^ hashKey(args...);
 }
 //---------------------------------------------------------------------------
-#endif // INCLUDE_IMLAB_INFRA_TYPES_H_
+#endif // INKFUSE_INFRA_TYPES_H_
