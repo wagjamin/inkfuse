@@ -14,13 +14,8 @@ namespace inkfuse {
 
 namespace IR {
 
-    /// Central IR program which is a set of functions.
+    /// Central IR program which is a set of functions and structs.
     struct Program {
-
-    };
-
-    /// IR concept for operator state through which the compiled code can refer.
-    struct GlobalState {
 
     };
 
@@ -39,11 +34,6 @@ namespace IR {
 
     };
 
-    /// Function invocation expression, for example used to call functions on members of the global state
-    /// of this query.
-    struct InvokeFunction: public Expression {
-
-    };
 
     /// IR Statement, either an assignment or control flow.
     struct Statement {

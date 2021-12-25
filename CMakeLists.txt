@@ -44,9 +44,13 @@ include_directories(
 set(INCLUDE_H
         "${CMAKE_SOURCE_DIR}/src/algebra/Operator.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/Pipeline.h"
+        "${CMAKE_SOURCE_DIR}/src/codegen/backend_c/BackendC.h"
+        "${CMAKE_SOURCE_DIR}/src/codegen/Backend.h"
+        "${CMAKE_SOURCE_DIR}/src/codegen/Expression.h"
         "${CMAKE_SOURCE_DIR}/src/codegen/FragmentCache.h"
         "${CMAKE_SOURCE_DIR}/src/codegen/FragmentGenerator.h"
         "${CMAKE_SOURCE_DIR}/src/codegen/IR.h"
+        "${CMAKE_SOURCE_DIR}/src/codegen/Types.h"
         "${CMAKE_SOURCE_DIR}/src/infra/types.h"
         "${CMAKE_SOURCE_DIR}/src/runtime/QueryExecutor.h"
         "${CMAKE_SOURCE_DIR}/src/storage/Relation.h"
@@ -55,7 +59,8 @@ set(INCLUDE_H
 set(SRC_CC
         "${CMAKE_SOURCE_DIR}/src/infra/types.cc"
         "${CMAKE_SOURCE_DIR}/src/storage/Relation.cc"
-        )
+        "${CMAKE_SOURCE_DIR}/src/codegen/backend_c/BackendC.cpp"
+        src/codegen/Expression.h)
 
 set(TEST_CC
         )
