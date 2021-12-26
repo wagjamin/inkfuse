@@ -37,10 +37,8 @@ namespace IR {
 
     /// Basic variable reference expression.
     struct VarRefExpr: public Expr {
-    public:
         VarRefExpr(std::string var_name_, TypePtr var_type_): Expr({}, std::move(var_type_)), var_name(std::move(var_name_)) {};
 
-    private:
         /// Backing variable name.
         std::string var_name;
     };
@@ -56,6 +54,24 @@ namespace IR {
         /// You effectively have to lower the parsed representation from your high-level query AST to a constant
         /// in your compiled language. Not particularly exciting, but important in a production system.
         std::string value_str;
+    };
+
+    /// A substitutable parameter is at the heart of InkFuse. It effectively describes a value which during actual
+    /// low-level code generation turns into a hard-coded constant, or a function parameter.
+    /// The core challenge underpinning the InkFuse approach is that there has to be a limited degree of freedom
+    /// in the vectorized primitives we are generating. At the same time, just in time compiled code has almost
+    /// unlimited freedom coming for example from something like complex aggregation state in hash tables.
+    ///
+    /// A substitutable parameter which has a contained value gets hard-coded by the backend. A substitutable parameter which
+    /// has no contained value meanwhile gets turned into a parameter by every function using it.
+    /// The actual value maps are maintained by the runtime system and passed through the interfaces to compiled code which
+    /// can then either choose to use a pre-created vectorized fragment with parameter subsitution, or a compiled one that
+    /// does not need the parameter.
+    struct SubstitutableParameter : public Expr {
+        SubstitutableParameter(std::string param_name_, TypePtr param_type_): Expr({}, std::move(param_type_)), param_name(std::move(param_name_)) {};
+
+        /// Backing parameter name.
+        std::string param_name;
     };
 
     /// Function invocation expression, for example used to call functions on members of the global state
