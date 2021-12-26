@@ -4,6 +4,7 @@
 #include <functional>
 #include <memory>
 #include <cassert>
+#include "codegen/IRHelpers.h"
 
 /// This file contains the central building blocks for the backing types within the InkFuse IR.
 namespace inkfuse {
@@ -11,21 +12,10 @@ namespace inkfuse {
 namespace IR {
 
     /// Base type.
-    struct Type {
+    struct Type : public IRConcept {
 
         /// Virtual base destructor.
         virtual ~Type() = default;
-
-        /// Is this a certain IR type?
-        template <typename Other>
-        Other* is() const {
-            return dynamic_cast<Other*>(this);
-        }
-
-        template <typename Other>
-        const Other* isConst() const {
-            return dynamic_cast<const Other*>(this);
-        }
 
         /// Given that this is a certain type, do something.
         template <typename Other>
@@ -35,7 +25,9 @@ namespace IR {
             }
         }
 
-
+        /// Some form of maximum operation over two types which is supposed to find a suitable target type
+        /// for arithmetic operations. But the maximum type is not safe of under- or overflow!
+        static std::unique_ptr<Type> max(const Type& t1, const Type& t2);
     };
 
     using TypePtr = std::unique_ptr<Type>;
@@ -43,45 +35,29 @@ namespace IR {
     /// Base type for a signed integer.
     struct SignedInt : public Type {
 
-        /// Get number of bytes.
-        virtual unsigned numBytes() const = 0;
-
-    };
-
-    /// Signed integer type of a certain byte count.
-    template <unsigned bytes>
-    struct SignedIntSized : public SignedInt {
-
-        /// We only support certain integer sizes.
-        static_assert(bytes == 1 || bytes == 2 || bytes == 4 || bytes == 8);
+        SignedInt(size_t size_): size(size_) {};
 
         /// Get number of bytes.
-        unsigned numBytes() const override {
-            return bytes;
-        }
+        virtual unsigned numBytes() const {
+            return size;
+        };
 
+    private:
+        uint64_t size;
     };
 
     /// Base type for an unsigned integer.
     struct UnsignedInt : public Type {
 
-        /// Get number of bytes.
-        virtual unsigned numBytes() const = 0;
-
-    };
-
-    /// Unsigned integer type of a certain byte count.
-    template <unsigned bytes>
-    struct UnsignedIntSized : public UnsignedInt {
-
-        /// We only support certain integer sizes.
-        static_assert(bytes == 1 || bytes == 2 || bytes == 4 || bytes == 8);
+        UnsignedInt(size_t size_): size(size_) {};
 
         /// Get number of bytes.
-        unsigned numBytes() const override {
-            return bytes;
+        virtual unsigned numBytes() const {
+            return size;
         }
 
+    private:
+        uint64_t size;
     };
 
     struct Bool : public Type {

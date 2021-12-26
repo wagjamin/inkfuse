@@ -59,8 +59,10 @@ set(INCLUDE_H
 set(SRC_CC
         "${CMAKE_SOURCE_DIR}/src/infra/types.cc"
         "${CMAKE_SOURCE_DIR}/src/storage/Relation.cc"
+        "${CMAKE_SOURCE_DIR}/src/codegen/Expression.cpp"
+        "${CMAKE_SOURCE_DIR}/src/codegen/Types.cpp"
         "${CMAKE_SOURCE_DIR}/src/codegen/backend_c/BackendC.cpp"
-        src/codegen/Expression.h)
+        src/codegen/Statement.h src/codegen/IRHelpers.h)
 
 set(TEST_CC
         )
