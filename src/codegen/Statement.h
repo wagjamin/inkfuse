@@ -35,7 +35,6 @@ namespace IR {
             }
         }
 
-    private:
         /// Backing expression for invoking the function.
         ExprPtr invoke_fct_expr;
     };
@@ -45,7 +44,6 @@ namespace IR {
 
         DeclareStmt(std::string name_, TypePtr type_): name(std::move(name_)), type(std::move(type_)) {}
 
-    private:
         /// Variable name.
         std::string name;
         /// Variable type.
@@ -54,7 +52,9 @@ namespace IR {
 
     /// Assignment statement.
     struct AssignmentStmt : public Stmt {
-    private:
+
+        AssignmentStmt(std::string var_name_, ExprPtr expr_): var_name(std::move(var_name_)), expr(std::move(expr)) {}
+
         /// Variable name to which to write.
         std::string var_name;
         /// Expression which should be assigned.
@@ -64,7 +64,8 @@ namespace IR {
     /// If statement.
     struct IfStmt : public Stmt {
 
-    private:
+        IfStmt(ExprPtr expr_, BlockPtr if_block_, BlockPtr else_block_): expr(std::move(expr_)), if_block(std::move(if_block_)), else_block(std::move(else_block_)) {}
+
         /// Expression to evaluate within the if statement.
         ExprPtr expr;
         /// If block.
@@ -75,10 +76,45 @@ namespace IR {
 
     /// While statement.
     struct WhileStmt : public Stmt {
+
+        WhileStmt(ExprPtr expr_, BlockPtr if_block_): expr(std::move(expr)), if_block(std::move(if_block_)) {}
+
         /// Expression to evaluate to decide whether to enter the while loop.
         ExprPtr expr;
         /// Block within the while statement.
         BlockPtr if_block;
+    };
+
+    /// Statement visitor utility.
+    template <typename Arg>
+    struct StmtVisitor {
+    public:
+        void visit(const Stmt& stmt, Arg arg) {
+            if (const auto elem = stmt.isConst<InvokeFctStmt>()) {
+                visitInvokeFct(*elem, arg);
+            } else if (auto elem = stmt.isConst<DeclareStmt>()) {
+                visitDeclare(*elem, arg);
+            } else if (auto elem = stmt.isConst<AssignmentStmt>()) {
+                visitAssignment(*elem, arg);
+            } else if (auto elem = stmt.isConst<IfStmt>()) {
+                visitIf(*elem, arg);
+            } else if (auto elem = stmt.isConst<WhileStmt>()) {
+                visitWhile(*elem, arg);
+            } else {
+                assert(false);
+            }
+        }
+
+    private:
+        virtual void visitInvokeFct(const InvokeFctStmt& type, Arg arg) {}
+
+        virtual void visitDeclare(const DeclareStmt& type, Arg arg) {}
+
+        virtual void visitAssignment(const AssignmentStmt& type, Arg arg) {}
+
+        virtual void visitIf(const IfStmt& type, Arg arg) {}
+
+        virtual void visitWhile(const WhileStmt& type, Arg arg) {}
     };
 
 

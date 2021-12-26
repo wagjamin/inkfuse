@@ -2,6 +2,9 @@
 #define INKFUSE_IR_H
 
 #include "codegen/Statement.h"
+#include <utility>
+#include <string>
+#include <vector>
 
 /// This file contains all the central building blocks for the InkFuse IR.
 /// The purpose of the InkFuse IR is to make generating code easier and support different compiler backends.
@@ -31,9 +34,9 @@ namespace IR {
 
     /// A block of statements within a function.
     struct Block {
-    public:
 
-    private:
+        Block(std::vector<StmtPtr> statements_): statements(std::move(statements_)) {};
+
         /// Statements within the block.
         std::vector<StmtPtr> statements;
     };
@@ -44,6 +47,12 @@ namespace IR {
     /// A struct of base types.
     struct Structure {
 
+        Structure(std::string name_, std::vector<std::pair<TypePtr, std::string>> members_): name(std::move(name_)), members(std::move(members_)) {}
+
+        /// Struct name.
+        std::string name;
+        /// Members of the struct.
+        std::vector<std::pair<TypePtr, std::string>> members;
     };
 
     using StructurePtr = std::unique_ptr<Structure>;

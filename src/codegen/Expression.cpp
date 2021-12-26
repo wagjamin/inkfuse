@@ -4,19 +4,10 @@ namespace inkfuse {
 
 namespace IR {
 
-    const Expr &Expr::getChild(size_t idx) const
+    CastExpr::CastExpr(ExprPtr child_, TypePtr target_, bool narrowing):
+            UnaryExpr(std::move(child_), std::move(target_))
     {
-        if (children.size() <= idx) {
-            throw std::runtime_error("No child at index " + std::to_string(idx));
-        }
-        return *children[idx];
-    }
-
-    CastExpr::CastExpr(ExprPtr child, TypePtr target_, bool narrowing):
-            UnaryExpr(std::move(child)) , target(std::move(target_))
-    {
-        assert(target);
-        auto res = validateCastable(child->getType(), *target);
+        auto res = validateCastable(*(children[0]->type), *type);
         if (res == CastResult::Forbidden || (!narrowing && res == CastResult::Narrowing)) {
             throw std::runtime_error("forbidden IR cast");
         }

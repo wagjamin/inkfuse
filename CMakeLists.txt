@@ -45,6 +45,7 @@ set(INCLUDE_H
         "${CMAKE_SOURCE_DIR}/src/algebra/Operator.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/Pipeline.h"
         "${CMAKE_SOURCE_DIR}/src/codegen/backend_c/BackendC.h"
+        "${CMAKE_SOURCE_DIR}/src/codegen/backend_c/ScopedWriter.h"
         "${CMAKE_SOURCE_DIR}/src/codegen/Backend.h"
         "${CMAKE_SOURCE_DIR}/src/codegen/Expression.h"
         "${CMAKE_SOURCE_DIR}/src/codegen/FragmentCache.h"
@@ -62,7 +63,8 @@ set(SRC_CC
         "${CMAKE_SOURCE_DIR}/src/codegen/Expression.cpp"
         "${CMAKE_SOURCE_DIR}/src/codegen/Types.cpp"
         "${CMAKE_SOURCE_DIR}/src/codegen/backend_c/BackendC.cpp"
-        src/codegen/Statement.h src/codegen/IRHelpers.h)
+        "${CMAKE_SOURCE_DIR}/src/codegen/backend_c/ScopedWriter.cpp"
+        )
 
 set(TEST_CC
         )

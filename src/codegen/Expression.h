@@ -18,19 +18,19 @@ namespace IR {
     struct Expr : public IRConcept {
     public:
         /// Constructor taking a vector of child expressions.
-        Expr(std::vector<std::unique_ptr<Expr>> children_): children(std::move(children_)) {};
+        Expr(std::vector<std::unique_ptr<Expr>> children_, TypePtr type_): children(std::move(children_)), type(std::move(type_))
+        {
+            /// Every expression must have a type.
+            assert(type);
+        };
 
         /// Virtual base destructor.
         virtual ~Expr() = default;
 
-        /// Get the return type of this expression.
-        virtual const Type& getType() const;
-
-        /// Get child expression at a certain index.
-        const Expr& getChild(size_t idx) const;
-
-    private:
+        /// Children.
         std::vector<std::unique_ptr<Expr>> children;
+        /// Result type.
+        TypePtr type;
     };
 
     using ExprPtr = std::unique_ptr<Expr>;
@@ -38,27 +38,17 @@ namespace IR {
     /// Basic variable reference expression.
     struct VarRefExpr: public Expr {
     public:
-        VarRefExpr(std::string var_name_, TypePtr var_type_): Expr({}), var_name(std::move(var_name_)), var_type(std::move(var_type_)) {};
-
-        const Type& getType() const override {
-            return *var_type;
-        }
+        VarRefExpr(std::string var_name_, TypePtr var_type_): Expr({}, std::move(var_type_)), var_name(std::move(var_name_)) {};
 
     private:
         /// Backing variable name.
         std::string var_name;
-        /// Type of the given variable.
-        TypePtr var_type;
     };
 
     /// Basic constant expression.
     struct ConstExpr: public Expr {
     public:
-        ConstExpr(std::string value_str_, TypePtr value_type_): Expr({}), value_str(std::move(value_str_)), value_type(std::move(value_type_)) {};
-
-        const Type& getType() const override {
-            return *value_type;
-        }
+        ConstExpr(std::string value_str_, TypePtr value_type_): Expr({}, std::move(value_type_)), value_str(std::move(value_str_)) {};
 
     private:
         /// String describing the constant - nasty hack for the time being.
@@ -66,8 +56,6 @@ namespace IR {
         /// You effectively have to lower the parsed representation from your high-level query AST to a constant
         /// in your compiled language. Not particularly exciting, but important in a production system.
         std::string value_str;
-        /// Type of the constant
-        TypePtr value_type;
     };
 
     /// Function invocation expression, for example used to call functions on members of the global state
@@ -75,22 +63,16 @@ namespace IR {
     /// Child expressions are serving as function arguments.
     struct InvokeFctExpr: public Expr {
     public:
-        InvokeFctExpr(std::string functionName_, TypePtr type_, std::vector<ExprPtr> args): Expr(std::move(args)), functionName(std::move(functionName_)), type(std::move(type_)) {};
-
-        const Type& getType() const override {
-            return *type;
-        }
+        InvokeFctExpr(std::string function_name_, TypePtr type_, std::vector<ExprPtr> args): Expr(std::move(args), std::move(type_)), function_name(std::move(function_name_)) {};
 
     private:
         /// Backing function name to be invoked.
-        std::string functionName;
-        /// Return type of this function.
-        TypePtr type;
+        std::string function_name;
     };
 
     /// Binary expression - only exists for convenience.
     struct BinaryExpr : public Expr {
-        BinaryExpr(ExprPtr childL, ExprPtr childR): Expr(std::vector<ExprPtr>{std::move(childL), std::move(childR)}) {};
+        BinaryExpr(ExprPtr child_l_, ExprPtr child_r_, TypePtr type_): Expr(std::vector<ExprPtr>{std::move(child_l_), std::move(child_r_)}, std::move(type_)) {};
     };
 
     /// Arithmetic expression doing some form of computation.
@@ -109,26 +91,22 @@ namespace IR {
             GreaterEqual,
         };
 
-        /// Constructor providing custom result type for e.g. widening.
-        ArithmeticExpr(ExprPtr childL, ExprPtr childR, TypePtr resultType);
+        /// Constructor, suitable result type is inferred from child types and opcode.
+        ArithmeticExpr(ExprPtr child_l_, ExprPtr child_r_, TypePtr type_, Opcode code_): BinaryExpr(std::move(child_l_), std::move(child_r_), std::move(type_)), code(code_) {};
 
-        /// Constructor trying to take a suitable result type.
-        ArithmeticExpr(ExprPtr childL, ExprPtr childR);
+        /// Opcode of this expression.
+        Opcode code;
     };
 
     /// Unary expression - only exists for convenience.
     struct UnaryExpr : public Expr {
-        UnaryExpr(ExprPtr child): Expr(std::vector<ExprPtr>{std::move(child)}) {};
+        UnaryExpr(ExprPtr child_, TypePtr type_): Expr(std::vector<ExprPtr>{std::move(child_)}, std::move(type_) {};
     };
 
     /// Cast expression.
     struct CastExpr: public UnaryExpr {
     public:
         CastExpr(ExprPtr child, TypePtr target_, bool narrowing = true);
-
-        const Type& getType() const override {
-            return *target;
-        }
 
         /// Possible results for casting.
         enum class CastResult {
@@ -142,9 +120,6 @@ namespace IR {
 
         /// Validate that a type can be cast into another.
         static CastResult validateCastable(const Type& src, const Type& target);
-
-    private:
-        TypePtr target;
     };
 }
 

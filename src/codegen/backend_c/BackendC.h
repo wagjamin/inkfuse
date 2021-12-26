@@ -4,8 +4,10 @@
 #include <memory>
 #include <string>
 #include <sstream>
+#include <cstdint>
 #include "codegen/Backend.h"
 #include "codegen/Types.h"
+#include "codegen/backend_c/ScopedWriter.h"
 
 namespace inkfuse {
 
@@ -32,7 +34,7 @@ namespace inkfuse {
         const std::string program;
     };
 
-    /// Simplge C backend translating the inkfuse IR to plain C.
+    /// Simple C backend translating the inkfuse IR to plain C.
     struct BackendC : public IR::Backend {
 
         ~BackendC() override = default;
@@ -41,9 +43,26 @@ namespace inkfuse {
         std::unique_ptr<IR::BackendProgram> generate(const IR::Program& program) const override;
 
     private:
+        /// Set up the preamble.
+        static void createPreamble(ScopedWriter& str);
 
         /// Add a type description to the backing string stream.
-        static void typeDescription(const IR::Type& type, std::stringstream str);
+        static void typeDescription(const IR::Type& type, ScopedWriter& str);
+
+        /// Compile a structure.
+        static void compileStruct(const IR::Structure& structure, ScopedWriter& str);
+
+        /// Compile a function.
+        static void compileFunction(const IR::Function& fct, ScopedWriter& str);
+
+        /// Compile a block.
+        static void compileBlock(const IR::Block& block, ScopedWriter& str);
+
+        /// Compile a statement.
+        static void compileStatement(const IR::Stmt& statement, std::stringstream& str);
+
+        /// Compile an expression.
+        static void compileExpression(const IR::Expr& expr, std::stringstream& str);
 
     };
 
