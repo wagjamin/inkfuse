@@ -35,7 +35,21 @@ namespace inkfuse {
     ///                 the length of a varchar type, or the offset into an aggregation state.
     ///
     /// When defining a suboperator, we define both the discrete and infinite degrees of freedom.
-    /// These are used by the central FragmentGenerator
+    ///
+    /// When we exectute the query down the line, note that these parameters above are actually *not* degrees of freedom.
+    /// This is an important observation, at run time these are all substituted.
+    /// Two conclusions can be drawn from this:
+    ///      1) In a pipeline-fusing engine, all parameters would be substitued with hard-baked values
+    ///      2) In a vectorized engine, there would be fragments over the discrete space spanned by
+    ///         the parameters, but the infinite degrees of freedom would be provided through function parameters.
+    ///
+    /// This concept is baked through the SubstitutableParameter expression type within our IR. When generating code,
+    /// the actual operator is able to use both discrete and infinite degrees of freedom in a hard-coded way.
+    /// The substitution into either function parameters or baked-in values then happens in the lower parts of the
+    /// compilation stack depending on which parameters are provided to the compiler backend.
+    ///
+    /// This allows switching between vectorized fragments and JIT-fused execution through the same operators,
+    /// parameter logic and codegen structure.
     struct Suboperator {
 
         struct SuboperatorParams {
