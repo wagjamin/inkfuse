@@ -52,6 +52,8 @@ set(INCLUDE_H
         "${CMAKE_SOURCE_DIR}/src/codegen/FragmentGenerator.h"
         "${CMAKE_SOURCE_DIR}/src/codegen/IR.h"
         "${CMAKE_SOURCE_DIR}/src/codegen/Types.h"
+        "${CMAKE_SOURCE_DIR}/src/exec/FuseChunk.h"
+        "${CMAKE_SOURCE_DIR}/src/exec/InterpretationResult.h"
         "${CMAKE_SOURCE_DIR}/src/infra/types.h"
         "${CMAKE_SOURCE_DIR}/src/runtime/QueryExecutor.h"
         "${CMAKE_SOURCE_DIR}/src/storage/Relation.h"

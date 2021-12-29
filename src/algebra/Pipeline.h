@@ -3,17 +3,17 @@
 
 #include <memory>
 #include <vector>
-#include "algebra/Operator.h"
+#include "algebra/Suboperator.h"
 
 namespace inkfuse {
 
     /// Execution pipeline containing all the different operators within one pipeline.
     /// This class is at the heart of inkfuse as it allows either vectorized interpretation
     /// through pre-compiled fragments or just-in-time-compiled loop fusion.
+    /// Internally, the pipeline is a DAG of suboperators. For the time being, we simply represent it as a
+    /// linearized DAG (i.e. a topological sort of the DAG).
     struct Pipeline {
     private:
-        /// Pipeline root.
-        OperatorPtr root;
 
     public:
 
@@ -21,15 +21,17 @@ namespace inkfuse {
 
     using PipelinePtr = std::unique_ptr<Pipeline>;
 
-    /// The pipeline dag represents a query which is ready for execution.
-    struct PipelineDAG {
+    /// The PipelineDag represents a query which is ready for execution.
+    struct PipelineDag {
+    public:
+
     private:
         /// Internally the PipelineDAG is represented as a vector of pipelines within a topological order.
         std::vector<PipelinePtr> pipelines;
 
-    public:
-
     };
+
+    using PipelineDagPtr = std::unique_ptr<PipelineDag>;
 }
 
 #endif //INKFUSE_PIPELINE_H

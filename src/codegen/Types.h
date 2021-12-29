@@ -28,17 +28,17 @@ namespace IR {
         /// Some form of maximum operation over two types which is supposed to find a suitable target type
         /// for arithmetic operations. But the maximum type is not safe of under- or overflow!
         static std::unique_ptr<Type> max(const Type& t1, const Type& t2);
-    };
 
-    using TypePtr = std::unique_ptr<Type>;
+        /// Get the size of this type in bytes (i.e. how much memory it consumes).
+        virtual size_t numBytes() const = 0;
+    };
 
     /// Base type for a signed integer.
     struct SignedInt : public Type {
 
         SignedInt(size_t size_): size(size_) {};
 
-        /// Get number of bytes.
-        virtual unsigned numBytes() const {
+        size_t numBytes() const override {
             return size;
         };
 
@@ -51,10 +51,9 @@ namespace IR {
 
         UnsignedInt(size_t size_): size(size_) {};
 
-        /// Get number of bytes.
-        virtual unsigned numBytes() const {
+        size_t numBytes() const override {
             return size;
-        }
+        };
 
     private:
         uint64_t size;
@@ -62,6 +61,9 @@ namespace IR {
 
     struct Bool : public Type {
 
+        size_t numBytes() const override {
+            return 1;
+        };
     };
 
     /// Type visitor utility.
