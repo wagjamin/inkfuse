@@ -33,6 +33,8 @@ namespace IR {
         virtual size_t numBytes() const = 0;
     };
 
+    using TypePtr = std::unique_ptr<Type>;
+
     /// Base type for a signed integer.
     struct SignedInt : public Type {
 

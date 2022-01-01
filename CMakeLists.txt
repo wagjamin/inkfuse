@@ -66,6 +66,7 @@ set(SRC_CC
         "${CMAKE_SOURCE_DIR}/src/codegen/Types.cpp"
         "${CMAKE_SOURCE_DIR}/src/codegen/backend_c/BackendC.cpp"
         "${CMAKE_SOURCE_DIR}/src/codegen/backend_c/ScopedWriter.cpp"
+        "${CMAKE_SOURCE_DIR}/src/exec/FuseChunk.cpp"
         )
 
 set(TEST_CC
