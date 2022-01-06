@@ -8,6 +8,7 @@
 namespace inkfuse {
 
     struct CompilationContext;
+    struct FuseChunk;
 
     /// Where in a pipeline can this sub-operator occurr? Depending on the suboperator type,
     /// the central fragment generator produces vectorized primitives in different ways.
@@ -75,6 +76,8 @@ namespace inkfuse {
         virtual void setUpState();
         /// Tear down the state needed by this operator.
         virtual void tearDownState();
+        /// Get a raw pointer to the state of this operator.
+        virtual void* accessState() = 0;
 
         /// Get the IUs produced by this operator. Note that this only refers to those IUs which are actually
         /// generated exclusively by this operator.

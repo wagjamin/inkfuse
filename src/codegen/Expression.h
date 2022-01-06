@@ -5,6 +5,7 @@
 #include <memory>
 #include <vector>
 #include <stdexcept>
+#include <type_traits>
 #include "codegen/IRHelpers.h"
 #include "codegen/Types.h"
 
@@ -67,8 +68,11 @@ namespace IR {
     /// The actual value maps are maintained by the runtime system and passed through the interfaces to compiled code which
     /// can then either choose to use a pre-created vectorized fragment with parameter subsitution, or a compiled one that
     /// does not need the parameter.
+    template <typename BackingType>
     struct SubstitutableParameter : public Expr {
-        SubstitutableParameter(std::string param_name_, TypePtr param_type_): Expr({}, std::move(param_type_)), param_name(std::move(param_name_)) {};
+        SubstitutableParameter(std::string param_name_, TypePtr type_): Expr({}, std::move(type_)), param_name(std::move(param_name_)) {};
+
+        static_assert(std::is_convertible<BackingType*, Type*>::value, "SubsitutableParameter must go over type.");
 
         /// Backing parameter name.
         std::string param_name;

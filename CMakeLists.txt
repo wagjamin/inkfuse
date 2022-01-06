@@ -44,6 +44,7 @@ include_directories(
 set(INCLUDE_H
         "${CMAKE_SOURCE_DIR}/src/algebra/Operator.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/Pipeline.h"
+        "${CMAKE_SOURCE_DIR}/src/algebra/ColumnScan.h"
         "${CMAKE_SOURCE_DIR}/src/codegen/backend_c/BackendC.h"
         "${CMAKE_SOURCE_DIR}/src/codegen/backend_c/ScopedWriter.h"
         "${CMAKE_SOURCE_DIR}/src/codegen/Backend.h"
@@ -60,6 +61,7 @@ set(INCLUDE_H
         )
 
 set(SRC_CC
+        "${CMAKE_SOURCE_DIR}/src/algebra/ColumnScan.cpp"
         "${CMAKE_SOURCE_DIR}/src/infra/types.cc"
         "${CMAKE_SOURCE_DIR}/src/storage/Relation.cc"
         "${CMAKE_SOURCE_DIR}/src/codegen/Expression.cpp"
@@ -67,7 +69,7 @@ set(SRC_CC
         "${CMAKE_SOURCE_DIR}/src/codegen/backend_c/BackendC.cpp"
         "${CMAKE_SOURCE_DIR}/src/codegen/backend_c/ScopedWriter.cpp"
         "${CMAKE_SOURCE_DIR}/src/exec/FuseChunk.cpp"
-        )
+        src/algebra/ColumnScan.h src/algebra/ColumnScan.cpp src/exec/SubstitutionContext.h)
 
 set(TEST_CC
         )

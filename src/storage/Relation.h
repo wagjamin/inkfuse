@@ -20,13 +20,16 @@ class BaseColumn {
    virtual ~BaseColumn() = default;
 
    /// Get number of rows within the column.
-   virtual size_t length() = 0;
+   virtual size_t length() const = 0;
 
    /// Is the column nullable?
    bool isNullable();
 
    /// Load a value based on a string representation into the column.
    virtual void loadValue(const char* str, uint32_t strLen) = 0;
+
+   /// Get a pointer to the backing raw data.
+   virtual const void * getRawData() const = 0;
 
    protected:
    bool nullable;
@@ -41,7 +44,7 @@ class TypedColumn final : public BaseColumn {
    };
 
    /// Get number of rows within the column.
-   size_t length() override {
+   size_t length() const override {
       return storage.size();
    };
 
@@ -53,6 +56,10 @@ class TypedColumn final : public BaseColumn {
    void loadValue(const char* str, uint32_t strLen) override {
       storage.push_back(std::move(T::castString(str, strLen)));
    };
+
+   const void* getRawData() const override {
+       return storage.data();
+   }
 
    private:
    /// Backing storage.
