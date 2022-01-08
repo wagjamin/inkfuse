@@ -19,7 +19,7 @@ namespace IR {
     struct Expr : public IRConcept {
     public:
         /// Constructor taking a vector of child expressions.
-        Expr(std::vector<std::unique_ptr<Expr>> children_, TypePtr type_): children(std::move(children_)), type(std::move(type_))
+        Expr(std::vector<std::unique_ptr<Expr>> children_, TypeArc type_): children(std::move(children_)), type(std::move(type_))
         {
             /// Every expression must have a type.
             assert(type);
@@ -31,14 +31,14 @@ namespace IR {
         /// Children.
         std::vector<std::unique_ptr<Expr>> children;
         /// Result type.
-        TypePtr type;
+        TypeArc type;
     };
 
     using ExprPtr = std::unique_ptr<Expr>;
 
     /// Basic variable reference expression.
     struct VarRefExpr: public Expr {
-        VarRefExpr(std::string var_name_, TypePtr var_type_): Expr({}, std::move(var_type_)), var_name(std::move(var_name_)) {};
+        VarRefExpr(std::string var_name_, TypeArc var_type_): Expr({}, std::move(var_type_)), var_name(std::move(var_name_)) {};
 
         /// Backing variable name.
         std::string var_name;
@@ -47,7 +47,7 @@ namespace IR {
     /// Basic constant expression.
     struct ConstExpr: public Expr {
     public:
-        ConstExpr(std::string value_str_, TypePtr value_type_): Expr({}, std::move(value_type_)), value_str(std::move(value_str_)) {};
+        ConstExpr(std::string value_str_, TypeArc value_type_): Expr({}, std::move(value_type_)), value_str(std::move(value_str_)) {};
 
     private:
         /// String describing the constant - nasty hack for the time being.
@@ -70,7 +70,7 @@ namespace IR {
     /// does not need the parameter.
     template <typename BackingType>
     struct SubstitutableParameter : public Expr {
-        SubstitutableParameter(std::string param_name_, TypePtr type_): Expr({}, std::move(type_)), param_name(std::move(param_name_)) {};
+        SubstitutableParameter(std::string param_name_, TypeArc type_): Expr({}, std::move(type_)), param_name(std::move(param_name_)) {};
 
         static_assert(std::is_convertible<BackingType*, Type*>::value, "SubsitutableParameter must go over type.");
 
@@ -83,7 +83,7 @@ namespace IR {
     /// Child expressions are serving as function arguments.
     struct InvokeFctExpr: public Expr {
     public:
-        InvokeFctExpr(std::string function_name_, TypePtr type_, std::vector<ExprPtr> args): Expr(std::move(args), std::move(type_)), function_name(std::move(function_name_)) {};
+        InvokeFctExpr(std::string function_name_, TypeArc type_, std::vector<ExprPtr> args): Expr(std::move(args), std::move(type_)), function_name(std::move(function_name_)) {};
 
     private:
         /// Backing function name to be invoked.
@@ -92,7 +92,7 @@ namespace IR {
 
     /// Binary expression - only exists for convenience.
     struct BinaryExpr : public Expr {
-        BinaryExpr(ExprPtr child_l_, ExprPtr child_r_, TypePtr type_): Expr(std::vector<ExprPtr>{std::move(child_l_), std::move(child_r_)}, std::move(type_)) {};
+        BinaryExpr(ExprPtr child_l_, ExprPtr child_r_, TypeArc type_): Expr(std::vector<ExprPtr>{std::move(child_l_), std::move(child_r_)}, std::move(type_)) {};
     };
 
     /// Arithmetic expression doing some form of computation.
@@ -112,7 +112,7 @@ namespace IR {
         };
 
         /// Constructor, suitable result type is inferred from child types and opcode.
-        ArithmeticExpr(ExprPtr child_l_, ExprPtr child_r_, TypePtr type_, Opcode code_): BinaryExpr(std::move(child_l_), std::move(child_r_), std::move(type_)), code(code_) {};
+        ArithmeticExpr(ExprPtr child_l_, ExprPtr child_r_, TypeArc type_, Opcode code_): BinaryExpr(std::move(child_l_), std::move(child_r_), std::move(type_)), code(code_) {};
 
         /// Opcode of this expression.
         Opcode code;
@@ -120,13 +120,13 @@ namespace IR {
 
     /// Unary expression - only exists for convenience.
     struct UnaryExpr : public Expr {
-        UnaryExpr(ExprPtr child_, TypePtr type_): Expr(std::vector<ExprPtr>{std::move(child_)}, std::move(type_) {};
+        UnaryExpr(ExprPtr child_, TypeArc type_): Expr(std::vector<ExprPtr>{std::move(child_)}, std::move(type_) {};
     };
 
     /// Cast expression.
     struct CastExpr: public UnaryExpr {
     public:
-        CastExpr(ExprPtr child, TypePtr target_, bool narrowing = true);
+        CastExpr(ExprPtr child, TypeArc target_, bool narrowing = true);
 
         /// Possible results for casting.
         enum class CastResult {

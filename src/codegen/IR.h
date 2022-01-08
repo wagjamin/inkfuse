@@ -2,6 +2,7 @@
 #define INKFUSE_IR_H
 
 #include "codegen/Statement.h"
+#include "codegen/IRBuilder.h"
 #include <utility>
 #include <string>
 #include <vector>
@@ -19,18 +20,40 @@ namespace inkfuse {
 
 namespace IR {
 
+    struct Block;
+    struct Program;
+    using BlockPtr = std::unique_ptr<Block>;
+    /// Programs can be referenced in many places. The best example is the global pre-amble
+    /// provided by the runtime system containing runtime structs and external functions.
+    using ProgramArc = std::shared_ptr<Program>;
+
+    /// Global program containing all structs and functions exposed by the runtime system.
+    extern ProgramArc global_runtime;
+
     /// IR function getting a set of parameters and returning a result.
     struct Function {
 
-    private:
+        Function(std::string name_, std::vector<TypeArc> arguments_);
+
         /// The unique function name.
         std::string name;
 
         /// The arguments.
-        std::vector<TypePtr> arguments;
+        std::vector<TypeArc> arguments;
+
+        /// Get the function body (if it exists). Note that code can only be generated through the IRBuilder.
+        const Block* getBody();
+
+    private:
+        friend class FunctionBuilder;
+
+        /// Optional function body. If this is not set, we assume the function is external
+        /// and will be provided during linking. This is needed for runtime functions provided by
+        /// e.g. hash tables.
+        BlockPtr body;
     };
 
-    using FunctionPtr = std::unique_ptr<Function>;
+    using FunctionArc = std::shared_ptr<Function>;
 
     /// A block of statements within a function.
     struct Block {
@@ -41,31 +64,32 @@ namespace IR {
         std::vector<StmtPtr> statements;
     };
 
-    using BlockPtr = std::unique_ptr<Block>;
-
-    /// TODO Make this a type?
-    /// A struct of base types.
-    struct Structure {
-
-        Structure(std::string name_, std::vector<std::pair<TypePtr, std::string>> members_): name(std::move(name_)), members(std::move(members_)) {}
-
-        /// Struct name.
-        std::string name;
-        /// Members of the struct.
-        std::vector<std::pair<TypePtr, std::string>> members;
-    };
-
-    using StructurePtr = std::unique_ptr<Structure>;
-
     /// Central IR program which is a set of functions and structs.
+    /// Cannot be used to generate code directly, this must go through the IRBuilder class.
     struct Program {
+
+        /// Constructor, you have to provide a name for the program.
+        /// If standalone is set, the global runtime definitions are not included by default (testing).
+        Program(std::string program_name_, bool standalone = false);
+
+        /// Get an IR builder for this program.
+        IRBuilder getIRBuilder();
+
+    private:
+        friend class IRBuilder;
+
+        /// The program name - leads to a globally unique path on the file system.
+        std::string program_name;
+
+        /// Other programs this program depends on. Usually only the global runtime.
+        std::vector<ProgramArc> includes;
+
         /// A set of structs defined within the program.
-        std::vector<StructurePtr> structures;
+        std::vector<StructArc> structs;
 
         /// A set of functions defined within the program.
-        std::vector<FunctionPtr> functions;
+        std::vector<FunctionArc> functions;
     };
-
 
 } // namespace IR
 

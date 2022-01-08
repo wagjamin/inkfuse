@@ -45,31 +45,38 @@ set(INCLUDE_H
         "${CMAKE_SOURCE_DIR}/src/algebra/Operator.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/Pipeline.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/ColumnScan.h"
+        "${CMAKE_SOURCE_DIR}/src/algebra/CompilationContext.h"
+        "${CMAKE_SOURCE_DIR}/src/algebra/FuseChunkSink.h"
         "${CMAKE_SOURCE_DIR}/src/codegen/backend_c/BackendC.h"
         "${CMAKE_SOURCE_DIR}/src/codegen/backend_c/ScopedWriter.h"
         "${CMAKE_SOURCE_DIR}/src/codegen/Backend.h"
         "${CMAKE_SOURCE_DIR}/src/codegen/Expression.h"
-        "${CMAKE_SOURCE_DIR}/src/codegen/FragmentCache.h"
-        "${CMAKE_SOURCE_DIR}/src/codegen/FragmentGenerator.h"
         "${CMAKE_SOURCE_DIR}/src/codegen/IR.h"
+        "${CMAKE_SOURCE_DIR}/src/codegen/IRBuilder.h"
         "${CMAKE_SOURCE_DIR}/src/codegen/Types.h"
         "${CMAKE_SOURCE_DIR}/src/exec/FuseChunk.h"
         "${CMAKE_SOURCE_DIR}/src/exec/InterpretationResult.h"
         "${CMAKE_SOURCE_DIR}/src/infra/types.h"
+        "${CMAKE_SOURCE_DIR}/src/interpreter/FragmentCache.h"
+        "${CMAKE_SOURCE_DIR}/src/interpreter/FragmentGenerator.h"
+        "${CMAKE_SOURCE_DIR}/src/interpreter/FragmentGenerator.h"
         "${CMAKE_SOURCE_DIR}/src/runtime/QueryExecutor.h"
         "${CMAKE_SOURCE_DIR}/src/storage/Relation.h"
         )
 
 set(SRC_CC
         "${CMAKE_SOURCE_DIR}/src/algebra/ColumnScan.cpp"
+        "${CMAKE_SOURCE_DIR}/src/algebra/FuseChunkSink.cpp"
         "${CMAKE_SOURCE_DIR}/src/infra/types.cc"
         "${CMAKE_SOURCE_DIR}/src/storage/Relation.cc"
         "${CMAKE_SOURCE_DIR}/src/codegen/Expression.cpp"
+        "${CMAKE_SOURCE_DIR}/src/codegen/IR.cpp"
+        "${CMAKE_SOURCE_DIR}/src/codegen/IRBuilder.cpp"
         "${CMAKE_SOURCE_DIR}/src/codegen/Types.cpp"
         "${CMAKE_SOURCE_DIR}/src/codegen/backend_c/BackendC.cpp"
         "${CMAKE_SOURCE_DIR}/src/codegen/backend_c/ScopedWriter.cpp"
         "${CMAKE_SOURCE_DIR}/src/exec/FuseChunk.cpp"
-        src/algebra/ColumnScan.h src/algebra/ColumnScan.cpp src/exec/SubstitutionContext.h)
+        )
 
 set(TEST_CC
         )

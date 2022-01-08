@@ -4,7 +4,7 @@ namespace inkfuse {
 
 namespace IR {
 
-    CastExpr::CastExpr(ExprPtr child_, TypePtr target_, bool narrowing):
+    CastExpr::CastExpr(ExprPtr child_, TypeArc target_, bool narrowing):
             UnaryExpr(std::move(child_), std::move(target_))
     {
         auto res = validateCastable(*(children[0]->type), *type);

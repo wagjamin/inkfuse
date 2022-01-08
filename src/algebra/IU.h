@@ -15,10 +15,10 @@ namespace inkfuse {
     public:
 
         /// Constructor.
-        IU(IR::TypePtr type_, std::string name_ = ""): type(std::move(type_)), name(std::move(name_)) {};
+        IU(IR::TypeArc type_, std::string name_ = ""): type(std::move(type_)), name(std::move(name_)) {};
 
         /// Type of this IU.
-        IR::TypePtr type;
+        IR::TypeArc type;
         /// Human-readable name for this IU.
         std::string name;
     };

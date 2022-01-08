@@ -2,6 +2,7 @@
 #define INKFUSE_COMPILATIONCONTEXT_H
 
 #include "codegen/IR.h"
+#include "codegen/Value.h"
 #include "algebra/Pipeline.h"
 
 namespace inkfuse {
@@ -20,6 +21,9 @@ namespace inkfuse {
 
         /// Get the next pipeline to execute.
         Pipeline& getNextPipeline();
+
+        /// Get the operator offset within the global state.
+        IR::UI4 getOperatorOffset(Suboperator& op);
 
         /// Generate code for the backing pipeline.
         IR::Program generateCode(Pipeline& pipe);

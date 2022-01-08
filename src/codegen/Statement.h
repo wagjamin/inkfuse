@@ -42,12 +42,12 @@ namespace IR {
     /// Variable declaration statement.
     struct DeclareStmt : public Stmt {
 
-        DeclareStmt(std::string name_, TypePtr type_): name(std::move(name_)), type(std::move(type_)) {}
+        DeclareStmt(std::string name_, TypeArc type_): name(std::move(name_)), type(std::move(type_)) {}
 
         /// Variable name.
         std::string name;
         /// Variable type.
-        TypePtr type;
+        TypeArc type;
     };
 
     /// Assignment statement.
