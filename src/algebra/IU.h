@@ -2,7 +2,7 @@
 #define INKFUSE_IU_H
 
 #include <string>
-#include "codegen/Types.h"
+#include "codegen/Type.h"
 
 namespace inkfuse {
 

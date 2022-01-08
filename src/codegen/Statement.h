@@ -6,7 +6,7 @@
 #include <exception>
 #include "codegen/IRHelpers.h"
 #include "codegen/Expression.h"
-#include "codegen/Types.h"
+#include "codegen/Type.h"
 
 /// This file contains the basic statements within the InkFuse IR.
 namespace inkfuse {

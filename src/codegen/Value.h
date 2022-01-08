@@ -2,7 +2,7 @@
 #define INKFUSE_VALUE_H
 
 #include "codegen/IRHelpers.h"
-#include "codegen/Types.h"
+#include "codegen/Type.h"
 #include <memory>
 
 namespace inkfuse {

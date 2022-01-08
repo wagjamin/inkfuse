@@ -7,7 +7,7 @@
 #include <stdexcept>
 #include <type_traits>
 #include "codegen/IRHelpers.h"
-#include "codegen/Types.h"
+#include "codegen/Type.h"
 
 /// This file contains all the required expression for the InkFuse IR.
 namespace inkfuse {

@@ -1,7 +1,7 @@
 #ifndef INKFUSE_COLUMNSCAN_H
 #define INKFUSE_COLUMNSCAN_H
 
-#include "codegen/Types.h"
+#include "codegen/Type.h"
 #include "codegen/Value.h"
 #include "algebra/Suboperator.h"
 #include "codegen/Expression.h"

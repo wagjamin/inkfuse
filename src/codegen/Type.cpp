@@ -1,4 +1,4 @@
-#include "codegen/Types.h"
+#include "codegen/Type.h"
 #include <algorithm>
 
 namespace inkfuse {

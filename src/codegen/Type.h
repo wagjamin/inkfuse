@@ -1,5 +1,5 @@
-#ifndef INKFUSE_TYPES_H
-#define INKFUSE_TYPES_H
+#ifndef INKFUSE_TYPE_H
+#define INKFUSE_TYPE_H
 
 #include <functional>
 #include <memory>
@@ -222,4 +222,4 @@ namespace IR {
 
 }
 
-#endif //INKFUSE_TYPES_H
+#endif //INKFUSE_TYPE_H

@@ -6,7 +6,7 @@
 #include <sstream>
 #include <cstdint>
 #include "codegen/Backend.h"
-#include "codegen/Types.h"
+#include "codegen/Type.h"
 #include "codegen/backend_c/ScopedWriter.h"
 
 namespace inkfuse {

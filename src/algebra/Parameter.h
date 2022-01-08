@@ -1,7 +1,7 @@
 #ifndef INKFUSE_PARAMETER_H
 #define INKFUSE_PARAMETER_H
 
-#include "codegen/Types.h"
+#include "codegen/Type.h"
 #include <hash_set>
 
 namespace inkfuse {

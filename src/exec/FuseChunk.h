@@ -2,7 +2,7 @@
 #define INKFUSE_FUSECHUNK_H
 
 #include "algebra/IU.h"
-#include "codegen/Types.h"
+#include "codegen/Type.h"
 #include <unordered_map>
 #include <memory>
 
