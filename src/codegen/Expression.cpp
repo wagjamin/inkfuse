@@ -1,4 +1,5 @@
 #include "codegen/Expression.h"
+#include "codegen/Statement.h"
 
 namespace inkfuse {
 
@@ -11,6 +12,21 @@ namespace IR {
         if (res == CastResult::Forbidden || (!narrowing && res == CastResult::Narrowing)) {
             throw std::runtime_error("forbidden IR cast");
         }
+    }
+
+    ExprPtr VarRefExpr::build(const DeclareStmt& declaration_)
+    {
+       return std::make_unique<VarRefExpr>(declaration_);
+    }
+
+    VarRefExpr::VarRefExpr(const DeclareStmt& declaration_)
+      : Expr({}, declaration_.type), declaration(declaration_)
+    {
+    }
+
+    ExprPtr ConstExpr::build(ValuePtr value_)
+    {
+       return std::make_unique<ConstExpr>(std::move(value_));
     }
 
     CastExpr::CastResult CastExpr::validateCastable(const Type &src, const Type &target)
@@ -40,7 +56,7 @@ namespace IR {
         }
          */
         // Everything not mentioned explicitly is forbidden - sorry.
-        return CastResult::Forbidden;
+        return CastResult::Permitted;
     }
 
 }

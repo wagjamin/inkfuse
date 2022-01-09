@@ -1,217 +1,236 @@
 #ifndef INKFUSE_TYPE_H
 #define INKFUSE_TYPE_H
 
+#include <cassert>
 #include <functional>
 #include <memory>
-#include <cassert>
+#include <stdexcept>
+#include <string>
 
 /// This file contains the central building blocks for the backing types within the InkFuse IR.
 namespace inkfuse {
 
 namespace IR {
 
-    /// Base type.
-    struct Type {
+/// Base type.
+struct Type {
+   /// Virtual base destructor.
+   virtual ~Type() = default;
 
-        /// Virtual base destructor.
-        virtual ~Type() = default;
+   /// Given that this is a certain type, do something.
+   template <typename Other>
+   void actionIf(std::function<void(const Other&)> fnc) const {
+      if (const auto elem = dynamic_cast<Other*>(this); elem) {
+         fnc(*elem);
+      }
+   }
 
-        /// Given that this is a certain type, do something.
-        template <typename Other>
-        void actionIf(std::function<void(const Other&)> fnc) const {
-            if (const auto elem = dynamic_cast<Other*>(this); elem) {
-                fnc(*elem);
-            }
-        }
+   /// Get the size of this type in bytes (i.e. how much memory it consumes).
+   virtual size_t numBytes() const = 0;
 
-        /// Get the size of this type in bytes (i.e. how much memory it consumes).
-        virtual size_t numBytes() const = 0;
+   /// Get a string representation of this type.
+   virtual std::string id() const = 0;
 
-        /// Get a string representation of this type.
-        virtual std::string id() const = 0;
+   bool operator==(const Type& other) const {
+      /// Simple equality check for types which is actually sufficient for our type system.
+      return id() == other.id();
+   }
+};
 
-        bool operator==(const Type& other) const {
-            /// Simple equality check for types which is actually sufficient for our type system.
-            return id() == other.id();
-        }
-    };
+/// Types are shared pointers. This is because struct types can get pretty complicated and we don't want
+/// to copy all the time. Note that there might be tons of expressions referencing the struct type.
+using TypeArc = std::shared_ptr<Type>;
 
-    /// Types are shared pointers. This is because struct types can get pretty complicated and we don't want
-    /// to copy all the time. Note that there might be tons of expressions referencing the struct type.
-    using TypeArc = std::shared_ptr<Type>;
+/// A type which also exists in SQL (e.g. integers, strings, ...)
+struct SQLType : public Type {};
 
-    /// A type which also exists in SQL (e.g. integers, strings, ...)
-    struct SQLType : public Type {};
+/// Base type for a signed integer.
+struct SignedInt : public SQLType {
+   SignedInt(size_t size_) : size(size_){};
 
-    /// Base type for a signed integer.
-    struct SignedInt : public SQLType {
+   static TypeArc getTypePtr(size_t size){
+      return std::make_unique<SignedInt>(size);
+   };
 
-        SignedInt(size_t size_): size(size_) {};
+   size_t numBytes() const override {
+      return size;
+   };
 
-        size_t numBytes() const override {
-            return size;
-        };
+   std::string id() const override {
+      return "I" + std::to_string(size);
+   };
 
-        std::string id() const override
-        {
-            return "I" + std::to_string(size);
-        };
+   private:
+   uint64_t size;
+};
 
-    private:
-        uint64_t size;
-    };
+/// Base type for an unsigned integer.
+struct UnsignedInt : public SQLType {
+   UnsignedInt(size_t size_) : size(size_){};
 
-    /// Base type for an unsigned integer.
-    struct UnsignedInt : public SQLType {
+   static TypeArc getTypePtr(size_t size){
+      return std::make_unique<UnsignedInt>(size);
+   };
 
-        UnsignedInt(size_t size_): size(size_) {};
+   size_t numBytes() const override {
+      return size;
+   };
 
-        size_t numBytes() const override {
-            return size;
-        };
+   std::string id() const override {
+      return "UI" + std::to_string(size);
+   };
 
-        std::string id() const override
-        {
-            return "UI" + std::to_string(size);
-        };
+   private:
+   uint64_t size;
+};
 
+/// Boolean type.
+struct Bool : public SQLType {
 
-    private:
-        uint64_t size;
-    };
+   static TypeArc getTypePtr(){
+      return std::make_unique<Bool>();
+   };
 
-    /// Boolean type.
-    struct Bool : public SQLType {
+   size_t numBytes() const override {
+      return 1;
+   };
 
-        size_t numBytes() const override {
-            return 1;
-        };
+   std::string id() const override {
+      return "Bool";
+   };
+};
 
-        std::string id() const override {
-            return "Bool";
-        };
+/// Character type.
+struct Char : public SQLType {
 
-    };
+   static TypeArc getTypePtr(){
+      return std::make_unique<Char>();
+   };
 
-    /// Character type.
-    struct Char : public SQLType {
+   size_t numBytes() const override {
+      return 0;
+   }
 
-        size_t numBytes() const override {
-            return 0;
-        }
+   std::string id() const override {
+      return "Char";
+   }
+};
 
-        std::string id() const override {
-            return "Char";
-        }
+/// Void type which is usually wrapped into pointers for a lack of better options.
+struct Void : public Type {
 
-    };
+   static TypeArc getTypePtr(){
+      return std::make_unique<Void>();
+   };
 
+   size_t numBytes() const override {
+      return 0;
+   }
 
-    /// Void type which is usually wrapped into pointers for a lack of better options.
-    struct Void : public Type {
+   std::string id() const override {
+      return "Void";
+   }
+};
 
-        size_t numBytes() const override {
-            return 0;
-        }
+/// Custom struct type, this is needed to make the IR aware of C-style structs
+/// containing operator state.
+struct Struct : public Type {
+   /// A field within the struct.
+   struct Field {
+      /// Type of the field.
+      TypeArc type;
+      /// Name of the field.
+      std::string name;
+   };
 
-        std::string id() const override {
-            return "Void";
-        }
-    };
+   /// Struct name.
+   std::string name;
+   /// The fields stored within the struct (in the given order!).
+   /// Note - the NoisePage IR also stores offsets of struct members in their IR structs.
+   /// Why don't we need this? Because we generate C/C++ ;-)
+   /// If you generate LLVM/ASM directly you need to explicitly calculate offsets etc. when you access C-style
+   /// structs, this is a responsibility we move to the C compiler in this case, we can just access through
+   /// regular "dot-syntax".
+   std::vector<Field> fields;
 
-    /// Custom struct type, this is needed to make the IR aware of C-style structs
-    /// containing operator state.
-    struct Struct : public Type {
+   size_t numBytes() const override {
+      // TODO - I hope we won't need this ... a note on this:
+      // We would actually need it 100% if we put the global state of operators consecutively.
+      // In our world where we need to switch between vectorization and compilation however this is tricky.
+      // We need the state in different places depending on whether we interpret or fuse.
+      // In that case it's actually easier to represent the global state as a vector of pointers to the backing
+      // operator state.
+      throw std::runtime_error("not implemented");
+   }
 
-        /// A field within the struct.
-        struct Field {
-            /// Type of the field.
-            TypeArc type;
-            /// Name of the field.
-            std::string name;
-        };
+   std::string id() const override {
+      return "Struct_" + name;
+   }
+};
 
-        /// Struct name.
-        std::string name;
-        /// The fields stored within the struct (in the given order!).
-        /// Note - the NoisePage IR also stores offsets of struct members in their IR structs.
-        /// Why don't we need this? Because we generate C/C++ ;-)
-        /// If you generate LLVM/ASM directly you need to explicitly calculate offsets etc. when you access C-style
-        /// structs, this is a responsibility we move to the C compiler in this case, we can just access through
-        /// regular "dot-syntax".
-        std::vector<Field> fields;
+using StructArc = std::shared_ptr<Struct>;
 
-        size_t numBytes() const override {
-            // TODO - I hope we won't need this ... a note on this:
-            // We would actually need it 100% if we put the global state of operators consecutively.
-            // In our world where we need to switch between vectorization and compilation however this is tricky.
-            // We need the state in different places depending on whether we interpret or fuse.
-            // In that case it's actually easier to represent the global state as a vector of pointers to the backing
-            // operator state.
-            throw std::runtime_error("not implemented");
-        }
+/// Pointer to some other type.
+struct Pointer : public Type {
+   /// Type this pointer points to.
+   TypeArc pointed_to;
 
-        std::string id() const override {
-            return "Struct_" + name;
-        }
-    };
+   Pointer(TypeArc pointed_to_): pointed_to(std::move(pointed_to_))
+   {
+   }
 
-    using StructArc = std::shared_ptr<Struct>;
+   static TypeArc getTypePtr(TypeArc pointed_to) {
+      return std::make_unique<Pointer>(pointed_to);
+   };
 
-    /// Pointer to some other type.
-    struct Pointer : public Type {
-        /// Type this pointer points to.
-        TypeArc pointed_to;
+   size_t numBytes() const override {
+      return 8;
+   }
 
-        size_t numBytes() const override {
-            return 8;
-        }
+   std::string id() const override {
+      return "Ptr_" + pointed_to->id();
+   }
+};
 
-        std::string id() const override {
-            return "Ptr_" + pointed_to->id();
-        }
-    };
+/// Type visitor utility.
+template <typename Arg>
+struct TypeVisitor {
+   public:
+   void visit(const IR::Type& type, Arg arg) {
+      if (const auto elem = dynamic_cast<const IR::SignedInt*>(&type)) {
+         visitSignedInt(*elem, arg);
+      } else if (auto elem = dynamic_cast<const IR::UnsignedInt*>(&type)) {
+         visitUnsignedInt(*elem, arg);
+      } else if (auto elem = dynamic_cast<const IR::Bool*>(&type)) {
+         visitBool(*elem, arg);
+      } else if (auto elem = dynamic_cast<const IR::Char*>(&type)) {
+         visitChar(*elem, arg);
+      } else if (auto elem = dynamic_cast<const IR::Void*>(&type)) {
+         visitVoid(*elem, arg);
+      } else if (auto elem = dynamic_cast<const IR::Struct*>(&type)) {
+         visitStruct(*elem, arg);
+      } else if (auto elem = dynamic_cast<const IR::Pointer*>(&type)) {
+         visitPointer(*elem, arg);
+      } else {
+         assert(false);
+      }
+   }
 
-    /// Type visitor utility.
-    template <typename Arg>
-    struct TypeVisitor {
-    public:
-        void visit(const IR::Type& type, Arg arg) {
-            if (const auto elem = dynamic_cast<const IR::SignedInt*>(&type)) {
-                visitSignedInt(*elem, arg);
-            } else if (auto elem = dynamic_cast<const IR::UnsignedInt*>(&type)) {
-                visitUnsignedInt(*elem, arg);
-            } else if (auto elem = dynamic_cast<const IR::Bool*>(&type)) {
-                visitBool(*elem, arg);
-            } else if (auto elem = dynamic_cast<const IR::Char*>(&type)) {
-                visitChar(*elem, arg);
-            } else if (auto elem = dynamic_cast<const IR::Void*>(&type)) {
-                visitVoid(*elem, arg);
-            } else if (auto elem = dynamic_cast<const IR::Struct*>(&type)) {
-                visitStruct(*elem, arg);
-            } else if (auto elem = dynamic_cast<const IR::Pointer*>(&type)) {
-                visitPointer(*elem, arg);
-            } else {
-                assert(false);
-            }
-        }
+   private:
+   virtual void visitSignedInt(const SignedInt& type, Arg arg) {}
 
-    private:
-        virtual void visitSignedInt(const SignedInt& type, Arg arg) {}
+   virtual void visitUnsignedInt(const UnsignedInt& type, Arg arg) {}
 
-        virtual void visitUnsignedInt(const UnsignedInt& type, Arg arg) {}
+   virtual void visitBool(const Bool& type, Arg arg) {}
 
-        virtual void visitBool(const Bool& type, Arg arg) {}
+   virtual void visitChar(const Char& type, Arg arg) {}
 
-        virtual void visitChar(const Char& type, Arg arg) {}
+   virtual void visitVoid(const Void& type, Arg arg) {}
 
-        virtual void visitVoid(const Void& type, Arg arg) {}
+   virtual void visitStruct(const Struct& type, Arg arg) {}
 
-        virtual void visitStruct(const Struct& type, Arg arg) {}
-
-        virtual void visitPointer(const Pointer& type, Arg arg) {}
-
-    };
+   virtual void visitPointer(const Pointer& type, Arg arg) {}
+};
 
 }
 

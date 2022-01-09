@@ -37,6 +37,10 @@ namespace IR {
         }
     }
 
+    IRBuilder::IRBuilder(Program& program_): program(program_)
+    {
+    }
+
     void IRBuilder::addStruct(StructArc new_struct)
     {
         program.structs.push_back(std::move(new_struct));

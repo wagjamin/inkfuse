@@ -7,7 +7,8 @@ namespace IR {
     /// Set up the global runtime. Structs and functions are added by the respective.
     ProgramArc global_runtime = std::make_shared<Program>("global_runtime");
 
-    Function::Function(std::string name_, std::vector<TypeArc> arguments_): name(std::move(name_)), arguments(std::move(arguments_))
+    Function::Function(std::string name_, std::vector<std::unique_ptr<DeclareStmt>> arguments_, TypeArc return_type_)
+       : name(std::move(name_)), arguments(std::move(arguments_)), return_type(std::move(return_type_))
     {
     }
 
@@ -22,6 +23,11 @@ namespace IR {
             // We depend on the global runtime by default.
             includes.push_back(global_runtime);
         }
+    }
+
+    IRBuilder Program::getIRBuilder()
+    {
+       return IRBuilder(*this);
     }
 
     const std::vector<ProgramArc> &Program::getIncludes() const

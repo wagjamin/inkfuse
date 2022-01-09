@@ -73,12 +73,14 @@ set(SRC_CC
         "${CMAKE_SOURCE_DIR}/src/codegen/IR.cpp"
         "${CMAKE_SOURCE_DIR}/src/codegen/IRBuilder.cpp"
         "${CMAKE_SOURCE_DIR}/src/codegen/Type.cpp"
+        "${CMAKE_SOURCE_DIR}/src/codegen/Value.cpp"
         "${CMAKE_SOURCE_DIR}/src/codegen/backend_c/BackendC.cpp"
         "${CMAKE_SOURCE_DIR}/src/codegen/backend_c/ScopedWriter.cpp"
         "${CMAKE_SOURCE_DIR}/src/exec/FuseChunk.cpp"
         )
 
 set(TEST_CC
+        "${CMAKE_SOURCE_DIR}/test/test_ir.cpp"
         )
 
 set(TOOLS_SRC
@@ -106,6 +108,7 @@ target_link_libraries(inkfuse_runner PRIVATE gflags Threads::Threads)
 # ---------------------------------------------------------------------------
 
 add_executable(tester test/tester.cc ${TEST_CC})
+target_include_directories(tester PRIVATE ${CMAKE_SOURCE_DIR}/test)
 target_link_libraries(tester PRIVATE inkfuse gtest gmock Threads::Threads)
 enable_testing()
 add_test(inkfuse tester)

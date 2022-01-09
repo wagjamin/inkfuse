@@ -33,13 +33,16 @@ namespace IR {
     /// IR function getting a set of parameters and returning a result.
     struct Function {
 
-        Function(std::string name_, std::vector<TypeArc> arguments_);
+        Function(std::string name_, std::vector<std::unique_ptr<DeclareStmt>> arguments_, TypeArc return_type_);
 
         /// The unique function name.
         std::string name;
 
         /// The arguments.
-        std::vector<TypeArc> arguments;
+        std::vector<std::unique_ptr<DeclareStmt>> arguments;
+
+        /// Return type of the function.
+        TypeArc return_type;
 
         /// Get the function body (if it exists). Note that code can only be generated through the IRBuilder.
         const Block* getBody();
