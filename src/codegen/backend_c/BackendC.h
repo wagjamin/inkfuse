@@ -44,25 +44,25 @@ namespace inkfuse {
 
     private:
         /// Set up the preamble.
-        static void createPreamble(ScopedWriter& str);
+        static void createPreamble(ScopedWriter& writer);
 
         /// Add a type description to the backing string stream.
-        static void typeDescription(const IR::Type& type, ScopedWriter& str);
+        static void typeDescription(const IR::Type& type, ScopedWriter::Statement& writer);
 
         /// Compile a structure.
-        static void compileStruct(const IR::Structure& structure, ScopedWriter& str);
+        static void compileStruct(const IR::Struct& structure, ScopedWriter& writer);
 
         /// Compile a function.
-        static void compileFunction(const IR::Function& fct, ScopedWriter& str);
+        static void compileFunction(const IR::Function& fct, ScopedWriter& writer);
 
         /// Compile a block.
-        static void compileBlock(const IR::Block& block, ScopedWriter& str);
+        static void compileBlock(const IR::Block& block, ScopedWriter& writer);
 
         /// Compile a statement.
-        static void compileStatement(const IR::Stmt& statement, std::stringstream& str);
+        static void compileStatement(const IR::Stmt& statement, ScopedWriter& writer);
 
         /// Compile an expression.
-        static void compileExpression(const IR::Expr& expr, std::stringstream& str);
+        static void compileExpression(const IR::Expr& expr, ScopedWriter& writer);
 
     };
 

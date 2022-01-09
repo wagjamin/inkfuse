@@ -14,11 +14,6 @@ namespace inkfuse {
 
     }
 
-    void ColumnScan::interpret(FuseChunk* src, FuseChunk *dst)
-    {
-
-    }
-
     void ColumnScan::setUpState()
     {
         state = std::make_unique<ColumnScanState>(ColumnScanState{

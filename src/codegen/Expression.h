@@ -6,7 +6,6 @@
 #include <vector>
 #include <stdexcept>
 #include <type_traits>
-#include "codegen/IRHelpers.h"
 #include "codegen/Type.h"
 
 /// This file contains all the required expression for the InkFuse IR.
@@ -16,7 +15,7 @@ namespace IR {
 
     /// IR Expr returning some type when evaluated. An expression can have children which are again expressions.
     /// Expressions can then be wrapped within IR statements for e.g. variable assignments or control blocks.
-    struct Expr : public IRConcept {
+    struct Expr {
     public:
         /// Constructor taking a vector of child expressions.
         Expr(std::vector<std::unique_ptr<Expr>> children_, TypeArc type_): children(std::move(children_)), type(std::move(type_))
@@ -92,7 +91,11 @@ namespace IR {
 
     /// Binary expression - only exists for convenience.
     struct BinaryExpr : public Expr {
-        BinaryExpr(ExprPtr child_l_, ExprPtr child_r_, TypeArc type_): Expr(std::vector<ExprPtr>{std::move(child_l_), std::move(child_r_)}, std::move(type_)) {};
+        BinaryExpr(ExprPtr child_l_, ExprPtr child_r_, TypeArc type_): Expr(std::vector<ExprPtr>{}, std::move(type_))
+        {
+            children.emplace_back(std::move(child_l_));
+            children.emplace_back(std::move(child_r_));
+        };
     };
 
     /// Arithmetic expression doing some form of computation.
@@ -120,7 +123,10 @@ namespace IR {
 
     /// Unary expression - only exists for convenience.
     struct UnaryExpr : public Expr {
-        UnaryExpr(ExprPtr child_, TypeArc type_): Expr(std::vector<ExprPtr>{std::move(child_)}, std::move(type_) {};
+        UnaryExpr(ExprPtr child_, TypeArc type_): Expr(std::vector<ExprPtr>{}, std::move(type_))
+        {
+            children.emplace_back(std::move(child_));
+        };
     };
 
     /// Cast expression.

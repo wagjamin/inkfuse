@@ -4,7 +4,6 @@
 #include <functional>
 #include <memory>
 #include <cassert>
-#include "codegen/IRHelpers.h"
 
 /// This file contains the central building blocks for the backing types within the InkFuse IR.
 namespace inkfuse {
@@ -12,7 +11,7 @@ namespace inkfuse {
 namespace IR {
 
     /// Base type.
-    struct Type : public IRConcept {
+    struct Type {
 
         /// Virtual base destructor.
         virtual ~Type() = default;
@@ -20,14 +19,10 @@ namespace IR {
         /// Given that this is a certain type, do something.
         template <typename Other>
         void actionIf(std::function<void(const Other&)> fnc) const {
-            if (const auto elem = this->template is<Other>(); elem) {
+            if (const auto elem = dynamic_cast<Other*>(this); elem) {
                 fnc(*elem);
             }
         }
-
-        /// Some form of maximum operation over two types which is supposed to find a suitable target type
-        /// for arithmetic operations. But the maximum type is not safe of under- or overflow!
-        static std::unique_ptr<Type> max(const Type& t1, const Type& t2);
 
         /// Get the size of this type in bytes (i.e. how much memory it consumes).
         virtual size_t numBytes() const = 0;
@@ -182,19 +177,19 @@ namespace IR {
     struct TypeVisitor {
     public:
         void visit(const IR::Type& type, Arg arg) {
-            if (const auto elem = type.isConst<IR::SignedInt>()) {
+            if (const auto elem = dynamic_cast<const IR::SignedInt*>(&type)) {
                 visitSignedInt(*elem, arg);
-            } else if (auto elem = type.isConst<IR::UnsignedInt>()) {
+            } else if (auto elem = dynamic_cast<const IR::UnsignedInt*>(&type)) {
                 visitUnsignedInt(*elem, arg);
-            } else if (auto elem = type.isConst<IR::Bool>()) {
+            } else if (auto elem = dynamic_cast<const IR::Bool*>(&type)) {
                 visitBool(*elem, arg);
-            } else if (auto elem = type.isConst<IR::Char>()) {
+            } else if (auto elem = dynamic_cast<const IR::Char*>(&type)) {
                 visitChar(*elem, arg);
-            } else if (auto elem = type.isConst<IR::Void>()) {
+            } else if (auto elem = dynamic_cast<const IR::Void*>(&type)) {
                 visitVoid(*elem, arg);
-            } else if (auto elem = type.isConst<IR::Struct>()) {
+            } else if (auto elem = dynamic_cast<const IR::Struct*>(&type)) {
                 visitStruct(*elem, arg);
-            } else if (auto elem = type.isConst<IR::Pointer>()) {
+            } else if (auto elem = dynamic_cast<const IR::Pointer*>(&type)) {
                 visitPointer(*elem, arg);
             } else {
                 assert(false);

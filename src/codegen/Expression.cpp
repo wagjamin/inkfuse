@@ -15,6 +15,7 @@ namespace IR {
 
     CastExpr::CastResult CastExpr::validateCastable(const Type &src, const Type &target)
     {
+        /*
         if (auto cSrc = src.isConst<SignedInt>()) {
             if (auto cTarget = target.isConst<SignedInt>()) {
                 return cTarget->numBytes() >= cSrc->numBytes() ? CastResult::Permitted : CastResult::Narrowing;
@@ -37,6 +38,7 @@ namespace IR {
                 return CastResult::Permitted;
             }
         }
+         */
         // Everything not mentioned explicitly is forbidden - sorry.
         return CastResult::Forbidden;
     }

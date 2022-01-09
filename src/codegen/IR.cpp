@@ -24,6 +24,20 @@ namespace IR {
         }
     }
 
+    const std::vector<ProgramArc> &Program::getIncludes() const
+    {
+        return includes;
+    }
+
+    const std::vector<StructArc> &Program::getStructs() const
+    {
+        return structs;
+    }
+
+    const std::vector<FunctionArc> &Program::getFunctions() const
+    {
+        return functions;
+    }
 }
 
 }

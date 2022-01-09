@@ -1,7 +1,6 @@
 #ifndef INKFUSE_VALUE_H
 #define INKFUSE_VALUE_H
 
-#include "codegen/IRHelpers.h"
 #include "codegen/Type.h"
 #include <memory>
 
@@ -10,7 +9,7 @@ namespace inkfuse {
 namespace IR {
 
     /// Value of a certain type
-    struct Value : public IRConcept {
+    struct Value {
 
         virtual TypeArc getType() const = 0;
 

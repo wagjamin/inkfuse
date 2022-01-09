@@ -75,11 +75,17 @@ namespace IR {
         /// Get an IR builder for this program.
         IRBuilder getIRBuilder();
 
+        /// The program name - leads to a globally unique path on the file system.
+        const std::string program_name;
+
+        const std::vector<ProgramArc>& getIncludes() const;
+
+        const std::vector<StructArc>& getStructs() const;
+
+        const std::vector<FunctionArc>& getFunctions() const;
+
     private:
         friend class IRBuilder;
-
-        /// The program name - leads to a globally unique path on the file system.
-        std::string program_name;
 
         /// Other programs this program depends on. Usually only the global runtime.
         std::vector<ProgramArc> includes;

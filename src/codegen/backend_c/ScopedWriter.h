@@ -32,8 +32,8 @@ namespace inkfuse {
             /// Destructor. Terminates statement.
             ~Statement();
 
-            /// Stream operator to write custom statement.
-            Statement& operator<<(std::string_view str);
+            /// Get backing stream of the statement.
+            std::stringstream& stream();
 
         private:
             Statement(ScopedWriter& writer_);

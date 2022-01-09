@@ -4,7 +4,6 @@
 #include <string>
 #include <memory>
 #include <exception>
-#include "codegen/IRHelpers.h"
 #include "codegen/Expression.h"
 #include "codegen/Type.h"
 
@@ -18,7 +17,7 @@ namespace IR {
     using BlockPtr = std::unique_ptr<Block>;
 
     /// Basic IR statement.
-    struct Stmt : public IRConcept {
+    struct Stmt {
 
         /// Virtual base destructor.
         virtual ~Stmt() = default;
@@ -30,7 +29,7 @@ namespace IR {
     struct InvokeFctStmt : public Stmt {
 
         InvokeFctStmt(ExprPtr invoke_fct_expr_): invoke_fct_expr(std::move(invoke_fct_expr_)) {
-            if (!invoke_fct_expr->is<InvokeFctExpr>()) {
+            if (!dynamic_cast<IR::InvokeFctExpr*>(invoke_fct_expr.get())) {
                 throw std::runtime_error("cannot wrap non invoke expression in invoke statement");
             }
         }
@@ -53,7 +52,7 @@ namespace IR {
     /// Assignment statement.
     struct AssignmentStmt : public Stmt {
 
-        AssignmentStmt(std::string var_name_, ExprPtr expr_): var_name(std::move(var_name_)), expr(std::move(expr)) {}
+        AssignmentStmt(std::string var_name_, ExprPtr expr_): var_name(std::move(var_name_)), expr(std::move(expr_)) {}
 
         /// Variable name to which to write.
         std::string var_name;
@@ -77,7 +76,7 @@ namespace IR {
     /// While statement.
     struct WhileStmt : public Stmt {
 
-        WhileStmt(ExprPtr expr_, BlockPtr if_block_): expr(std::move(expr)), if_block(std::move(if_block_)) {}
+        WhileStmt(ExprPtr expr_, BlockPtr if_block_): expr(std::move(expr_)), if_block(std::move(if_block_)) {}
 
         /// Expression to evaluate to decide whether to enter the while loop.
         ExprPtr expr;
@@ -90,15 +89,15 @@ namespace IR {
     struct StmtVisitor {
     public:
         void visit(const Stmt& stmt, Arg arg) {
-            if (const auto elem = stmt.isConst<InvokeFctStmt>()) {
+            if (const auto elem = dynamic_cast<const InvokeFctStmt*>(&stmt)) {
                 visitInvokeFct(*elem, arg);
-            } else if (auto elem = stmt.isConst<DeclareStmt>()) {
+            } else if (auto elem = dynamic_cast<const DeclareStmt*>(&stmt)) {
                 visitDeclare(*elem, arg);
-            } else if (auto elem = stmt.isConst<AssignmentStmt>()) {
+            } else if (auto elem = dynamic_cast<const AssignmentStmt*>(&stmt)) {
                 visitAssignment(*elem, arg);
-            } else if (auto elem = stmt.isConst<IfStmt>()) {
+            } else if (auto elem = dynamic_cast<const IfStmt*>(&stmt)) {
                 visitIf(*elem, arg);
-            } else if (auto elem = stmt.isConst<WhileStmt>()) {
+            } else if (auto elem = dynamic_cast<const WhileStmt*>(&stmt)) {
                 visitWhile(*elem, arg);
             } else {
                 assert(false);

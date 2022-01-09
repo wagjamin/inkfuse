@@ -19,6 +19,11 @@ namespace inkfuse {
         writer.stream << writer.indent_string;
     }
 
+    std::stringstream &ScopedWriter::Statement::stream()
+    {
+        return writer.stream;
+    }
+
     ScopedWriter::Statement::~Statement()
     {
         writer.stream << ";\n";
