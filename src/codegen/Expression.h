@@ -35,13 +35,15 @@ struct Expr {
 
 using ExprPtr = std::unique_ptr<Expr>;
 struct DeclareStmt;
+struct Stmt;
 
 /// Basic variable reference expression.
 struct VarRefExpr : public Expr {
 
-   /// Create a new variable reference for the given declaration.
-   VarRefExpr(const DeclareStmt& declaration_);
-   static ExprPtr build(const DeclareStmt& declaration_);
+   /// Create a new varialbe reference for the given statement,
+   /// throws if the statement is not a declare statement.
+   VarRefExpr(const Stmt& declaration_);
+   static ExprPtr build(const Stmt& declaration_);
 
    /// Backing declaration statement.
    const DeclareStmt& declaration;
@@ -52,7 +54,7 @@ struct VarRefExpr : public Expr {
 struct ConstExpr : public Expr {
 
    /// Create a new constant expression based on the given value.
-   ConstExpr(ValuePtr value_) : Expr({}, value->getType()), value(std::move(value_)){};
+   ConstExpr(ValuePtr value_) : Expr({}, value_->getType()), value(std::move(value_)){};
    static ExprPtr build(ValuePtr value_);
 
    /// Backing value.
@@ -95,7 +97,7 @@ struct InvokeFctExpr : public Expr {
 
 /// Binary expression - only exists for convenience.
 struct BinaryExpr : public Expr {
-   BinaryExpr(ExprPtr child_l_, ExprPtr child_r_, TypeArc type_) : Expr(std::vector<ExprPtr>{}, std::move(type_)) {
+   BinaryExpr(TypeArc type_, ExprPtr child_l_, ExprPtr child_r_) : Expr(std::vector<ExprPtr>{}, std::move(type_)) {
       children.emplace_back(std::move(child_l_));
       children.emplace_back(std::move(child_r_));
    };
@@ -119,15 +121,12 @@ struct ArithmeticExpr : public BinaryExpr {
    /// Opcode of this expression.
    Opcode code;
 
-   static ExprPtr build(ExprPtr child_l_, ExprPtr child_r_, Opcode code_) {
-      ArithmeticExpr(std::move(child_l_), std::move(child_r_), code_);
-      // return std::make_unique<ArithmeticExpr>(ArithmeticExpr(std::move(child_l_), std::move(child_r_), code_));
-      return nullptr;
-   };
-
-   private:
    /// Constructor, suitable result type is inferred from child types and opcode.
-   ArithmeticExpr(ExprPtr child_l_, ExprPtr child_r_, Opcode code_) : BinaryExpr(std::move(child_l_), std::move(child_r_), child_l_->type), code(code_){};
+   ArithmeticExpr(ExprPtr child_l_, ExprPtr child_r_, Opcode code_) : BinaryExpr(child_l_->type, std::move(child_l_), std::move(child_r_)), code(code_) {};
+
+   static ExprPtr build(ExprPtr child_l_, ExprPtr child_r_, Opcode code_) {
+      return std::make_unique<ArithmeticExpr>(std::move(child_l_), std::move(child_r_), code_);
+   };
 };
 
 

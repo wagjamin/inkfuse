@@ -33,13 +33,14 @@ namespace IR {
     /// IR function getting a set of parameters and returning a result.
     struct Function {
 
-        Function(std::string name_, std::vector<std::unique_ptr<DeclareStmt>> arguments_, TypeArc return_type_);
+        /// Create a new function, throws if not all of the arguments are pointing to declare statements.
+        Function(std::string name_, std::vector<StmtPtr> arguments_, TypeArc return_type_);
 
         /// The unique function name.
         std::string name;
 
-        /// The arguments.
-        std::vector<std::unique_ptr<DeclareStmt>> arguments;
+        /// The arguments. All of the statements are Declare statements.
+        std::vector<StmtPtr> arguments;
 
         /// Return type of the function.
         TypeArc return_type;

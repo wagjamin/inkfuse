@@ -38,23 +38,22 @@ struct InvokeFctStmt : public Stmt {
 
 /// Variable declaration statement.
 struct DeclareStmt : public Stmt {
+   DeclareStmt(std::string name_, TypeArc type_) : name(std::move(name_)), type(std::move(type_)) {}
    static StmtPtr build(std::string name_, TypeArc type_);
 
    /// Variable name.
    std::string name;
    /// Variable type.
    TypeArc type;
-
-   private:
-   DeclareStmt(std::string name_, TypeArc type_) : name(std::move(name_)), type(std::move(type_)) {}
 };
 
 /// Assignment statement.
 struct AssignmentStmt : public Stmt {
-   AssignmentStmt(std::string var_name_, ExprPtr expr_) : var_name(std::move(var_name_)), expr(std::move(expr_)) {}
+   AssignmentStmt(const Stmt& statement, ExprPtr expr_) : declaraion(reinterpret_cast<const DeclareStmt&>(statement)), expr(std::move(expr_)) {}
+   static StmtPtr build(const Stmt& statement, ExprPtr expr_);
 
    /// Variable name to which to write.
-   std::string var_name;
+   const DeclareStmt& declaraion;
    /// Expression which should be assigned.
    ExprPtr expr;
 };

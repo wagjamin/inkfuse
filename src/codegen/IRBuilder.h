@@ -26,6 +26,9 @@ namespace IR {
         /// Add a statement to the current block being built.
         void appendStmt(StmtPtr stmt);
 
+        /// Get the statement at a given index.
+        const Stmt& getArg(size_t idx);
+
         /// Wrap up code generation and add the function to the owning Program.
         void finalize();
 

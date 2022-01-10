@@ -6,8 +6,8 @@ namespace inkfuse {
 
 namespace IR {
 
-    FunctionBuilder::FunctionBuilder(IRBuilder& builder_, FunctionArc function)
-    : function(std::move(function)), builder(builder_)
+    FunctionBuilder::FunctionBuilder(IRBuilder& builder_, FunctionArc function_)
+    : function(std::move(function_)), builder(builder_)
     {
         if (function->body) {
             throw std::runtime_error("Cannot create function builder on function with non-empty body");
@@ -18,9 +18,17 @@ namespace IR {
 
     void FunctionBuilder::appendStmt(StmtPtr stmt)
     {
+       if (!stmt) {
+          throw std::runtime_error("cannot add emptry StmtPtr to function.");
+       }
         // Add a statement to the current block - note that this can be re-scoped by control flow blocks
         // like if statements and while loops.
         curr_block->statements.push_back(std::move(stmt));
+    }
+
+    const Stmt& FunctionBuilder::getArg(size_t idx)
+    {
+       return *function->arguments.at(idx);
     }
 
     FunctionBuilder::~FunctionBuilder()

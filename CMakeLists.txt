@@ -74,6 +74,7 @@ set(SRC_CC
         "${CMAKE_SOURCE_DIR}/src/codegen/IRBuilder.cpp"
         "${CMAKE_SOURCE_DIR}/src/codegen/Type.cpp"
         "${CMAKE_SOURCE_DIR}/src/codegen/Value.cpp"
+        "${CMAKE_SOURCE_DIR}/src/codegen/Statement.cpp"
         "${CMAKE_SOURCE_DIR}/src/codegen/backend_c/BackendC.cpp"
         "${CMAKE_SOURCE_DIR}/src/codegen/backend_c/ScopedWriter.cpp"
         "${CMAKE_SOURCE_DIR}/src/exec/FuseChunk.cpp"

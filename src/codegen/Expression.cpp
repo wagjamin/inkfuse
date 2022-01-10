@@ -14,13 +14,13 @@ namespace IR {
         }
     }
 
-    ExprPtr VarRefExpr::build(const DeclareStmt& declaration_)
+    ExprPtr VarRefExpr::build(const Stmt& declaration_)
     {
        return std::make_unique<VarRefExpr>(declaration_);
     }
 
-    VarRefExpr::VarRefExpr(const DeclareStmt& declaration_)
-      : Expr({}, declaration_.type), declaration(declaration_)
+    VarRefExpr::VarRefExpr(const Stmt& declaration_)
+      : Expr({}, dynamic_cast<const DeclareStmt&>(declaration_).type), declaration(dynamic_cast<const DeclareStmt&>(declaration_))
     {
     }
 
