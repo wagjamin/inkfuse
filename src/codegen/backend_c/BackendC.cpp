@@ -1,8 +1,8 @@
 #include "codegen/backend_c/BackendC.h"
 #include <cstdlib>
-#include <dlfcn.h>
 #include <fstream>
 #include <sstream>
+#include <dlfcn.h>
 
 namespace inkfuse {
 
@@ -12,17 +12,18 @@ void BackendProgramC::compileToMachinecode() {
       dump();
       // Invoke the compiler.
       std::stringstream command;
-      command << "clang-11 " << "/tmp/" << program_name << ".c";
+      command << "clang-11 "
+              << "/tmp/" << program_name << ".c";
       command << " -O3 -fPIC";
       command << " -shared";
-      command << " -o " << "/tmp/" << program_name << ".so";
+      command << " -o "
+              << "/tmp/" << program_name << ".so";
       std::system(command.str().c_str());
    }
    was_compiled = true;
 }
 
-BackendProgramC::~BackendProgramC()
-{
+BackendProgramC::~BackendProgramC() {
    // TODO dlclose
 }
 
@@ -39,7 +40,7 @@ void* BackendProgramC::getFunction(std::string_view name) {
       throw std::runtime_error("Error during dlopen: " + std::string(dlerror()));
    }
 
-   auto fn=dlsym(handle, name.data());
+   auto fn = dlsym(handle, name.data());
 
    return fn;
 }
@@ -138,7 +139,6 @@ void BackendC::compileBlock(const IR::Block& block, ScopedWriter& writer) {
 
 void BackendC::compileStatement(const IR::Stmt& statement, ScopedWriter& writer) {
    struct StatementVisitor final : public IR::StmtVisitor<ScopedWriter::Statement&> {
-
       void visitDeclare(const IR::DeclareStmt& stmt, ScopedWriter::Statement& writer) override {
          typeDescription(*stmt.type, writer);
          writer.stream() << " " << stmt.name;
@@ -153,7 +153,6 @@ void BackendC::compileStatement(const IR::Stmt& statement, ScopedWriter& writer)
          writer.stream() << "return ";
          compileExpression(*stmt.expr, writer);
       }
-
    };
 
    StatementVisitor visitor;
@@ -187,8 +186,7 @@ void BackendC::compileExpression(const IR::Expr& expr, ScopedWriter::Statement& 
    }
 }
 
-void BackendC::compileValue(const IR::Value& value, ScopedWriter::Statement& str)
-{
+void BackendC::compileValue(const IR::Value& value, ScopedWriter::Statement& str) {
    if (auto elem = dynamic_cast<const IR::UI<4>*>(&value); elem) {
       str.stream() << std::to_string(elem->value);
    } else if (auto elem = dynamic_cast<const IR::UI<8>*>(&value); elem) {

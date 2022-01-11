@@ -1,6 +1,6 @@
+#include "codegen/Expression.h"
 #include "codegen/IR.h"
 #include "codegen/Type.h"
-#include "codegen/Expression.h"
 #include "codegen/Value.h"
 
 #ifndef INKFUSE_SAMPLE_PROGRAMS_H
@@ -13,8 +13,7 @@ namespace test_helpers {
 using namespace IR;
 
 // Simple program adding two constant integers and returning them.
-inline void program_1(IR::IRBuilder ir_builder)
-{
+inline void program_1(IR::IRBuilder ir_builder) {
    // Simple function with no arguments.
    auto fct_description = std::make_shared<IR::Function>(IR::Function("simple_fct_1", {}, IR::UnsignedInt::getTypePtr(4)));
    auto fct_builder = ir_builder.createFunctionBuilder(std::move(fct_description));
@@ -37,8 +36,7 @@ inline void program_1(IR::IRBuilder ir_builder)
 }
 
 // Simple program adding two constant integers it gets as parameters and subtracting 21.
-inline void program_2(IR::IRBuilder ir_builder)
-{
+inline void program_2(IR::IRBuilder ir_builder) {
    // Function takes two UI8s as arguments.
    std::vector<StmtPtr> arguments;
    arguments.push_back(DeclareStmt::build("ui1", UnsignedInt::getTypePtr(8)));

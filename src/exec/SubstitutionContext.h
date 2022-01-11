@@ -3,10 +3,9 @@
 
 namespace inkfuse {
 
-    /// Context on parameter substitution during execution.
-    struct SubstitutionContext {
-
-    };
+/// Context on parameter substitution during execution.
+struct SubstitutionContext {
+};
 
 }
 

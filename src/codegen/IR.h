@@ -1,10 +1,10 @@
 #ifndef INKFUSE_IR_H
 #define INKFUSE_IR_H
 
-#include "codegen/Statement.h"
 #include "codegen/IRBuilder.h"
-#include <utility>
+#include "codegen/Statement.h"
 #include <string>
+#include <utility>
 #include <vector>
 
 /// This file contains all the central building blocks for the InkFuse IR.
@@ -20,86 +20,83 @@ namespace inkfuse {
 
 namespace IR {
 
-    struct Block;
-    struct Program;
-    using BlockPtr = std::unique_ptr<Block>;
-    /// Programs can be referenced in many places. The best example is the global pre-amble
-    /// provided by the runtime system containing runtime structs and external functions.
-    using ProgramArc = std::shared_ptr<Program>;
+struct Block;
+struct Program;
+using BlockPtr = std::unique_ptr<Block>;
+/// Programs can be referenced in many places. The best example is the global pre-amble
+/// provided by the runtime system containing runtime structs and external functions.
+using ProgramArc = std::shared_ptr<Program>;
 
-    /// Global program containing all structs and functions exposed by the runtime system.
-    extern ProgramArc global_runtime;
+/// Global program containing all structs and functions exposed by the runtime system.
+extern ProgramArc global_runtime;
 
-    /// IR function getting a set of parameters and returning a result.
-    struct Function {
+/// IR function getting a set of parameters and returning a result.
+struct Function {
+   /// Create a new function, throws if not all of the arguments are pointing to declare statements.
+   Function(std::string name_, std::vector<StmtPtr> arguments_, TypeArc return_type_);
 
-        /// Create a new function, throws if not all of the arguments are pointing to declare statements.
-        Function(std::string name_, std::vector<StmtPtr> arguments_, TypeArc return_type_);
+   /// The unique function name.
+   std::string name;
 
-        /// The unique function name.
-        std::string name;
+   /// The arguments. All of the statements are Declare statements.
+   std::vector<StmtPtr> arguments;
 
-        /// The arguments. All of the statements are Declare statements.
-        std::vector<StmtPtr> arguments;
+   /// Return type of the function.
+   TypeArc return_type;
 
-        /// Return type of the function.
-        TypeArc return_type;
+   /// Get the function body (if it exists). Note that code can only be generated through the IRBuilder.
+   const Block* getBody() const;
 
-        /// Get the function body (if it exists). Note that code can only be generated through the IRBuilder.
-        const Block* getBody() const;
+   private:
+   friend class FunctionBuilder;
 
-    private:
-        friend class FunctionBuilder;
+   /// Optional function body. If this is not set, we assume the function is external
+   /// and will be provided during linking. This is needed for runtime functions provided by
+   /// e.g. hash tables.
+   BlockPtr body;
+};
 
-        /// Optional function body. If this is not set, we assume the function is external
-        /// and will be provided during linking. This is needed for runtime functions provided by
-        /// e.g. hash tables.
-        BlockPtr body;
-    };
+using FunctionArc = std::shared_ptr<Function>;
 
-    using FunctionArc = std::shared_ptr<Function>;
+/// A block of statements within a function.
+struct Block {
+   Block(std::vector<StmtPtr> statements_) : statements(std::move(statements_)){};
 
-    /// A block of statements within a function.
-    struct Block {
+   /// Statements within the block.
+   std::vector<StmtPtr> statements;
+};
 
-        Block(std::vector<StmtPtr> statements_): statements(std::move(statements_)) {};
+/// Central IR program which is a set of functions and structs.
+/// Cannot be used to generate code directly, this must go through the IRBuilder class.
+struct Program {
+   /// Constructor, you have to provide a name for the program.
+   /// If standalone is set, the global runtime definitions are not included by default (testing).
+   Program(std::string program_name_, bool standalone = false);
 
-        /// Statements within the block.
-        std::vector<StmtPtr> statements;
-    };
+   /// Get an IR builder for this program.
+   IRBuilder getIRBuilder();
 
-    /// Central IR program which is a set of functions and structs.
-    /// Cannot be used to generate code directly, this must go through the IRBuilder class.
-    struct Program {
+   /// The program name - leads to a globally unique path on the file system.
+   const std::string program_name;
 
-        /// Constructor, you have to provide a name for the program.
-        /// If standalone is set, the global runtime definitions are not included by default (testing).
-        Program(std::string program_name_, bool standalone = false);
+   const std::vector<ProgramArc>& getIncludes() const;
 
-        /// Get an IR builder for this program.
-        IRBuilder getIRBuilder();
+   const std::vector<StructArc>& getStructs() const;
 
-        /// The program name - leads to a globally unique path on the file system.
-        const std::string program_name;
+   const std::vector<FunctionArc>& getFunctions() const;
 
-        const std::vector<ProgramArc>& getIncludes() const;
+   private:
+   friend class IRBuilder;
 
-        const std::vector<StructArc>& getStructs() const;
+   /// Other programs this program depends on. Usually only the global runtime.
+   std::vector<ProgramArc> includes;
 
-        const std::vector<FunctionArc>& getFunctions() const;
+   /// A set of structs defined within the program.
+   std::vector<StructArc> structs;
 
-    private:
-        friend class IRBuilder;
-
-        /// Other programs this program depends on. Usually only the global runtime.
-        std::vector<ProgramArc> includes;
-
-        /// A set of structs defined within the program.
-        std::vector<StructArc> structs;
-
-        /// A set of functions defined within the program.
-        std::vector<FunctionArc> functions;
-    };
+   /// A set of functions defined within the program.
+   std::vector<FunctionArc> functions;
+};
 
 } // namespace IR
 

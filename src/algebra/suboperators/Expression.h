@@ -5,20 +5,16 @@
 
 namespace inkfuse {
 
-    /// Basic expression sub-operator, taking a set of input IUs and producing one output IU.
-    struct ExpressionSubop: public Suboperator {
+/// Basic expression sub-operator, taking a set of input IUs and producing one output IU.
+struct ExpressionSubop : public Suboperator {
+   ExpressionSubop
+};
 
-        ExpressionSubop
+struct BinaryArithmeticOp : public ExpressionSubop {
+};
 
-    };
-
-    struct BinaryArithmeticOp : public ExpressionSubop {
-
-    };
-
-    struct UnaryArithmeticOp : public ExpressionSubop {
-
-    };
+struct UnaryArithmeticOp : public ExpressionSubop {
+};
 
 }
 

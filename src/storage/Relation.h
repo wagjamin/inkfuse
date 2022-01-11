@@ -29,7 +29,7 @@ class BaseColumn {
    virtual void loadValue(const char* str, uint32_t strLen) = 0;
 
    /// Get a pointer to the backing raw data.
-   virtual const void * getRawData() const = 0;
+   virtual const void* getRawData() const = 0;
 
    protected:
    bool nullable;
@@ -58,7 +58,7 @@ class TypedColumn final : public BaseColumn {
    };
 
    const void* getRawData() const override {
-       return storage.data();
+      return storage.data();
    }
 
    private:

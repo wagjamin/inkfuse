@@ -39,7 +39,6 @@ struct Stmt;
 
 /// Basic variable reference expression.
 struct VarRefExpr : public Expr {
-
    /// Create a new varialbe reference for the given statement,
    /// throws if the statement is not a declare statement.
    VarRefExpr(const Stmt& declaration_);
@@ -47,19 +46,16 @@ struct VarRefExpr : public Expr {
 
    /// Backing declaration statement.
    const DeclareStmt& declaration;
-
 };
 
 /// Basic constant expression.
 struct ConstExpr : public Expr {
-
    /// Create a new constant expression based on the given value.
    ConstExpr(ValuePtr value_) : Expr({}, value_->getType()), value(std::move(value_)){};
    static ExprPtr build(ValuePtr value_);
 
    /// Backing value.
    ValuePtr value;
-
 };
 
 /// A substitutable parameter is at the heart of InkFuse. It effectively describes a value which during actual
@@ -122,13 +118,12 @@ struct ArithmeticExpr : public BinaryExpr {
    Opcode code;
 
    /// Constructor, suitable result type is inferred from child types and opcode.
-   ArithmeticExpr(ExprPtr child_l_, ExprPtr child_r_, Opcode code_) : BinaryExpr(child_l_->type, std::move(child_l_), std::move(child_r_)), code(code_) {};
+   ArithmeticExpr(ExprPtr child_l_, ExprPtr child_r_, Opcode code_) : BinaryExpr(child_l_->type, std::move(child_l_), std::move(child_r_)), code(code_){};
 
    static ExprPtr build(ExprPtr child_l_, ExprPtr child_r_, Opcode code_) {
       return std::make_unique<ArithmeticExpr>(std::move(child_l_), std::move(child_r_), code_);
    };
 };
-
 
 /// Unary expression - only exists for convenience.
 struct UnaryExpr : public Expr {

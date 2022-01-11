@@ -1,6 +1,6 @@
-#include <gtest/gtest.h>
 #include "codegen/backend_c/BackendC.h"
 #include "sample_programs.h"
+#include <gtest/gtest.h>
 
 namespace inkfuse {
 
@@ -21,7 +21,7 @@ TEST(test_c_backend, program_1) {
 
    // Get a handle to the function.
    ASSERT_FALSE(c_program->getFunction("doesntexist"));
-   auto fct = reinterpret_cast<uint32_t(*)()>(c_program->getFunction("simple_fct_1"));
+   auto fct = reinterpret_cast<uint32_t (*)()>(c_program->getFunction("simple_fct_1"));
    ASSERT_TRUE(fct);
    ASSERT_EQ(42, fct());
 }
@@ -40,7 +40,7 @@ TEST(test_c_backend, program_2) {
 
    // Get a handle to the function.
    ASSERT_FALSE(c_program->getFunction("doesntexist"));
-   auto fct = reinterpret_cast<uint64_t(*)(uint64_t, uint64_t)>(c_program->getFunction("simple_fct_2"));
+   auto fct = reinterpret_cast<uint64_t (*)(uint64_t, uint64_t)>(c_program->getFunction("simple_fct_2"));
    ASSERT_TRUE(fct);
    ASSERT_EQ(21, fct(21, 21));
    ASSERT_EQ(0, fct(21, 0));

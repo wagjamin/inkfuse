@@ -6,19 +6,16 @@
 
 namespace inkfuse {
 
-    /// A discrete parameter which can only take a specific set of values.
-    /// Typical example within SQL are a subset of types.
-    struct DiscreteParameter {
-    };
+/// A discrete parameter which can only take a specific set of values.
+/// Typical example within SQL are a subset of types.
+struct DiscreteParameter {
+};
 
+struct DiscreteSetParameter : public DiscreteParameter {
+};
 
-    struct DiscreteSetParameter : public DiscreteParameter {
-
-    };
-
-    struct InfiniteParameter {
-
-    };
+struct InfiniteParameter {
+};
 
 }
 

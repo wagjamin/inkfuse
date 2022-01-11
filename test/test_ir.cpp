@@ -1,5 +1,5 @@
-#include <gtest/gtest.h>
 #include "sample_programs.h"
+#include <gtest/gtest.h>
 
 namespace inkfuse {
 

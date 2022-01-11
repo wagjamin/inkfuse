@@ -48,7 +48,7 @@ struct SQLType : public Type {};
 struct SignedInt : public SQLType {
    SignedInt(size_t size_) : size(size_){};
 
-   static TypeArc getTypePtr(size_t size){
+   static TypeArc getTypePtr(size_t size) {
       return std::make_unique<SignedInt>(size);
    };
 
@@ -68,7 +68,7 @@ struct SignedInt : public SQLType {
 struct UnsignedInt : public SQLType {
    UnsignedInt(size_t size_) : size(size_){};
 
-   static TypeArc getTypePtr(size_t size){
+   static TypeArc getTypePtr(size_t size) {
       return std::make_unique<UnsignedInt>(size);
    };
 
@@ -86,8 +86,7 @@ struct UnsignedInt : public SQLType {
 
 /// Boolean type.
 struct Bool : public SQLType {
-
-   static TypeArc getTypePtr(){
+   static TypeArc getTypePtr() {
       return std::make_unique<Bool>();
    };
 
@@ -102,8 +101,7 @@ struct Bool : public SQLType {
 
 /// Character type.
 struct Char : public SQLType {
-
-   static TypeArc getTypePtr(){
+   static TypeArc getTypePtr() {
       return std::make_unique<Char>();
    };
 
@@ -118,8 +116,7 @@ struct Char : public SQLType {
 
 /// Void type which is usually wrapped into pointers for a lack of better options.
 struct Void : public Type {
-
-   static TypeArc getTypePtr(){
+   static TypeArc getTypePtr() {
       return std::make_unique<Void>();
    };
 
@@ -175,8 +172,7 @@ struct Pointer : public Type {
    /// Type this pointer points to.
    TypeArc pointed_to;
 
-   Pointer(TypeArc pointed_to_): pointed_to(std::move(pointed_to_))
-   {
+   Pointer(TypeArc pointed_to_) : pointed_to(std::move(pointed_to_)) {
    }
 
    static TypeArc getTypePtr(TypeArc pointed_to) {

@@ -6,64 +6,54 @@ namespace inkfuse {
 
 namespace IR {
 
-    FunctionBuilder::FunctionBuilder(IRBuilder& builder_, FunctionArc function_)
-    : function(std::move(function_)), builder(builder_)
-    {
-        if (function->body) {
-            throw std::runtime_error("Cannot create function builder on function with non-empty body");
-        }
-        function->body = std::make_unique<Block>(std::vector<StmtPtr>{});
-        curr_block = function->body.get();
-    }
+FunctionBuilder::FunctionBuilder(IRBuilder& builder_, FunctionArc function_)
+   : function(std::move(function_)), builder(builder_) {
+   if (function->body) {
+      throw std::runtime_error("Cannot create function builder on function with non-empty body");
+   }
+   function->body = std::make_unique<Block>(std::vector<StmtPtr>{});
+   curr_block = function->body.get();
+}
 
-    void FunctionBuilder::appendStmt(StmtPtr stmt)
-    {
-       if (!stmt) {
-          throw std::runtime_error("cannot add emptry StmtPtr to function.");
-       }
-        // Add a statement to the current block - note that this can be re-scoped by control flow blocks
-        // like if statements and while loops.
-        curr_block->statements.push_back(std::move(stmt));
-    }
+void FunctionBuilder::appendStmt(StmtPtr stmt) {
+   if (!stmt) {
+      throw std::runtime_error("cannot add emptry StmtPtr to function.");
+   }
+   // Add a statement to the current block - note that this can be re-scoped by control flow blocks
+   // like if statements and while loops.
+   curr_block->statements.push_back(std::move(stmt));
+}
 
-    const Stmt& FunctionBuilder::getArg(size_t idx)
-    {
-       return *function->arguments.at(idx);
-    }
+const Stmt& FunctionBuilder::getArg(size_t idx) {
+   return *function->arguments.at(idx);
+}
 
-    FunctionBuilder::~FunctionBuilder()
-    {
-        finalize();
-    }
+FunctionBuilder::~FunctionBuilder() {
+   finalize();
+}
 
-    void FunctionBuilder::finalize()
-    {
-        if (!finalized) {
-            // Add the function to the backing IR program.
-            finalized = true;
-            builder.addFunction(std::move(function));
-        }
-    }
+void FunctionBuilder::finalize() {
+   if (!finalized) {
+      // Add the function to the backing IR program.
+      finalized = true;
+      builder.addFunction(std::move(function));
+   }
+}
 
-    IRBuilder::IRBuilder(Program& program_): program(program_)
-    {
-    }
+IRBuilder::IRBuilder(Program& program_) : program(program_) {
+}
 
-    void IRBuilder::addStruct(StructArc new_struct)
-    {
-        program.structs.push_back(std::move(new_struct));
-    }
+void IRBuilder::addStruct(StructArc new_struct) {
+   program.structs.push_back(std::move(new_struct));
+}
 
-    void IRBuilder::addFunction(FunctionArc function)
-    {
-        program.functions.push_back(std::move(function));
-    }
+void IRBuilder::addFunction(FunctionArc function) {
+   program.functions.push_back(std::move(function));
+}
 
-    FunctionBuilder IRBuilder::createFunctionBuilder(FunctionArc function)
-    {
-        return FunctionBuilder{*this, std::move(function)};
-    }
-
+FunctionBuilder IRBuilder::createFunctionBuilder(FunctionArc function) {
+   return FunctionBuilder{*this, std::move(function)};
+}
 
 }
 

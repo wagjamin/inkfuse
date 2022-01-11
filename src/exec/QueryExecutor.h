@@ -3,10 +3,9 @@
 
 namespace inkfuse {
 
-    /// Central query executor responsible for executing a query through incremental fusion.
-    struct QueryExecutor {
-
-    };
+/// Central query executor responsible for executing a query through incremental fusion.
+struct QueryExecutor {
+};
 
 }
 

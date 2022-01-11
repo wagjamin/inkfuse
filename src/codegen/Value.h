@@ -36,7 +36,6 @@ struct UI : public Value {
    TypeArc getType() const override {
       return std::make_unique<UnsignedInt>(size);
    }
-
 };
 
 template <unsigned size>
