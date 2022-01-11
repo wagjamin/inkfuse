@@ -14,9 +14,9 @@ namespace inkfuse {
     /// Backend program in C.
     struct BackendProgramC : public IR::BackendProgram {
 
-        BackendProgramC(std::string program_): program(std::move(program_)) {};
+        BackendProgramC(std::string program_, std::string program_name_): program(std::move(program_)), program_name(std::move(program_name_)) {};
 
-        ~BackendProgramC() override = default;
+        ~BackendProgramC() override;
 
         /// Compile the backend program to actual machine code.
         void compileToMachinecode() override;
@@ -32,6 +32,10 @@ namespace inkfuse {
         bool was_compiled = false;
         /// The actual program which is simply generated C stored within a backing string.
         const std::string program;
+        /// The program name.
+        const std::string program_name;
+        /// Handle to the dlopened so.
+        void* handle = nullptr;
     };
 
     /// Simple C backend translating the inkfuse IR to plain C.
@@ -45,6 +49,9 @@ namespace inkfuse {
     private:
         /// Set up the preamble.
         static void createPreamble(ScopedWriter& writer);
+
+        /// Compile an included other program.
+        static void compileInclude(const IR::Program& include, ScopedWriter& writer);
 
         /// Add a type description to the backing string stream.
         static void typeDescription(const IR::Type& type, ScopedWriter::Statement& writer);
@@ -62,7 +69,10 @@ namespace inkfuse {
         static void compileStatement(const IR::Stmt& statement, ScopedWriter& writer);
 
         /// Compile an expression.
-        static void compileExpression(const IR::Expr& expr, ScopedWriter& writer);
+        static void compileExpression(const IR::Expr& expr, ScopedWriter::Statement& str);
+
+        /// Compile a value.
+        static void compileValue(const IR::Value& value, ScopedWriter::Statement& str);
 
     };
 

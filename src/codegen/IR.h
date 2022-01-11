@@ -46,7 +46,7 @@ namespace IR {
         TypeArc return_type;
 
         /// Get the function body (if it exists). Note that code can only be generated through the IRBuilder.
-        const Block* getBody();
+        const Block* getBody() const;
 
     private:
         friend class FunctionBuilder;

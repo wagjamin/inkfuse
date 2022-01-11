@@ -36,10 +36,13 @@ namespace inkfuse {
             std::stringstream& stream();
 
         private:
-            Statement(ScopedWriter& writer_);
+            Statement(ScopedWriter& writer_, bool semicolon);
 
             /// Backing writer.
             ScopedWriter& writer;
+
+            /// Should the statement be terminated by a semicolon:
+            bool semicolon;
 
             friend class ScopedWriter;
         };
@@ -52,7 +55,8 @@ namespace inkfuse {
 
         /// Create a new statement. Returns an r-value-reference, because it should never be stored locally and only
         /// used for chaining in the stream operator.
-        Statement stmt();
+        /// @param semicolon indicates whether the statement should be terminated by a semicolon.
+        Statement stmt(bool semicolon = true);
 
     private:
         /// Add indentation.

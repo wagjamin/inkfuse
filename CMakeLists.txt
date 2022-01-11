@@ -82,6 +82,7 @@ set(SRC_CC
 
 set(TEST_CC
         "${CMAKE_SOURCE_DIR}/test/test_ir.cpp"
+        "${CMAKE_SOURCE_DIR}/test/test_c_backend.cpp"
         )
 
 set(TOOLS_SRC

@@ -15,9 +15,9 @@ TEST(test_ir, program_1) {
 }
 
 TEST(test_ir, program_2) {
-   IR::Program program("test_ir_prog1", true);
+   IR::Program program("test_ir_prog2", true);
    auto ir_builder = program.getIRBuilder();
-   test_helpers::program_1(ir_builder);
+   test_helpers::program_2(ir_builder);
    EXPECT_EQ(1, program.getFunctions().size());
    EXPECT_EQ(0, program.getIncludes().size());
    EXPECT_EQ(0, program.getStructs().size());

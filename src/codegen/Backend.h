@@ -31,11 +31,10 @@ namespace IR {
     struct Backend {
 
         /// Virtual base destructor.
-        virtual ~Backend();
+        virtual ~Backend() = default;
 
         /// Generate a backend program from the high-level IR.
-        virtual std::unique_ptr<BackendProgram> generate(const IR::Program& program) const;
-
+        virtual std::unique_ptr<BackendProgram> generate(const IR::Program& program) const = 0;
 
     };
 

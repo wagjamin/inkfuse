@@ -17,7 +17,7 @@ namespace IR {
        }
     }
 
-    const Block *Function::getBody()
+    const Block *Function::getBody() const
     {
         return body.get();
     }

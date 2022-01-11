@@ -14,7 +14,7 @@ namespace inkfuse {
         writer.stream << writer.indent_string << "}\n";
     }
 
-    ScopedWriter::Statement::Statement(ScopedWriter &writer_): writer(writer_)
+    ScopedWriter::Statement::Statement(ScopedWriter &writer_, bool semicolon_): writer(writer_), semicolon(semicolon_)
     {
         writer.stream << writer.indent_string;
     }
@@ -26,7 +26,11 @@ namespace inkfuse {
 
     ScopedWriter::Statement::~Statement()
     {
-        writer.stream << ";\n";
+       if (semicolon) {
+          writer.stream << ";\n";
+       } else {
+          writer.stream << "\n";
+       }
     }
 
     std::string ScopedWriter::str() const
@@ -39,9 +43,9 @@ namespace inkfuse {
         return ScopedBlock{*this};
     }
 
-    ScopedWriter::Statement ScopedWriter::stmt()
+    ScopedWriter::Statement ScopedWriter::stmt(bool semicolon)
     {
-        return Statement{*this};
+        return Statement{*this, semicolon};
     }
 
     void ScopedWriter::indent()

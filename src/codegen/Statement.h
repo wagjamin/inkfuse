@@ -108,6 +108,8 @@ struct StmtVisitor {
          visitIf(*elem, arg);
       } else if (auto elem = dynamic_cast<const WhileStmt*>(&stmt)) {
          visitWhile(*elem, arg);
+      } else if (auto elem = dynamic_cast<const ReturnStmt*>(&stmt)) {
+         visitReturn(*elem, arg);
       } else {
          assert(false);
       }
@@ -123,6 +125,8 @@ struct StmtVisitor {
    virtual void visitIf(const IfStmt& type, Arg arg) {}
 
    virtual void visitWhile(const WhileStmt& type, Arg arg) {}
+
+   virtual void visitReturn(const ReturnStmt& type, Arg arg) {}
 };
 
 }
