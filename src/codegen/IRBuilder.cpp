@@ -6,6 +6,83 @@ namespace inkfuse {
 
 namespace IR {
 
+If::~If() {
+   End();
+}
+
+If::If(FunctionBuilder& builder_, ExprPtr expr_)
+   : builder(builder_),
+     original_block(builder.curr_block),
+     expr(std::move(expr_)),
+     if_block(std::make_unique<Block>(std::vector<StmtPtr>{})),
+     else_block(std::make_unique<Block>(std::vector<StmtPtr>{}))
+{
+   // Install if block as the current one in the builder.
+   // Form now on, all appendStmts in the backing builder will go into this block.
+   builder.curr_block = if_block.get();
+}
+
+void If::Else()
+{
+   if (finished || else_entered) {
+      throw std::runtime_error("Cannot enter else twice");
+   }
+
+   // Install else block as the current one in the builder.
+   builder.curr_block = else_block.get();
+
+   // Else can only be entered once, otherwise we made a logical error.
+   else_entered = true;
+}
+
+void If::End()
+{
+   if (finished) {
+      return;
+   }
+
+   // Install original block again.
+   builder.curr_block = original_block;
+   // Create the if statement.
+   StmtPtr stmt = std::make_unique<IfStmt>(std::move(expr), std::move(if_block), std::move(else_block));
+   // Add it as the first one to the original builder.
+   builder.appendStmt(std::move(stmt));
+   // Finished can only be entered once.
+   finished = true;
+}
+
+While::~While()
+{
+   End();
+}
+
+While::While(FunctionBuilder& builder_, ExprPtr expr_)
+   : builder(builder_),
+     original_block(builder.curr_block),
+     expr(std::move(expr_)),
+     body(std::make_unique<Block>(std::vector<StmtPtr>{}))
+{
+   // Install body block as the current one in the builder.
+   // Form now on, all appendStmts in the backing builder will go into this block.
+   builder.curr_block = body.get();
+}
+
+void While::End()
+{
+   if (finished) {
+      return;
+   }
+
+   // Install original block again.
+   builder.curr_block = original_block;
+   // Create the while statement.
+   StmtPtr stmt = std::make_unique<WhileStmt>(std::move(expr), std::move(body));
+   // Add it as the first one to the original builder.
+   builder.appendStmt(std::move(stmt));
+   // Finished can only be entered once.
+   finished = true;
+}
+
 FunctionBuilder::FunctionBuilder(IRBuilder& builder_, FunctionArc function_)
    : function(std::move(function_)), builder(builder_) {
    if (function->body) {

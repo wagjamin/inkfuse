@@ -138,26 +138,77 @@ void BackendC::compileBlock(const IR::Block& block, ScopedWriter& writer) {
 }
 
 void BackendC::compileStatement(const IR::Stmt& statement, ScopedWriter& writer) {
-   struct StatementVisitor final : public IR::StmtVisitor<ScopedWriter::Statement&> {
-      void visitDeclare(const IR::DeclareStmt& stmt, ScopedWriter::Statement& writer) override {
-         typeDescription(*stmt.type, writer);
-         writer.stream() << " " << stmt.name;
+
+   // Control flow statements produce more than one statement.
+   struct ControlFlowVisitor final : public IR::StmtVisitor<ScopedWriter&> {
+
+      bool visitIf(const IR::IfStmt& stmt, ScopedWriter& writer)
+      {
+         {
+            // Set up actual if statement.
+            auto if_head = writer.stmt(false);
+            if_head.stream() << "if (";
+            compileExpression(*stmt.expr, if_head);
+            if_head.stream() << ")";
+         }
+         {
+            // Set up if block content.
+            auto block = writer.block();
+            compileBlock(*stmt.if_block, writer);
+         }
+         if (!stmt.else_block->statements.empty()) {
+            // The else is not empty, set it up.
+            writer.stmt(false).stream() << "else";
+            auto block = writer.block();
+            compileBlock(*stmt.else_block, writer);
+         }
+         return true;
       }
 
-      void visitAssignment(const IR::AssignmentStmt& stmt, ScopedWriter::Statement& writer) override {
-         writer.stream() << stmt.declaraion.name << " = ";
-         compileExpression(*stmt.expr, writer);
+      bool visitWhile(const IR::WhileStmt& stmt, ScopedWriter& writer)
+      {
+         {
+            // Set up actual while statement.
+            auto while_head = writer.stmt(false);
+            while_head.stream() << "while (";
+            compileExpression(*stmt.expr, while_head);
+            while_head.stream() << ")";
+         }
+         // Set up while block content.
+         auto block = writer.block();
+         compileBlock(*stmt.while_block, writer);
+         return true;
       }
 
-      void visitReturn(const IR::ReturnStmt& stmt, ScopedWriter::Statement& writer) override {
-         writer.stream() << "return ";
-         compileExpression(*stmt.expr, writer);
-      }
    };
 
-   StatementVisitor visitor;
-   auto stmt = writer.stmt();
-   visitor.visit(statement, stmt);
+   // Regular statements can meanwhile directly take a statement to write into.
+   struct StatementVisitor final : public IR::StmtVisitor<ScopedWriter::Statement&> {
+      bool visitDeclare(const IR::DeclareStmt& stmt, ScopedWriter::Statement& writer) override {
+         typeDescription(*stmt.type, writer);
+         writer.stream() << " " << stmt.name;
+         return true;
+      }
+
+      bool visitAssignment(const IR::AssignmentStmt& stmt, ScopedWriter::Statement& writer) override {
+         writer.stream() << stmt.declaraion.name << " = ";
+         compileExpression(*stmt.expr, writer);
+         return true;
+      }
+
+      bool visitReturn(const IR::ReturnStmt& stmt, ScopedWriter::Statement& writer) override {
+         writer.stream() << "return ";
+         compileExpression(*stmt.expr, writer);
+         return true;
+      }
+   };
+   ControlFlowVisitor controlVisitor;
+   if (!controlVisitor.visit(statement, writer)) {
+      // This is not a control flow block, and we need to visit again for regular statements.
+      StatementVisitor visitor;
+      auto stmt = writer.stmt();
+      visitor.visit(statement, stmt);
+   }
 }
 
 void BackendC::compileExpression(const IR::Expr& expr, ScopedWriter::Statement& str) {
@@ -175,6 +226,22 @@ void BackendC::compileExpression(const IR::Expr& expr, ScopedWriter::Statement& 
          }
          case IR::ArithmeticExpr::Opcode::Subtract: {
             str.stream() << " - ";
+            break;
+         }
+         case IR::ArithmeticExpr::Opcode::Less: {
+            str.stream() << " < ";
+            break;
+         }
+         case IR::ArithmeticExpr::Opcode::LessEqual: {
+            str.stream() << " <= ";
+            break;
+         }
+         case IR::ArithmeticExpr::Opcode::Greater: {
+            str.stream() << " > ";
+            break;
+         }
+         case IR::ArithmeticExpr::Opcode::GreaterEqual: {
+            str.stream() << " >= ";
             break;
          }
          default:

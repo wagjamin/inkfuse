@@ -9,8 +9,8 @@ IfStmt::IfStmt(ExprPtr expr_, BlockPtr if_block_, BlockPtr else_block_)
    : expr(std::move(expr_)), if_block(std::move(if_block_)), else_block(std::move(else_block_)) {
 }
 
-WhileStmt::WhileStmt(ExprPtr expr_, BlockPtr if_block_)
-   : expr(std::move(expr_)), if_block(std::move(if_block_)) {
+WhileStmt::WhileStmt(ExprPtr expr_, BlockPtr while_block_)
+   : expr(std::move(expr_)), while_block(std::move(while_block_)) {
 }
 
 StmtPtr DeclareStmt::build(std::string name_, TypeArc type_) {

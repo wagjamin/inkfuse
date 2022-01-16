@@ -85,48 +85,48 @@ struct IfStmt : public Stmt {
 
 /// While statement.
 struct WhileStmt : public Stmt {
-   WhileStmt(ExprPtr expr_, BlockPtr if_block_);
+   WhileStmt(ExprPtr expr_, BlockPtr while_block_);
 
    /// Expression to evaluate to decide whether to enter the while loop.
    ExprPtr expr;
    /// Block within the while statement.
-   BlockPtr if_block;
+   BlockPtr while_block;
 };
 
 /// Statement visitor utility.
 template <typename Arg>
 struct StmtVisitor {
    public:
-   void visit(const Stmt& stmt, Arg arg) {
+   bool visit(const Stmt& stmt, Arg arg) {
       if (const auto elem = dynamic_cast<const InvokeFctStmt*>(&stmt)) {
-         visitInvokeFct(*elem, arg);
+         return visitInvokeFct(*elem, arg);
       } else if (auto elem = dynamic_cast<const DeclareStmt*>(&stmt)) {
-         visitDeclare(*elem, arg);
+         return visitDeclare(*elem, arg);
       } else if (auto elem = dynamic_cast<const AssignmentStmt*>(&stmt)) {
-         visitAssignment(*elem, arg);
+         return visitAssignment(*elem, arg);
       } else if (auto elem = dynamic_cast<const IfStmt*>(&stmt)) {
-         visitIf(*elem, arg);
+         return visitIf(*elem, arg);
       } else if (auto elem = dynamic_cast<const WhileStmt*>(&stmt)) {
-         visitWhile(*elem, arg);
+         return visitWhile(*elem, arg);
       } else if (auto elem = dynamic_cast<const ReturnStmt*>(&stmt)) {
-         visitReturn(*elem, arg);
+         return visitReturn(*elem, arg);
       } else {
-         assert(false);
+         return false;
       }
    }
 
    private:
-   virtual void visitInvokeFct(const InvokeFctStmt& type, Arg arg) {}
+   virtual bool visitInvokeFct(const InvokeFctStmt& type, Arg arg) { return false; }
 
-   virtual void visitDeclare(const DeclareStmt& type, Arg arg) {}
+   virtual bool visitDeclare(const DeclareStmt& type, Arg arg) { return false; }
 
-   virtual void visitAssignment(const AssignmentStmt& type, Arg arg) {}
+   virtual bool visitAssignment(const AssignmentStmt& type, Arg arg) { return false; }
 
-   virtual void visitIf(const IfStmt& type, Arg arg) {}
+   virtual bool visitIf(const IfStmt& type, Arg arg) { return false;}
 
-   virtual void visitWhile(const WhileStmt& type, Arg arg) {}
+   virtual bool visitWhile(const WhileStmt& type, Arg arg) { return false; }
 
-   virtual void visitReturn(const ReturnStmt& type, Arg arg) {}
+   virtual bool visitReturn(const ReturnStmt& type, Arg arg) { return false; }
 };
 
 }
