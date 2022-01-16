@@ -72,6 +72,78 @@ inline void program_2(IR::IRBuilder ir_builder) {
    fct_builder.finalize();
 }
 
+// Fibonacci - gets UI<4> index as paramter.
+inline void program_3(IR::IRBuilder ir_builder) {
+   // Function takes two UI8s as arguments.
+   std::vector<StmtPtr> arguments;
+   arguments.push_back(DeclareStmt::build("fib_idx", UnsignedInt::getTypePtr(4)));
+   auto fct_description = std::make_shared<IR::Function>(IR::Function("simple_fct_2", std::move(arguments), IR::UnsignedInt::getTypePtr(8)));
+   auto fct_builder = ir_builder.createFunctionBuilder(std::move(fct_description));
+
+   // First two numbers in the fibonacci sequence.
+   auto fib_0 = DeclareStmt::build("fib_0", UnsignedInt::getTypePtr(8));
+   auto& fib_0_ref = fct_builder.appendStmt(std::move(fib_0));
+   auto fib_1 = DeclareStmt::build("fib_1", UnsignedInt::getTypePtr(8));
+   auto& fib_1_ref = fct_builder.appendStmt(std::move(fib_1));
+
+   // Assign constants.
+   auto assign_1 = AssignmentStmt::build(fib_0_ref, ConstExpr::build(UI<8>::build(0)));
+   auto& assign_1_ref = fct_builder.appendStmt(std::move(assign_1));
+   auto assign_2 = AssignmentStmt::build(fib_1_ref, ConstExpr::build(UI<8>::build(1)));
+   auto& assign_2_ref = fct_builder.appendStmt(std::move(assign_2));
+
+   // As long as the index is larger than zero, keep adding.
+   auto cmp = ArithmeticExpr::build(
+      VarRefExpr::build(fct_builder.getArg(0)),
+      ConstExpr::build(UI<4>::build(0)),
+      ArithmeticExpr::Opcode::Greater);
+
+   {
+      auto while_stmt = fct_builder.buildWhile(std::move(cmp));
+      auto tmp = DeclareStmt::build("tmp", UnsignedInt::getTypePtr(8));
+      auto& tmp_ref = fct_builder.appendStmt(std::move(tmp));
+
+      auto added = AssignmentStmt::build(
+         tmp_ref,
+         ArithmeticExpr::build(
+            VarRefExpr::build(fib_0_ref),
+            VarRefExpr::build(fib_1_ref),
+            ArithmeticExpr::Opcode::Add
+            ));
+      fct_builder.appendStmt(std::move(added));
+
+      // Assign fib_1 to fib_0 and tmp to fib_1.
+      auto assign_f0 = AssignmentStmt::build(
+         fib_0_ref,
+         VarRefExpr::build(fib_1_ref)
+         );
+      fct_builder.appendStmt(std::move(assign_f0));
+      auto assign_f1 = AssignmentStmt::build(
+         fib_1_ref,
+         VarRefExpr::build(tmp_ref)
+      );
+      fct_builder.appendStmt(std::move(assign_f1));
+
+      // Finally, decrement the counter.
+      auto subtract = AssignmentStmt::build(
+         fct_builder.getArg(0),
+         ArithmeticExpr::build(
+            VarRefExpr::build(fct_builder.getArg(0)),
+            ConstExpr::build(UI<4>::build(1)),
+            ArithmeticExpr::Opcode::Subtract
+            )
+         );
+      fct_builder.appendStmt(std::move(subtract));
+   }
+
+   // And return.
+   auto return_stmt = ReturnStmt::build(std::move(VarRefExpr::build(fib_0_ref)));
+   fct_builder.appendStmt(std::move(return_stmt));
+
+   // Wrap up the function builder and return.
+   fct_builder.finalize();
+}
+
 }
 
 }

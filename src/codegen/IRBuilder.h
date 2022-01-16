@@ -83,13 +83,13 @@ struct FunctionBuilder {
    ~FunctionBuilder();
 
    /// Add a statement to the current block being built.
-   void appendStmt(StmtPtr stmt);
+   Stmt& appendStmt(StmtPtr stmt);
 
    /// Build an if statement being evaluated on the given expression.
-   If If(ExprPtr expr);
+   If buildIf(ExprPtr expr);
 
    /// Build a while statement being evaluated on the given expression.
-   While While(ExprPtr expr);
+   While buildWhile(ExprPtr expr);
 
    /// Get the statement at a given index.
    const Stmt& getArg(size_t idx);

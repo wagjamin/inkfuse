@@ -23,6 +23,15 @@ TEST(test_ir, program_2) {
    EXPECT_EQ(0, program.getStructs().size());
 }
 
+TEST(test_ir, program_3) {
+   IR::Program program("test_ir_prog3", true);
+   auto ir_builder = program.getIRBuilder();
+   test_helpers::program_3(ir_builder);
+   EXPECT_EQ(1, program.getFunctions().size());
+   EXPECT_EQ(0, program.getIncludes().size());
+   EXPECT_EQ(0, program.getStructs().size());
+}
+
 TEST(test_ir, multiple_programs) {
    IR::Program program("test_ir_prog_multiple", true);
    auto ir_builder = program.getIRBuilder();

@@ -24,6 +24,27 @@ ExprPtr ConstExpr::build(ValuePtr value_) {
    return std::make_unique<ConstExpr>(std::move(value_));
 }
 
+bool ArithmeticExpr::isComparison(Opcode code)
+{
+   if (code == Opcode::Eq
+       || code == Opcode::Less
+       || code == Opcode::LessEqual
+       || code == Opcode::Greater
+       || code == Opcode::GreaterEqual) {
+      return true;
+   }
+   return false;
+}
+
+TypeArc ArithmeticExpr::deriveType(const Expr& child_l, const Expr& child_r, Opcode code)
+{
+   if (isComparison(code)) {
+      return Bool::getTypePtr();
+   }
+   // TODO nasty hack for the time being.
+   return child_l.type;
+}
+
 CastExpr::CastResult CastExpr::validateCastable(const Type& src, const Type& target) {
    /*
         if (auto cSrc = src.isConst<SignedInt>()) {

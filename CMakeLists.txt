@@ -56,7 +56,6 @@ set(INCLUDE_H
         "${CMAKE_SOURCE_DIR}/src/codegen/Type.h"
         "${CMAKE_SOURCE_DIR}/src/exec/FuseChunk.h"
         "${CMAKE_SOURCE_DIR}/src/exec/InterpretationResult.h"
-        "${CMAKE_SOURCE_DIR}/src/infra/types.h"
         "${CMAKE_SOURCE_DIR}/src/interpreter/FragmentCache.h"
         "${CMAKE_SOURCE_DIR}/src/interpreter/FragmentGenerator.h"
         "${CMAKE_SOURCE_DIR}/src/interpreter/FragmentGenerator.h"
@@ -67,7 +66,6 @@ set(INCLUDE_H
 set(SRC_CC
         "${CMAKE_SOURCE_DIR}/src/algebra/ColumnScan.cpp"
         "${CMAKE_SOURCE_DIR}/src/algebra/FuseChunkSink.cpp"
-        "${CMAKE_SOURCE_DIR}/src/infra/types.cc"
         "${CMAKE_SOURCE_DIR}/src/storage/Relation.cc"
         "${CMAKE_SOURCE_DIR}/src/codegen/Expression.cpp"
         "${CMAKE_SOURCE_DIR}/src/codegen/IR.cpp"

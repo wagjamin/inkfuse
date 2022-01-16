@@ -117,8 +117,13 @@ struct ArithmeticExpr : public BinaryExpr {
    /// Opcode of this expression.
    Opcode code;
 
+   /// Is the opcode one of a comparison?
+   static bool isComparison(Opcode code);
+   /// Derive the result type of an expression.
+   static TypeArc deriveType(const Expr& child_l, const Expr& child_r, Opcode code);
+
    /// Constructor, suitable result type is inferred from child types and opcode.
-   ArithmeticExpr(ExprPtr child_l_, ExprPtr child_r_, Opcode code_) : BinaryExpr(child_l_->type, std::move(child_l_), std::move(child_r_)), code(code_){};
+   ArithmeticExpr(ExprPtr child_l_, ExprPtr child_r_, Opcode code_) : BinaryExpr(deriveType(*child_l_, *child_r_, code_), std::move(child_l_), std::move(child_r_)), code(code_){};
 
    static ExprPtr build(ExprPtr child_l_, ExprPtr child_r_, Opcode code_) {
       return std::make_unique<ArithmeticExpr>(std::move(child_l_), std::move(child_r_), code_);

@@ -92,13 +92,25 @@ FunctionBuilder::FunctionBuilder(IRBuilder& builder_, FunctionArc function_)
    curr_block = function->body.get();
 }
 
-void FunctionBuilder::appendStmt(StmtPtr stmt) {
+Stmt& FunctionBuilder::appendStmt(StmtPtr stmt) {
    if (!stmt) {
       throw std::runtime_error("cannot add emptry StmtPtr to function.");
    }
+   auto& ret = *stmt;
    // Add a statement to the current block - note that this can be re-scoped by control flow blocks
    // like if statements and while loops.
    curr_block->statements.push_back(std::move(stmt));
+   return ret;
+}
+
+If FunctionBuilder::buildIf(ExprPtr expr)
+{
+   return If{*this, std::move(expr)};
+}
+
+While FunctionBuilder::buildWhile(ExprPtr expr)
+{
+   return While{*this, std::move(expr)};
 }
 
 const Stmt& FunctionBuilder::getArg(size_t idx) {
