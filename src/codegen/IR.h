@@ -27,9 +27,6 @@ using BlockPtr = std::unique_ptr<Block>;
 /// provided by the runtime system containing runtime structs and external functions.
 using ProgramArc = std::shared_ptr<Program>;
 
-/// Global program containing all structs and functions exposed by the runtime system.
-extern ProgramArc global_runtime;
-
 /// IR function getting a set of parameters and returning a result.
 struct Function {
    /// Create a new function, throws if not all of the arguments are pointing to declare statements.
@@ -82,6 +79,12 @@ struct Program {
    const std::vector<ProgramArc>& getIncludes() const;
 
    const std::vector<StructArc>& getStructs() const;
+
+   /// Get a struct type (or throw if it does not exist).
+   TypeArc getStruct(std::string name) const;
+
+    /// Get a function (or throw if it does not exist).
+    FunctionArc getFunction(std::string name) const;
 
    const std::vector<FunctionArc>& getFunctions() const;
 

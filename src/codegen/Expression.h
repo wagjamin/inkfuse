@@ -16,6 +16,8 @@ namespace IR {
 
 /// IR Expr returning some type when evaluated. An expression can have children which are again expressions.
 /// Expressions can then be wrapped within IR statements for e.g. variable assignments or control blocks.
+/// TODO - It would make to have some context of lvalues and rvalues here - but we can cut corners here.
+/// Why? Because we are very careful in generating code, we can just assume every expression can be referenced.
 struct Expr {
    public:
    /// Constructor taking a vector of child expressions.
@@ -39,9 +41,11 @@ struct Stmt;
 
 /// Basic variable reference expression.
 struct VarRefExpr : public Expr {
-   /// Create a new varialbe reference for the given statement,
+   /// Create a new variable reference for the given statement,
    /// throws if the statement is not a declare statement.
    VarRefExpr(const Stmt& declaration_);
+
+   /// Build a reference to the underlying variable.
    static ExprPtr build(const Stmt& declaration_);
 
    /// Backing declaration statement.
@@ -79,16 +83,18 @@ struct SubstitutableParameter : public Expr {
    std::string param_name;
 };
 
+struct Function;
+
 /// Function invocation expression, for example used to call functions on members of the global state
 /// of this query.
 /// Child expressions are serving as function arguments.
 struct InvokeFctExpr : public Expr {
    public:
-   InvokeFctExpr(std::string function_name_, TypeArc type_, std::vector<ExprPtr> args) : Expr(std::move(args), std::move(type_)), function_name(std::move(function_name_)){};
+   InvokeFctExpr(const Function& fct_, std::vector<ExprPtr> args);
 
    private:
-   /// Backing function name to be invoked.
-   std::string function_name;
+   /// Backing function to be invoked.
+   const Function& fct;
 };
 
 /// Binary expression - only exists for convenience.
@@ -132,9 +138,41 @@ struct ArithmeticExpr : public BinaryExpr {
 
 /// Unary expression - only exists for convenience.
 struct UnaryExpr : public Expr {
-   UnaryExpr(ExprPtr child_, TypeArc type_) : Expr(std::vector<ExprPtr>{}, std::move(type_)) {
+   UnaryExpr(TypeArc type_, ExprPtr child_) : Expr(std::vector<ExprPtr>{}, std::move(type_)) {
       children.emplace_back(std::move(child_));
    };
+};
+
+/// Dereference a pointer. Child must be an expression with a pointer type.
+struct DerefExpr : public UnaryExpr {
+
+    DerefExpr(ExprPtr child_) : UnaryExpr(deriveType(*child_), std::move(child_)) {}
+
+    /// Derive the result type of an expression.
+    static TypeArc deriveType(const Expr& child);
+
+    static ExprPtr build(ExprPtr child_) {
+        return std::make_unique<DerefExpr>(std::move(child_));
+    }
+
+};
+
+/// Access a member of a struct - return type is the type of the struct member.
+/// The child expression must be typed a struct.
+struct StructAccesExpr : public UnaryExpr {
+
+    StructAccesExpr(ExprPtr child_, std::string field_): UnaryExpr(deriveType(*child_, field_), std::move(child_)), field(std::move(field_)) {};
+
+    /// Derive the result type of accessing a struct member.
+    static TypeArc deriveType(const Expr& child, const std::string& field);
+
+    /// Build a struct access expression. Accepts a child expression of type struct or pointer
+    /// to struct. Note that if the child is a pointer type, we add a deref expression below
+    /// the struct access expression.
+    static ExprPtr build(ExprPtr child_, std::string field_);
+
+    /// Which field to access.
+    std::string field;
 };
 
 /// Cast expression.

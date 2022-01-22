@@ -1,11 +1,9 @@
 #include "codegen/IR.h"
+#include "runtime/Runtime.h"
 
 namespace inkfuse {
 
 namespace IR {
-
-/// Set up the global runtime. Structs and functions are added by the respective.
-ProgramArc global_runtime = std::make_shared<Program>("global_runtime");
 
 Function::Function(std::string name_, std::vector<StmtPtr> arguments_, TypeArc return_type_)
    : name(std::move(name_)), arguments(std::move(arguments_)), return_type(std::move(return_type_)) {
@@ -23,7 +21,7 @@ const Block* Function::getBody() const {
 Program::Program(std::string program_name_, bool standalone) : program_name(std::move(program_name_)) {
    if (!standalone) {
       // We depend on the global runtime by default.
-      includes.push_back(global_runtime);
+      includes.push_back(global_runtime.program);
    }
 }
 

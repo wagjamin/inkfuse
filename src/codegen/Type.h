@@ -48,7 +48,7 @@ struct SQLType : public Type {};
 struct SignedInt : public SQLType {
    SignedInt(size_t size_) : size(size_){};
 
-   static TypeArc getTypePtr(size_t size) {
+   static TypeArc build(size_t size) {
       return std::make_unique<SignedInt>(size);
    };
 
@@ -68,7 +68,7 @@ struct SignedInt : public SQLType {
 struct UnsignedInt : public SQLType {
    UnsignedInt(size_t size_) : size(size_){};
 
-   static TypeArc getTypePtr(size_t size) {
+   static TypeArc build(size_t size) {
       return std::make_unique<UnsignedInt>(size);
    };
 
@@ -86,7 +86,7 @@ struct UnsignedInt : public SQLType {
 
 /// Boolean type.
 struct Bool : public SQLType {
-   static TypeArc getTypePtr() {
+   static TypeArc build() {
       return std::make_unique<Bool>();
    };
 
@@ -101,12 +101,12 @@ struct Bool : public SQLType {
 
 /// Character type.
 struct Char : public SQLType {
-   static TypeArc getTypePtr() {
+   static TypeArc build() {
       return std::make_unique<Char>();
    };
 
    size_t numBytes() const override {
-      return 0;
+      return 1;
    }
 
    std::string id() const override {
@@ -116,7 +116,7 @@ struct Char : public SQLType {
 
 /// Void type which is usually wrapped into pointers for a lack of better options.
 struct Void : public Type {
-   static TypeArc getTypePtr() {
+   static TypeArc build() {
       return std::make_unique<Void>();
    };
 
@@ -139,6 +139,12 @@ struct Struct : public Type {
       /// Name of the field.
       std::string name;
    };
+
+   Struct(std::string name_, std::vector<Field> fields_) : name(std::move(name_)), fields(std::move(fields_)) {}
+
+   static TypeArc build(std::string name_, std::vector<Field> fields_) {
+       return std::make_unique<Struct>(std::move(name_), std::move(fields_));
+   }
 
    /// Struct name.
    std::string name;
@@ -175,7 +181,7 @@ struct Pointer : public Type {
    Pointer(TypeArc pointed_to_) : pointed_to(std::move(pointed_to_)) {
    }
 
-   static TypeArc getTypePtr(TypeArc pointed_to) {
+   static TypeArc build(TypeArc pointed_to) {
       return std::make_unique<Pointer>(pointed_to);
    };
 

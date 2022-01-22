@@ -13,7 +13,7 @@ namespace inkfuse {
 struct ColumnScanState {
    /// Raw pointer to the column start.
    const void* data;
-   /// Raw point to a potential selection byte mask.
+   /// Raw pointer to a potential selection byte mask.
    /// TODO use in a reasonable way.
    const bool* sel;
    /// Backing size of the column to read from.
@@ -32,15 +32,20 @@ struct ColumnScan : public Suboperator {
    /// Set up a new column scan.
    ColumnScan(ColumnScanParameters params_, IURef provided_iu_, const BaseColumn& column_);
 
-   void compile(CompilationContext& context, const std::set<IURef>& required) override;
+   void compile(CompilationContext& context, const std::set<IURef>& required) const override;
 
    void setUpState() override;
 
    void tearDownState() override;
 
+   void* accessState() const override;
+
    std::string id() const override;
 
-   private:
+   /// Register the runtime needed for the column scan.
+   static void registerRuntime();
+
+private:
    /// Backing parameters.
    ColumnScanParameters params;
    /// IU provided by this scan.

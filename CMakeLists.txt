@@ -59,7 +59,7 @@ set(INCLUDE_H
         "${CMAKE_SOURCE_DIR}/src/interpreter/FragmentCache.h"
         "${CMAKE_SOURCE_DIR}/src/interpreter/FragmentGenerator.h"
         "${CMAKE_SOURCE_DIR}/src/interpreter/FragmentGenerator.h"
-        "${CMAKE_SOURCE_DIR}/src/runtime/QueryExecutor.h"
+        "${CMAKE_SOURCE_DIR}/src/runtime/Runtime.h"
         "${CMAKE_SOURCE_DIR}/src/storage/Relation.h"
         )
 
@@ -75,8 +75,9 @@ set(SRC_CC
         "${CMAKE_SOURCE_DIR}/src/codegen/Statement.cpp"
         "${CMAKE_SOURCE_DIR}/src/codegen/backend_c/BackendC.cpp"
         "${CMAKE_SOURCE_DIR}/src/codegen/backend_c/ScopedWriter.cpp"
+        "${CMAKE_SOURCE_DIR}/src/runtime/Runtime.cpp"
         "${CMAKE_SOURCE_DIR}/src/exec/FuseChunk.cpp"
-        )
+        src/runtime/Runtime.h src/runtime/Runtime.cpp)
 
 set(TEST_CC
         "${CMAKE_SOURCE_DIR}/test/test_ir.cpp"

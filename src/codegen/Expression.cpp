@@ -1,11 +1,12 @@
 #include "codegen/Expression.h"
+#include "codegen/IR.h"
 #include "codegen/Statement.h"
 
 namespace inkfuse {
 
 namespace IR {
 
-CastExpr::CastExpr(ExprPtr child_, TypeArc target_, bool narrowing) : UnaryExpr(std::move(child_), std::move(target_)) {
+CastExpr::CastExpr(ExprPtr child_, TypeArc target_, bool narrowing) : UnaryExpr(std::move(target_), std::move(child_)) {
    auto res = validateCastable(*(children[0]->type), *type);
    if (res == CastResult::Forbidden || (!narrowing && res == CastResult::Narrowing)) {
       throw std::runtime_error("forbidden IR cast");
@@ -24,6 +25,11 @@ ExprPtr ConstExpr::build(ValuePtr value_) {
    return std::make_unique<ConstExpr>(std::move(value_));
 }
 
+InvokeFctExpr::InvokeFctExpr(const Function& fct_, std::vector<ExprPtr> args_)
+    : Expr(std::move(args_), fct_.return_type), fct(fct_)
+{
+}
+
 bool ArithmeticExpr::isComparison(Opcode code)
 {
    if (code == Opcode::Eq
@@ -39,13 +45,48 @@ bool ArithmeticExpr::isComparison(Opcode code)
 TypeArc ArithmeticExpr::deriveType(const Expr& child_l, const Expr& child_r, Opcode code)
 {
    if (isComparison(code)) {
-      return Bool::getTypePtr();
+      return Bool::build();
    }
    // TODO nasty hack for the time being.
    return child_l.type;
 }
 
-CastExpr::CastResult CastExpr::validateCastable(const Type& src, const Type& target) {
+TypeArc DerefExpr::deriveType(const Expr &child)
+{
+    auto expr = reinterpret_cast<Pointer*>(child.type.get());
+    if (!expr) {
+        throw std::runtime_error("Can only dereference a pointer type.");
+    }
+    // Return backing type to which we point.
+    return expr->pointed_to;
+}
+
+TypeArc StructAccesExpr::deriveType(const Expr &child, const std::string &field_name)
+{
+    auto struct_ptr = reinterpret_cast<Struct*>(child.type.get());
+    if (!struct_ptr) {
+        throw std::runtime_error("Can only access members of a struct.");
+    }
+    for (auto& field : struct_ptr->fields) {
+        if (field.name == field_name) {
+            return field.type;
+        }
+    }
+    throw std::runtime_error("Requested field does not exist.");
+}
+
+    ExprPtr StructAccesExpr::build(ExprPtr child_, std::string field_)
+    {
+        auto expr = reinterpret_cast<Pointer*>(child_->type.get());
+        if (expr) {
+            // Child is a pointer, dereference first.
+            child_ = DerefExpr::build(std::move(child_));
+        }
+        // Try to build a struct access expression.
+        return std::make_unique<StructAccesExpr>(std::move(child_), std::move(field_));
+    }
+
+    CastExpr::CastResult CastExpr::validateCastable(const Type& src, const Type& target) {
    /*
         if (auto cSrc = src.isConst<SignedInt>()) {
             if (auto cTarget = target.isConst<SignedInt>()) {
