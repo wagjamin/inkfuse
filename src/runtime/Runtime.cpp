@@ -7,7 +7,7 @@ namespace inkfuse {
     /// Set up the global runtime. Structs and functions are added by the respective runtime helpers.
     GlobalRuntime global_runtime = GlobalRuntime();
 
-    GlobalRuntime::GlobalRuntime(): program(std::make_unique<IR::Program>("global_runtime"))
+    GlobalRuntime::GlobalRuntime(): program(std::make_unique<IR::Program>("global_runtime", true))
     {
         // Register the different runtime structs of the suboperators.
         ColumnScan::registerRuntime();

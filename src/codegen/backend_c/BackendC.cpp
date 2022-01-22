@@ -36,8 +36,12 @@ void BackendProgramC::compileToMachinecode() {
       command << " -o ";
       command << so_path(program_name);
       std::system(command.str().c_str());
+
+      // Add to compiled programs.
+      backend.generated.insert(program_name);
    }
    was_compiled = true;
+
 }
 
 BackendProgramC::~BackendProgramC() {
@@ -69,6 +73,8 @@ void BackendProgramC::dump() {
    out << program;
    // And close the stream.
    out.close();
+   // Add to dumped programs.
+   backend.dumped.insert(program_name);
 }
 
 std::unique_ptr<IR::BackendProgram> BackendC::generate(const IR::Program& program) {
@@ -134,13 +140,16 @@ void BackendC::compileStruct(const IR::Struct& structure, ScopedWriter& writer) 
         auto struct_def = writer.stmt(false);
         struct_def.stream() << "struct " << structure.name;
     }
-    // Struct body.
-    auto block = writer.block();
-    for (const auto& field: structure.fields) {
-        auto field_def = writer.stmt();
-        typeDescription(*field.type, field_def);
-        field_def.stream() << " " << field.name;
+    {
+        // Struct body.
+        auto block = writer.block();
+        for (const auto& field: structure.fields) {
+            auto field_def = writer.stmt();
+            typeDescription(*field.type, field_def);
+            field_def.stream() << " " << field.name;
+        }
     }
+    writer.stmt(false);
 }
 
 void BackendC::compileFunction(const IR::Function& fct, ScopedWriter& writer) {
@@ -169,6 +178,7 @@ void BackendC::compileFunction(const IR::Function& fct, ScopedWriter& writer) {
       auto fct_block = writer.block();
       compileBlock(*fct.getBody(), writer);
    }
+   writer.stmt(false);
 }
 
 void BackendC::compileBlock(const IR::Block& block, ScopedWriter& writer) {
