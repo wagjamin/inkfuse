@@ -82,7 +82,7 @@ set(SRC_CC
 set(TEST_CC
         "${CMAKE_SOURCE_DIR}/test/test_ir.cpp"
         "${CMAKE_SOURCE_DIR}/test/test_c_backend.cpp"
-        )
+        test/test_runtime.cpp)
 
 set(TOOLS_SRC
     "${CMAKE_SOURCE_DIR}/tools/inkfuse_runner.cc"

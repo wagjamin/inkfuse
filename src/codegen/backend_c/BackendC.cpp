@@ -6,18 +6,35 @@
 
 namespace inkfuse {
 
+namespace {
+
+    /// Generate the path for the c program.
+    std::string path(std::string_view program_name) {
+        std::stringstream stream;
+        stream << "/tmp/" << program_name << ".c";
+        return stream.str();
+    }
+
+    /// Generate the path for the so.
+    std::string so_path(std::string_view program_name) {
+        std::stringstream stream;
+        stream << "/tmp/" << program_name << ".so";
+        return stream.str();
+    }
+}
+
 void BackendProgramC::compileToMachinecode() {
    if (!was_compiled) {
       // Dump.
       dump();
       // Invoke the compiler.
       std::stringstream command;
-      command << "clang-11 "
-              << "/tmp/" << program_name << ".c";
+      command << "clang-11 ";
+      command << path(program_name);
       command << " -O3 -fPIC";
       command << " -shared";
-      command << " -o "
-              << "/tmp/" << program_name << ".so";
+      command << " -o ";
+      command << so_path(program_name);
       std::system(command.str().c_str());
    }
    was_compiled = true;
@@ -33,7 +50,7 @@ void* BackendProgramC::getFunction(std::string_view name) {
    }
    if (!handle) {
       // Dlopen for the first time
-      auto soname = "/tmp/" + program_name + ".so";
+      auto soname = so_path(program_name);
       handle = dlopen(soname.c_str(), RTLD_NOW);
    }
    if (!handle) {
@@ -47,39 +64,49 @@ void* BackendProgramC::getFunction(std::string_view name) {
 
 void BackendProgramC::dump() {
    // Open the file.
-   std::ofstream out("/tmp/" + program_name + ".c");
+   std::ofstream out(path(program_name));
    // Write the program.
    out << program;
    // And close the stream.
    out.close();
 }
 
-std::unique_ptr<IR::BackendProgram> BackendC::generate(const IR::Program& program) const {
+std::unique_ptr<IR::BackendProgram> BackendC::generate(const IR::Program& program) {
    ScopedWriter writer;
 
-   // Step 1: Set up the preamble containing includes.
+   // Step 1: Set up the preamble.
    createPreamble(writer);
 
-   // Step 2: Set up the structs used throughout the program.
+   // Step 2: Set up the includes.
+   for (const auto& include: program.getIncludes()) {
+       compileInclude(*include, writer);
+   }
+
+   // Step 3: Set up the structs used throughout the program.
    for (const auto& structure : program.getStructs()) {
       compileStruct(*structure, writer);
    }
 
-   // Step 3: Set up the functions used throughout the program.
+   // Step 4: Set up the functions used throughout the program.
    for (const auto& function : program.getFunctions()) {
       compileFunction(*function, writer);
    }
 
-   return std::make_unique<BackendProgramC>(writer.str(), program.program_name);
+   return std::make_unique<BackendProgramC>(*this, writer.str(), program.program_name);
 }
 
 void BackendC::createPreamble(ScopedWriter& writer) {
-   // Include the integer types needed.
-   writer.stmt(false).stream() << "#include <stdint.h>\n";
+    // Include the integer types needed.
+    writer.stmt(false).stream() << "#include <stdint.h>\n";
 }
 
 void BackendC::compileInclude(const IR::Program& include, ScopedWriter& writer) {
-   // TODO
+    if (!dumped.count(include.program_name)) {
+        // Include was not dumped yet - generate it.
+        generate(include)->dump();
+    }
+    // Now we can just include the respective program.
+    writer.stmt(false).stream() << "#include \""<< path(include.program_name) << "\"\n";
 }
 
 void BackendC::typeDescription(const IR::Type& type, ScopedWriter::Statement& str) {
@@ -102,14 +129,28 @@ void BackendC::typeDescription(const IR::Type& type, ScopedWriter::Statement& st
    visitor.visit(type, str);
 }
 
-void BackendC::compileStruct(const IR::Struct& structure, ScopedWriter& str) {
-   // TODO
+void BackendC::compileStruct(const IR::Struct& structure, ScopedWriter& writer) {
+    {
+        auto struct_def = writer.stmt(false);
+        struct_def.stream() << "struct " << structure.name;
+    }
+    // Struct body.
+    auto block = writer.block();
+    for (const auto& field: structure.fields) {
+        auto field_def = writer.stmt();
+        typeDescription(*field.type, field_def);
+        field_def.stream() << " " << field.name;
+    }
 }
 
 void BackendC::compileFunction(const IR::Function& fct, ScopedWriter& writer) {
    {
       // Set up the function definition.
       auto fct_decl = writer.stmt(!fct.getBody());
+      if (!fct.getBody()) {
+          // Extern function, will be linked later.
+          fct_decl.stream() << "extern ";
+      }
       typeDescription(*fct.return_type, fct_decl);
       fct_decl.stream() << " " << fct.name << "(";
       for (size_t k = 0; k < fct.arguments.size(); ++k) {

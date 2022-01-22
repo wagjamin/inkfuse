@@ -81,10 +81,10 @@ struct Program {
    const std::vector<StructArc>& getStructs() const;
 
    /// Get a struct type (or throw if it does not exist).
-   TypeArc getStruct(std::string name) const;
+   TypeArc getStruct(std::string_view name) const;
 
-    /// Get a function (or throw if it does not exist).
-    FunctionArc getFunction(std::string name) const;
+   /// Get a function (or throw if it does not exist).
+   FunctionArc getFunction(std::string_view name) const;
 
    const std::vector<FunctionArc>& getFunctions() const;
 

@@ -1,5 +1,6 @@
 #include "runtime/Runtime.h"
 #include "algebra/ColumnScan.h"
+#include "algebra/FuseChunkSink.h"
 
 namespace inkfuse {
 
@@ -8,8 +9,9 @@ namespace inkfuse {
 
     GlobalRuntime::GlobalRuntime(): program(std::make_unique<IR::Program>("global_runtime"))
     {
-        // Register the different runtime structs.
+        // Register the different runtime structs of the suboperators.
         ColumnScan::registerRuntime();
+        FuseChunkSink::registerRuntime();
     }
 
     RuntimeStructBuilder::~RuntimeStructBuilder()

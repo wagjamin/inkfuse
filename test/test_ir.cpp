@@ -42,4 +42,11 @@ TEST(test_ir, multiple_programs) {
    EXPECT_EQ(0, program.getStructs().size());
 }
 
+TEST(test_ir, inkfuse_runtime) {
+    IR::Program program("test_ir_inkfuse_runtime", false);
+    EXPECT_EQ(1, program.getIncludes().size());
+    const auto& include = program.getIncludes()[0];
+    EXPECT_GE(include->getStructs().size(), 1);
+}
+
 }

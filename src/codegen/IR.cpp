@@ -40,6 +40,27 @@ const std::vector<StructArc>& Program::getStructs() const {
 const std::vector<FunctionArc>& Program::getFunctions() const {
    return functions;
 }
+
+TypeArc Program::getStruct(std::string_view name) const
+{
+    for (const auto& str: structs) {
+        if (str->name == name) {
+            return str;
+        }
+    }
+    throw std::runtime_error("struct does not exist");
+}
+
+FunctionArc Program::getFunction(std::string_view name) const
+{
+    for (const auto& fct: functions) {
+        if (fct->name == name) {
+            return fct;
+        }
+    }
+    throw std::runtime_error("function does not exist");
+}
+
 }
 
 }
