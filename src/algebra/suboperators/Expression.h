@@ -1,7 +1,7 @@
 #ifndef INKFUSE_EXPRESSION_H
 #define INKFUSE_EXPRESSION_H
 
-#include "algebra/Suboperator.h"
+#include "Suboperator.h"
 
 namespace inkfuse {
 

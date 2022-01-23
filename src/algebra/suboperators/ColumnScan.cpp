@@ -1,4 +1,4 @@
-#include "algebra/ColumnScan.h"
+#include "ColumnScan.h"
 #include "exec/FuseChunk.h"
 #include "runtime/Runtime.h"
 

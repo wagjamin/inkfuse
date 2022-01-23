@@ -349,7 +349,6 @@ void BackendC::compileExpression(const IR::Expr& expr, ScopedWriter::Statement& 
             stmt.stream() << ")";
         }
 
-
     };
 
     ExpressionVisitor visitor;

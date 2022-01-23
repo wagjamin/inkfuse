@@ -42,11 +42,11 @@ include_directories(
 # ---------------------------------------------------------------------------
 
 set(INCLUDE_H
-        "${CMAKE_SOURCE_DIR}/src/algebra/Operator.h"
+        "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/ColumnScan.h"
+        "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/FuseChunkSink.h"
+        "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/Suboperator.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/Pipeline.h"
-        "${CMAKE_SOURCE_DIR}/src/algebra/ColumnScan.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/CompilationContext.h"
-        "${CMAKE_SOURCE_DIR}/src/algebra/FuseChunkSink.h"
         "${CMAKE_SOURCE_DIR}/src/codegen/backend_c/BackendC.h"
         "${CMAKE_SOURCE_DIR}/src/codegen/backend_c/ScopedWriter.h"
         "${CMAKE_SOURCE_DIR}/src/codegen/Backend.h"
@@ -64,8 +64,8 @@ set(INCLUDE_H
         )
 
 set(SRC_CC
-        "${CMAKE_SOURCE_DIR}/src/algebra/ColumnScan.cpp"
-        "${CMAKE_SOURCE_DIR}/src/algebra/FuseChunkSink.cpp"
+        "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/ColumnScan.cpp"
+        "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/FuseChunkSink.cpp"
         "${CMAKE_SOURCE_DIR}/src/storage/Relation.cc"
         "${CMAKE_SOURCE_DIR}/src/codegen/Expression.cpp"
         "${CMAKE_SOURCE_DIR}/src/codegen/IR.cpp"
@@ -77,7 +77,7 @@ set(SRC_CC
         "${CMAKE_SOURCE_DIR}/src/codegen/backend_c/ScopedWriter.cpp"
         "${CMAKE_SOURCE_DIR}/src/runtime/Runtime.cpp"
         "${CMAKE_SOURCE_DIR}/src/exec/FuseChunk.cpp"
-        src/runtime/Runtime.h src/runtime/Runtime.cpp)
+        src/runtime/Runtime.h src/runtime/Runtime.cpp src/algebra/TableScan.h src/algebra/RelalgOp.h)
 
 set(TEST_CC
         "${CMAKE_SOURCE_DIR}/test/test_ir.cpp"

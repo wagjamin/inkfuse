@@ -1,4 +1,4 @@
-#include "algebra/FuseChunkSink.h"
+#include "FuseChunkSink.h"
 #include "exec/FuseChunk.h"
 #include "runtime/Runtime.h"
 

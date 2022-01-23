@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include "algebra/ColumnScan.h"
+#include "algebra/suboperators/ColumnScan.h"
 #include "codegen/backend_c/BackendC.h"
 #include "codegen/Expression.h"
 #include "codegen/IR.h"

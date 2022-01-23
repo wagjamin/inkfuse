@@ -1,6 +1,6 @@
 #include "runtime/Runtime.h"
-#include "algebra/ColumnScan.h"
-#include "algebra/FuseChunkSink.h"
+#include "algebra/suboperators/ColumnScan.h"
+#include "algebra/suboperators/FuseChunkSink.h"
 
 namespace inkfuse {
 

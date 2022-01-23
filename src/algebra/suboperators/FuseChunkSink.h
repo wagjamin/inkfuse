@@ -1,7 +1,7 @@
 #ifndef INKFUSE_FUSECHUNKSINK_H
 #define INKFUSE_FUSECHUNKSINK_H
 
-#include "algebra/Suboperator.h"
+#include "algebra/suboperators/Suboperator.h"
 
 namespace inkfuse {
 

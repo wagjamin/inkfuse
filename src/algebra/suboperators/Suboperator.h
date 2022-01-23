@@ -4,6 +4,7 @@
 #include "algebra/IU.h"
 #include <set>
 #include <vector>
+#include <memory>
 
 namespace inkfuse {
 
@@ -21,7 +22,7 @@ struct FuseChunk;
 /// - Infinite DoF: the suboperator is parametrized over an infinite set of potential values. Examples might be
 ///                 the length of a varchar type, or the offset into an aggregation state.
 ///
-/// When we exectute the query down the line, note that these parameters above are actually *not* degrees of freedom.
+/// When we execute the query down the line, note that these parameters above are actually *not* degrees of freedom.
 /// This is an important observation, at run time these are all substituted.
 /// Two conclusions can be drawn from this:
 ///      1) In a pipeline-fusing engine, all parameters would be substitued with hard-baked values
@@ -65,6 +66,8 @@ struct Suboperator {
    /// Build a unique identifier for this suboperator (unique given the parameter set).
    virtual std::string id() const = 0;
 };
+
+using SuboperatorPtr = std::unique_ptr<Suboperator>;
 
 }
 
