@@ -6,9 +6,9 @@ namespace inkfuse {
 
 namespace IR {
 
-CastExpr::CastExpr(ExprPtr child_, TypeArc target_, bool narrowing) : UnaryExpr(std::move(target_), std::move(child_)) {
+CastExpr::CastExpr(ExprPtr child_, TypeArc target_) : UnaryExpr(std::move(target_), std::move(child_)) {
    auto res = validateCastable(*(children[0]->type), *type);
-   if (res == CastResult::Forbidden || (!narrowing && res == CastResult::Narrowing)) {
+   if (res == CastResult::Forbidden) {
       throw std::runtime_error("forbidden IR cast");
    }
 }
@@ -111,7 +111,7 @@ TypeArc StructAccesExpr::deriveType(const Expr &child, const std::string &field_
             }
         }
          */
-   // Everything not mentioned explicitly is forbidden - sorry.
+   // Everything not mentioned explicitly is allowed - sorry.
    return CastResult::Permitted;
 }
 

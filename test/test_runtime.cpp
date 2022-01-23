@@ -15,8 +15,6 @@ namespace inkfuse {
     /// Testing function runtime integration.
     TEST(test_runtime, runtime_extfunc) {
 
-
-
     }
 
     /// Testing struct runtime integration.
@@ -38,17 +36,27 @@ namespace inkfuse {
         auto ir_builder = program.getIRBuilder();
         auto& runtime = *program.getIncludes()[0];
         // Set up runtime parameter the new function will receive.
-        auto arg = IR::DeclareStmt::build("runtime_param", IR::Pointer::build(runtime.getStruct("ColumnScanState")));
+        // In this case a void pointer which we will cast to a ColumnScanState pointer down the line.
+        // Note that this is also how .
+        auto arg = IR::DeclareStmt::build("runtime_param", IR::Pointer::build(IR::Void::build()));
         std::vector<IR::StmtPtr> params;
         params.push_back(std::move(arg));
         // Function we are building.
         auto fct = std::make_shared<IR::Function>("test_fct", std::move(params), IR::UnsignedInt::build(8));
         auto fct_builder = ir_builder.createFunctionBuilder(std::move(fct));
 
-        // Return the size.
-        auto expr = IR::StructAccesExpr::build(IR::VarRefExpr::build(fct_builder.getArg(0)), "size");
+        // Return the size by accessing the respective member in ColumnScanState.
+        auto expr = IR::StructAccesExpr::build(
+                // Cast the first argument to a pointer to the ColumnScanState
+                IR::CastExpr::build(
+                        IR::VarRefExpr::build(fct_builder.getArg(0)),
+                        IR::Pointer::build(runtime.getStruct("ColumnScanState"))),
+                "size");
         auto stmt = IR::ReturnStmt::build(std::move(expr));
         fct_builder.appendStmt(std::move(stmt));
+
+        // Add the function.
+        fct_builder.finalize();
 
         // Set up the c-backend.
         BackendC backend;

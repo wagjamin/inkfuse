@@ -178,7 +178,11 @@ struct StructAccesExpr : public UnaryExpr {
 /// Cast expression.
 struct CastExpr : public UnaryExpr {
    public:
-   CastExpr(ExprPtr child, TypeArc target_, bool narrowing = true);
+   CastExpr(ExprPtr child, TypeArc target_);
+
+   static ExprPtr build(ExprPtr child, TypeArc target_) {
+       return std::make_unique<CastExpr>(std::move(child), std::move(target_));
+   }
 
    /// Possible results for casting.
    enum class CastResult {
@@ -193,6 +197,49 @@ struct CastExpr : public UnaryExpr {
    /// Validate that a type can be cast into another.
    static CastResult validateCastable(const Type& src, const Type& target);
 };
+
+/// Expression visitor utility.
+template <typename Arg>
+struct ExprVisitor {
+public:
+    void visit(const Expr& expr, Arg arg) {
+        if (const auto elem = dynamic_cast<const VarRefExpr*>(&expr)) {
+            visitVarRef(*elem, arg);
+        } else if (auto elem = dynamic_cast<const ConstExpr*>(&expr)) {
+            visitConst(*elem, arg);
+        } else if (auto elem = dynamic_cast<const InvokeFctExpr*>(&expr)) {
+            visitInvokeFct(*elem, arg);
+        } else if (auto elem = dynamic_cast<const ArithmeticExpr*>(&expr)) {
+            visitArithmetic(*elem, arg);
+        } else if (auto elem = dynamic_cast<const DerefExpr*>(&expr)) {
+            visitDeref(*elem, arg);
+        } else if (auto elem = dynamic_cast<const StructAccesExpr*>(&expr)) {
+            visitStructAccess(*elem, arg);
+        } else if (auto elem = dynamic_cast<const CastExpr*>(&expr)) {
+            visitCast(*elem, arg);
+        } else {
+            assert(false);
+        }
+    }
+
+private:
+    virtual void visitVarRef(const VarRefExpr& type, Arg arg) { }
+
+    virtual void visitConst(const ConstExpr& type, Arg arg) { }
+
+    virtual void visitInvokeFct(const InvokeFctExpr& type, Arg arg) { }
+
+    virtual void visitArithmetic(const ArithmeticExpr& type, Arg arg) { }
+
+    virtual void visitDeref(const DerefExpr& type, Arg arg) { }
+
+    virtual void visitStructAccess(const StructAccesExpr& type, Arg arg) { }
+
+    virtual void visitCast(const CastExpr& type, Arg arg) { }
+
+};
+
+
 }
 
 }
