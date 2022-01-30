@@ -27,18 +27,13 @@ struct Column {
    /// For this we need C-style structs with raw members that can be made to "easily" interface
    /// with code generation primitives.
    char* raw_data;
-   /// Capacity of the column.
-   uint64_t capacity;
-   /// Size of the column.
-   uint64_t size;
 };
 
 using ColumnPtr = std::unique_ptr<Column>;
 
 /// A FuseChunk containing a standard columnar presentation of a set of rows.
-/// This representation is minimal at the moment, we don't have stuff like selection vectors.
-/// Arguably, this might not be such a bad choice - ClickHouse does just fine without
-/// selection vectors.
+/// Selection vectors are also supported within fuse chunks. These are simply a
+/// boolean column within the chunk.
 struct FuseChunk {
    public:
    /// Create a FuseChunk with default capacity.
@@ -51,8 +46,6 @@ struct FuseChunk {
 
    /// Get capacity of columns within the fuse chunk.
    uint64_t getCapacity() const;
-   /// Get number of rows currently in the fuse chunk.
-   uint64_t getSize() const;
    /// Get a certain column.
    Column& getColumn(IURef iu) const;
    /// Get the full backing column map.

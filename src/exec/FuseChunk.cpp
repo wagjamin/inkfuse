@@ -10,7 +10,7 @@ const uint64_t DEFAULT_CHUNK_SIZE = 1ull << 13;
 
 }
 
-Column::Column(const IR::Type& type_, size_t capacity_) : capacity(capacity_), size(0) {
+Column::Column(const IR::Type& type, size_t capacity) {
    // Allocate raw array, note that it has to be aligned on the size boundary of the backing type.
    raw_data = static_cast<char*>(std::aligned_alloc(type_.numBytes(), capacity * type_.numBytes()));
 }
@@ -33,13 +33,6 @@ void FuseChunk::attachColumn(IURef iu) {
 
 uint64_t FuseChunk::getCapacity() const {
    return capacity;
-}
-
-uint64_t FuseChunk::getSize() const {
-   if (columns.empty()) {
-      throw std::runtime_error("Cannot get size on empty FuseChunk");
-   }
-   return columns.begin()->second->size;
 }
 
 Column& FuseChunk::getColumn(IURef iu) const {

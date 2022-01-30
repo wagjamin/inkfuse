@@ -2,6 +2,7 @@
 #define INKFUSE_PIPELINE_H
 
 #include "algebra/suboperators/Suboperator.h"
+#include "exec/ExecutionContext.h"
 #include <memory>
 #include <vector>
 
@@ -10,19 +11,26 @@ namespace inkfuse {
 /// Execution pipeline containing all the different operators within one pipeline.
 /// This class is at the heart of inkfuse as it allows either vectorized interpretation
 /// through pre-compiled fragments or just-in-time-compiled loop fusion.
-/// Internally, the pipeline is a DAG of suboperators. For the time being, we simply represent it as a
-/// layer of suboperators, where every suboperator is conntected to all suboperators in the next layer.
+/// Internally, the pipeline is a DAG of suboperators.
 struct Pipeline {
 public:
 
-    /// Attach a new layer rooted in the given suboperator.
-    void attachLayer(SuboperatorPtr op);
+    /// Add a new suboperator to the pipeline.
+    void attachSuboperator(SuboperatorPtr subop);
 
 private:
-    /// The suboperators which have to be executed. Every element in the outer vector is a
-    /// set of suboperators which need to be fully executed before the next layer can commence.
-    std::vector<SuboperatorPtr> layers;
+    /// The sub-operators within this pipeline. These are arranged in a topological order of the backing
+    /// DAG structure. This is important down the line .
+    std::vector<SuboperatorPtr> suboperators;
 
+    /// The offsets of the sink sub-operators of this pipeline. These are the ones where interpretation needs to begin.
+    std::set<size_t> sinks;
+
+    /// The offsets of operators which re-scope the pipeline.
+    std::vector<size_t> rescope_offsets;
+
+    /// The execution context of this pipeline.
+    ExecutionContext context;
 };
 
     using PipelinePtr = std::unique_ptr<Pipeline>;
@@ -30,6 +38,7 @@ private:
 /// The PipelineDAG represents a query which is ready for execution.
 struct PipelineDAG {
    public:
+
    private:
    /// Internally the PipelineDAG is represented as a vector of pipelines within a topological order.
    std::vector<PipelinePtr> pipelines;

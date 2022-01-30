@@ -55,6 +55,7 @@ set(INCLUDE_H
         "${CMAKE_SOURCE_DIR}/src/codegen/IRBuilder.h"
         "${CMAKE_SOURCE_DIR}/src/codegen/Type.h"
         "${CMAKE_SOURCE_DIR}/src/exec/FuseChunk.h"
+        "${CMAKE_SOURCE_DIR}/src/exec/ExecutionContext.h"
         "${CMAKE_SOURCE_DIR}/src/exec/InterpretationResult.h"
         "${CMAKE_SOURCE_DIR}/src/interpreter/FragmentCache.h"
         "${CMAKE_SOURCE_DIR}/src/interpreter/FragmentGenerator.h"
@@ -76,8 +77,9 @@ set(SRC_CC
         "${CMAKE_SOURCE_DIR}/src/codegen/backend_c/BackendC.cpp"
         "${CMAKE_SOURCE_DIR}/src/codegen/backend_c/ScopedWriter.cpp"
         "${CMAKE_SOURCE_DIR}/src/runtime/Runtime.cpp"
+        "${CMAKE_SOURCE_DIR}/src/exec/ExecutionContext.cpp"
         "${CMAKE_SOURCE_DIR}/src/exec/FuseChunk.cpp"
-        src/runtime/Runtime.h src/runtime/Runtime.cpp src/algebra/TableScan.h src/algebra/RelalgOp.h)
+        )
 
 set(TEST_CC
         "${CMAKE_SOURCE_DIR}/test/test_ir.cpp"
