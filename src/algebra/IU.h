@@ -3,6 +3,7 @@
 
 #include "codegen/Type.h"
 #include <string>
+#include <sstream>
 
 namespace inkfuse {
 
@@ -14,11 +15,18 @@ namespace inkfuse {
 struct IU {
    public:
    /// Constructor.
-   IU(IR::TypeArc type_, std::string name_ = "") : type(std::move(type_)), name(std::move(name_)){};
+   IU(IR::TypeArc type_, std::string name_) : type(std::move(type_)), name(std::move(name_)){};
+
+   explicit IU(IR::TypeArc type_) : type(std::move(type_)) {
+      const void * ptr = static_cast<const void*>(this);
+      std::stringstream ss;
+      ss << "iu_" << ptr;
+      name = ss.str();
+   };
 
    /// Type of this IU.
    IR::TypeArc type;
-   /// Human-readable name for this IU.
+   /// The name for this IU.
    std::string name;
 };
 

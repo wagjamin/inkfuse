@@ -2,6 +2,7 @@
 #define INKFUSE_IRBUILDER_H
 
 #include "codegen/Type.h"
+#include <deque>
 
 namespace inkfuse {
 
@@ -82,7 +83,7 @@ struct FunctionBuilder {
    /// Destructor, finalizes if the function was not yet finalized.
    ~FunctionBuilder();
 
-   /// Add a statement to the current block being built.
+   /// Append a statement to the current block being built.
    Stmt& appendStmt(StmtPtr stmt);
 
    /// Build an if statement being evaluated on the given expression.
@@ -93,6 +94,11 @@ struct FunctionBuilder {
 
    /// Get the statement at a given index.
    const Stmt& getArg(size_t idx);
+
+   /// Get the current block.
+   Block& getCurrBlock();
+   /// Get the root block of this function.
+   Block& getRootBlock();
 
    /// Wrap up code generation and add the function to the owning Program.
    void finalize();
@@ -108,6 +114,8 @@ struct FunctionBuilder {
    FunctionArc function;
    /// The current block being built. Effectively allows for "scoping" in the Function Builder.
    Block* curr_block;
+   /// The root block of the function.
+   Block* root_block;
    /// The backing IR builder.
    IRBuilder& builder;
    /// Was the function finalized already.

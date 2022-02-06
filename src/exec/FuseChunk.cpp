@@ -4,12 +4,6 @@
 
 namespace inkfuse {
 
-namespace {
-/// Default chunk size (8192)
-const uint64_t DEFAULT_CHUNK_SIZE = 1ull << 13;
-
-}
-
 Column::Column(const IR::Type& type, size_t capacity) {
    // Allocate raw array, note that it has to be aligned on the size boundary of the backing type.
    raw_data = static_cast<char*>(std::aligned_alloc(type_.numBytes(), capacity * type_.numBytes()));

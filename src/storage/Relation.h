@@ -1,6 +1,7 @@
 #ifndef INKFUSE_COLUMN_H
 #define INKFUSE_COLUMN_H
 
+#include "codegen/Type.h"
 #include <cstddef>
 #include <istream>
 #include <memory>
@@ -30,6 +31,10 @@ class BaseColumn {
 
    /// Get a pointer to the backing raw data.
    virtual const void* getRawData() const = 0;
+
+   /// Get the type of this .
+   virtual IR::TypeArc getType() const = 0;
+
 
    protected:
    bool nullable;
@@ -61,9 +66,15 @@ class TypedColumn final : public BaseColumn {
       return storage.data();
    }
 
+   IR::TypeArc getType() const override {
+      return type;
+   };
+
    private:
    /// Backing storage.
    std::vector<T> storage;
+   /// Actual data type.
+   IR::TypeArc type;
 };
 
 using BaseColumnPtr = std::unique_ptr<BaseColumn>;

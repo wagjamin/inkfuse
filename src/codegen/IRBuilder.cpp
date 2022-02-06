@@ -89,7 +89,8 @@ FunctionBuilder::FunctionBuilder(IRBuilder& builder_, FunctionArc function_)
       throw std::runtime_error("Cannot create function builder on function with non-empty body");
    }
    function->body = std::make_unique<Block>(std::vector<StmtPtr>{});
-   curr_block = function->body.get();
+   root_block = function->body.get();
+   curr_block = root_block;
 }
 
 Stmt& FunctionBuilder::appendStmt(StmtPtr stmt) {
@@ -115,6 +116,16 @@ While FunctionBuilder::buildWhile(ExprPtr expr)
 
 const Stmt& FunctionBuilder::getArg(size_t idx) {
    return *function->arguments.at(idx);
+}
+
+Block& FunctionBuilder::getCurrBlock()
+{
+   return *curr_block;
+}
+
+Block& FunctionBuilder::getRootBlock()
+{
+   return *root_block;
 }
 
 FunctionBuilder::~FunctionBuilder() {

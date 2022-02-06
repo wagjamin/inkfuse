@@ -16,9 +16,12 @@ namespace inkfuse {
     /// lower level IRs. relational algebra level -> suboperators -> inkfuse IR -> C.
     /// This would be pretty sweet to build into MLIR - but we decided against it because we thought the
     /// initial overhead might be overkill.
-    struct RelalgOp {
+    struct RelAlgOp {
 
         void decay(std::set<IURef> required, PipelineDAG& dag);
+
+        /// The name of this operator.
+        std::string op_name;
 
     };
 

@@ -8,6 +8,9 @@
 
 namespace inkfuse {
 
+/// Default chunk size (8192)
+const uint64_t DEFAULT_CHUNK_SIZE = 1ull << 13;
+
 /// A column within a FuseChunk.
 struct Column {
    /// Create a column of a certain capacity with a certain size.
@@ -27,6 +30,8 @@ struct Column {
    /// For this we need C-style structs with raw members that can be made to "easily" interface
    /// with code generation primitives.
    char* raw_data;
+   /// The size of this column, i.e. how much data it actually contains.
+   size_t size = 0;
 };
 
 using ColumnPtr = std::unique_ptr<Column>;

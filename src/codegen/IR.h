@@ -5,6 +5,7 @@
 #include "codegen/Statement.h"
 #include <string>
 #include <utility>
+#include <deque>
 #include <vector>
 
 /// This file contains all the central building blocks for the InkFuse IR.
@@ -57,10 +58,20 @@ using FunctionArc = std::shared_ptr<Function>;
 
 /// A block of statements within a function.
 struct Block {
-   Block(std::vector<StmtPtr> statements_) : statements(std::move(statements_)){};
+   Block(std::deque<StmtPtr> statements_) : statements(std::move(statements_)){};
+
+   /// Append statement to the block.
+   void appendStmt(StmtPtr stmt);
+   /// Appends statements to the block.
+   void appendStmts(std::deque<StmtPtr> stmts);
+
+   /// Prepend statement to the block.
+   void prependStmts(StmtPtr stmt);
+   /// Prepends statements to the block.
+   void prependStmts(std::deque<StmtPtr> stmts);
 
    /// Statements within the block.
-   std::vector<StmtPtr> statements;
+   std::deque<StmtPtr> statements;
 };
 
 /// Central IR program which is a set of functions and structs.

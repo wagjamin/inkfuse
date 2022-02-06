@@ -1,21 +1,19 @@
 #ifndef INKFUSE_SUBOPERATOR_H
 #define INKFUSE_SUBOPERATOR_H
 
+#include "algebra/CompilationContext.h"
 #include "algebra/IU.h"
+#include "algebra/Pipeline.h"
+#include <sstream>
+#include <memory>
 #include <set>
 #include <vector>
-#include <memory>
 
 namespace inkfuse {
 
 struct CompilationContext;
 struct FuseChunk;
-struct Operator;
-
-///
-struct SuboperatorEdge {
-
-};
+struct RelAlgOp;
 
 /// A suboperator is a fragment of a central operator which has a corresponding vectorized primitive.
 /// An example might be the aggregation of an IU into some aggregation state.
@@ -44,37 +42,52 @@ struct SuboperatorEdge {
 /// parameter logic and codegen structure.
 struct Suboperator {
    /// Suboperator constructor. Parametrized as described above and also fitting a certain type.
-   Suboperator(const Operator& source_): source(source_) {}
+   Suboperator(const RelAlgOp* source_, std::set<IURef> provided_ius_, std::set<IURef> source_ius_)
+      : source(source_), provided_ius(std::move(provided_ius_)), source_ius(std::move(source_ius_)) {}
 
    virtual ~Suboperator() = default;
 
+   /// Prepare the children of this sub-operator for code generation.
+   /// The default implementation simply generated code for the children one by one.
+   virtual void produce(CompilationContext& context) const;
+   /// Consume a specific IU.
+   virtual void consume(IURef iu, CompilationContext& context) const {};
+   /// Consume once all IUs are ready.
+   virtual void consumeAllChildren(CompilationContext& context) const {};
 
-    /// Interpret this suboperator.
-    virtual void interpret() const;
-
-   /// Is this a sink-suboperator which has no further descendants?
+   /// Is this a sink sub-operator which has no further descendants?
    virtual bool isSink() { return false; }
-
-
+   /// Is this a source sub-operator driving execution?
+   virtual bool isSource() { return false; }
 
    /// Set up the state needed by this operator. In an IncrementalFusion engine it's easiest to actually
    /// make this interpreted.
-   virtual void setUpState() {};
+   virtual void setUpState(){};
    /// Tear down the state needed by this operator.
-   virtual void tearDownState() {};
+   virtual void tearDownState(){};
    /// Get a raw pointer to the state of this operator.
-   virtual void * accessState() const = 0;
+   virtual void* accessState() const { return nullptr; };
+   /// Pick a morsel of work. Only relevant for source operators.
+   virtual bool pickMorsel() {}
 
    /// Build a unique identifier for this suboperator (unique given the parameter set).
    /// This is needed to effectively use the fragment cache during vectorized interpretation.
    virtual std::string id() const = 0;
+   /// Get a variable identifier which is unique to this suboperator.
+   std::stringstream getVarIdentifier() const;
 
-protected:
-   /// Suboperators which need to be compiled or interpreted before this suboperator may commence.
-   std::vector<Suboperator*> children;
+   /// How many ius does this suboperator depend on?
+   size_t getNumSourceIUs() const { return source_ius.size(); }
 
+   protected:
    /// The operator which decayed into this Suboperator.
-   const Operator& source;
+   const RelAlgOp* source;
+
+   /// IUs produced by this sub-operator.
+   std::set<IURef> provided_ius;
+   /// Source IUs on which this sub-operator depends.
+   std::set<IURef> source_ius;
+
 };
 
 using SuboperatorPtr = std::unique_ptr<Suboperator>;

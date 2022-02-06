@@ -42,9 +42,10 @@ include_directories(
 # ---------------------------------------------------------------------------
 
 set(INCLUDE_H
-        "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/ColumnScan.h"
-        "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/FuseChunkSink.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/Suboperator.h"
+        "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/sinks/FuseChunkSink.h"
+        "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/sources/TScanSource.h"
+        "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/sources/FuseChunkSource.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/Pipeline.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/CompilationContext.h"
         "${CMAKE_SOURCE_DIR}/src/codegen/backend_c/BackendC.h"
@@ -65,8 +66,12 @@ set(INCLUDE_H
         )
 
 set(SRC_CC
-        "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/ColumnScan.cpp"
-        "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/FuseChunkSink.cpp"
+        "${CMAKE_SOURCE_DIR}/src/algebra/Pipeline.cpp"
+        "${CMAKE_SOURCE_DIR}/src/algebra/CompilationContext.cpp"
+        "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/Suboperator.cpp"
+        "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/sinks/FuseChunkSink.cpp"
+        "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/sources/TScanSource.cpp"
+        "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/sources/FuseChunkSource.cpp"
         "${CMAKE_SOURCE_DIR}/src/storage/Relation.cc"
         "${CMAKE_SOURCE_DIR}/src/codegen/Expression.cpp"
         "${CMAKE_SOURCE_DIR}/src/codegen/IR.cpp"
