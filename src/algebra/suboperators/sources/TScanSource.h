@@ -90,7 +90,7 @@ struct TSCanIUProvider : public Suboperator {
    /// Attach runtime parameters for this sub-operator.
    void attachRuntimeParams(TScanIUProviderRuntimeParams runtime_params_);
 
-   void consume(IURef iu, CompilationContext& context) const override;
+   void consume(const IU& iu, CompilationContext& context) const override;
 
    void setUpState() override;
    void tearDownState() override;

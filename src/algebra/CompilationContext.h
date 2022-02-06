@@ -31,7 +31,7 @@ struct CompilationContext {
    void requestIU(const Suboperator& op, Pipeline::IUScoped iu);
 
    /// Declare an IU within the context of the given suboperator.
-   void declareIU(Pipeline::IUScoped iu, const IR::Stmt* stmt);
+   void declareIU(Pipeline::IUScoped iu, const IR::Stmt& stmt);
    /// Get an IU declaration.
    const IR::Stmt* getIUDeclaraion(Pipeline::IUScoped iu);
 
@@ -56,9 +56,9 @@ struct CompilationContext {
    /// How many of the IU requests were serviced for every operator.
    std::unordered_map<const Suboperator*, size_t> serviced_requests;
    /// The open IU requests which need to be mapped. (from -> to)
-   std::unordered_map<const Suboperator*, std::pair<const Suboperator*, IU*>> requests;
+   std::unordered_map<const Suboperator*, std::pair<const Suboperator*, const IU*>> requests;
    /// Scoped IU declarations.
-   std::map<std::pair<IU*, size_t>, const IR::Stmt*> scoped_declarations;
+   std::map<std::pair<const IU*, size_t>, const IR::Stmt*> scoped_declarations;
 };
 
 }

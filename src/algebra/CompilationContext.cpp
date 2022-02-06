@@ -30,7 +30,7 @@ void CompilationContext::requestIU(const Suboperator& op, Pipeline::IUScoped iu)
    // Resolve the IU provider.
    Suboperator& provider = pipeline.getProvider(iu);
    // Store in the request map.
-   requests[&provider] = {&op, &iu.iu.get()};
+   requests[&provider] = {&op, &iu.iu};
    if (!computed.count(&provider)) {
       // Request to compute if it was not computed yet.
       provider.produce(*this);
@@ -40,12 +40,12 @@ void CompilationContext::requestIU(const Suboperator& op, Pipeline::IUScoped iu)
    }
 }
 
-void CompilationContext::declareIU(Pipeline::IUScoped iu, const IR::Stmt* stmt) {
-   scoped_declarations[{&iu.iu.get(), iu.scope_id}] = stmt;
+void CompilationContext::declareIU(Pipeline::IUScoped iu, const IR::Stmt& stmt) {
+   scoped_declarations[{&iu.iu, iu.scope_id}] = &stmt;
 }
 
 const IR::Stmt* CompilationContext::getIUDeclaraion(Pipeline::IUScoped iu) {
-   return scoped_declarations.at({&iu.iu.get(), iu.scope_id});
+   return scoped_declarations.at({&iu.iu, iu.scope_id});
 }
 
 IR::ExprPtr CompilationContext::accessGlobalState(const Suboperator& op) {

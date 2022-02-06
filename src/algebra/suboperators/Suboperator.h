@@ -52,7 +52,7 @@ struct Suboperator {
    /// The default implementation simply generated code for the children one by one.
    virtual void produce(CompilationContext& context) const;
    /// Consume a specific IU.
-   virtual void consume(IURef iu, CompilationContext& context) const {};
+   virtual void consume(const IU& iu, CompilationContext& context) const {};
    /// Consume once all IUs are ready.
    virtual void consumeAllChildren(CompilationContext& context) const {};
 

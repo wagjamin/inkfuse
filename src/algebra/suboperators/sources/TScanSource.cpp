@@ -3,6 +3,7 @@
 #include "codegen/Type.h"
 #include "exec/FuseChunk.h"
 #include "runtime/Runtime.h"
+#include <functional>
 
 namespace inkfuse {
 
@@ -68,6 +69,9 @@ void TScanDriver::produce(CompilationContext& context) const {
       builder.getRootBlock().appendStmts(std::move(preamble_stmts));
    }
 
+   // Register provided IU with the compilation context.
+   context.declareIU({loop_driver_iu, 0}, *decl_start_ptr);
+
    {
       // Next up we create the driving for-loop.
       auto while_block = builder.buildWhile(
@@ -126,9 +130,9 @@ void TSCanIUProvider::attachRuntimeParams(TScanIUProviderRuntimeParams runtime_p
    runtime_params = runtime_params_;
 }
 
-void TSCanIUProvider::consume(IURef iu, CompilationContext& context) const
+void TSCanIUProvider::consume(const IU& iu, CompilationContext& context) const
 {
-   assert(&iu.get() == *source_ius.begin());
+   assert(&iu == *source_ius.begin());
    // Declare IU.
 
 }

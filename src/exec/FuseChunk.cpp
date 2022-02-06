@@ -20,23 +20,23 @@ FuseChunk::FuseChunk(size_t capacity_) : capacity(capacity_) {
 // Constructor without params just takes default chunk size.
 FuseChunk::FuseChunk() : FuseChunk(DEFAULT_CHUNK_SIZE) {}
 
-void FuseChunk::attachColumn(IURef iu) {
-   auto column = std::make_unique<Column>(*iu.get().type, capacity);
-   columns[&iu.get()] = std::move(column);
+void FuseChunk::attachColumn(const IU& iu) {
+   auto column = std::make_unique<Column>(*iu.type, capacity);
+   columns[&iu] = std::move(column);
 }
 
 uint64_t FuseChunk::getCapacity() const {
    return capacity;
 }
 
-Column& FuseChunk::getColumn(IURef iu) const {
-   if (!columns.count(&iu.get())) {
+Column& FuseChunk::getColumn(const IU& iu) const {
+   if (!columns.count(&iu)) {
       throw std::runtime_error("iu does not exist in FuseChunk");
    }
-   return *columns.at(&iu.get());
+   return *columns.at(&iu);
 }
 
-const std::unordered_map<IU*, ColumnPtr>& FuseChunk::getColumns() const {
+const std::unordered_map<const IU*, ColumnPtr>& FuseChunk::getColumns() const {
    return columns;
 }
 

@@ -47,18 +47,18 @@ struct FuseChunk {
    FuseChunk(size_t capacity_);
 
    /// Attach a new column corresponding to the provided IU.
-   void attachColumn(IURef iu);
+   void attachColumn(const IU& iu);
 
    /// Get capacity of columns within the fuse chunk.
    uint64_t getCapacity() const;
    /// Get a certain column.
-   Column& getColumn(IURef iu) const;
+   Column& getColumn(const IU& iu) const;
    /// Get the full backing column map.
-   const std::unordered_map<IU*, ColumnPtr>& getColumns() const;
+   const std::unordered_map<const IU*, ColumnPtr>& getColumns() const;
 
    private:
    /// Map from the IUs to the actual columns storing raw data.
-   std::unordered_map<IU*, ColumnPtr> columns;
+   std::unordered_map<const IU*, ColumnPtr> columns;
    /// Capacity of the backing columns in the chunk.
    uint64_t capacity;
 };

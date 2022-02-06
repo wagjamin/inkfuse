@@ -4,22 +4,22 @@
 
 namespace inkfuse {
 
-void Scope::registerProducer(IURef iu, Suboperator &op)
+void Scope::registerProducer(const IU& iu, Suboperator &op)
 {
-   iu_producers[&iu.get()] = &op;
+   iu_producers[&iu] = &op;
 }
 
-Suboperator& Scope::getProducer(IURef iu)
+Suboperator& Scope::getProducer(const IU& iu) const
 {
-   return *iu_producers.at(&iu.get());
+   return *iu_producers.at(&iu);
 }
 
-Column &Scope::getColumn(IURef iu)
+Column &Scope::getColumn(const IU& iu) const
 {
    return chunk->getColumn(iu);
 }
 
-Column &Scope::getSel()
+Column &Scope::getSel() const
 {
    IURef ref(*selection);
    return getColumn(ref);

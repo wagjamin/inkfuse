@@ -29,16 +29,16 @@ struct Scope {
    Scope(size_t id_) : Scope(id_, std::make_shared<FuseChunk>()){};
 
    /// Register an IU producer within the given scope.
-   void registerProducer(IURef iu, Suboperator& op);
+   void registerProducer(const IU& iu, Suboperator& op);
 
    /// Get the producing sub-operator of an IU within the given scope.
-   Suboperator& getProducer(IURef iu);
+   Suboperator& getProducer(const IU& iu) const;
 
    /// Get the raw data column for the given IU.
-   Column& getColumn(IURef iu);
+   Column& getColumn(const IU& iu) const;
 
    /// Get the raw data column for the selection vector.
-   Column& getSel();
+   Column& getSel() const;
 
    /// Scope id.
    size_t id;
@@ -49,7 +49,7 @@ struct Scope {
    /// does not have to copy all data.
    std::shared_ptr<FuseChunk> chunk;
    /// A map from IUs to the producing operators.
-   std::unordered_map<IU*, Suboperator*> iu_producers;
+   std::unordered_map<const IU*, Suboperator*> iu_producers;
 };
 
 using ScopePtr = std::unique_ptr<Scope>;
@@ -65,12 +65,12 @@ struct Pipeline {
 
    /// A scoped IU represents a specific instance of the IU within the larger pipeline.
    struct IUScoped {
-      IUScoped(IURef iu_, size_t scope_id): iu(iu_), scope_id(scope_id) {}
+      IUScoped(const IU& iu_, const size_t scope_id): iu(iu_), scope_id(scope_id) {}
 
       /// The IU being referenced.
-      IURef iu;
+      const IU& iu;
       /// The scope id in which the IU is being referenced.
-      size_t scope_id;
+      const size_t scope_id;
    };
 
    /// Get the raw data given a scoped IU.
