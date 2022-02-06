@@ -1,4 +1,5 @@
 #include <gtest/gtest.h>
+#include "algebra/suboperators/sources/TScanSource.h"
 #include "codegen/backend_c/BackendC.h"
 #include "codegen/Expression.h"
 #include "codegen/IR.h"
@@ -49,8 +50,8 @@ namespace inkfuse {
                 // Cast the first argument to a pointer to the ColumnScanState
                 IR::CastExpr::build(
                         IR::VarRefExpr::build(fct_builder.getArg(0)),
-                        IR::Pointer::build(runtime.getStruct("ColumnScanState"))),
-                "size");
+                        IR::Pointer::build(runtime.getStruct(TScanDriverState::name))),
+                "start");
         auto stmt = IR::ReturnStmt::build(std::move(expr));
         fct_builder.appendStmt(std::move(stmt));
 
@@ -65,14 +66,13 @@ namespace inkfuse {
         c_program->compileToMachinecode();
 
         // Get a handle to the function.
-        auto fct_compiled = reinterpret_cast<uint64_t (*)(ColumnScanState*)>(c_program->getFunction("test_fct"));
+        auto fct_compiled = reinterpret_cast<uint64_t (*)(TScanDriverState*)>(c_program->getFunction("test_fct"));
 
         for (uint64_t i : {1, 100, 1000, 42, 311}) {
             // Set up actual parameter.
-            ColumnScanState param {
-                    .data = nullptr,
-                    .sel = nullptr,
-                    .size = i,
+            TScanDriverState param {
+               .start = i,
+               .end = 2 * i,
             };
 
             // Invoke the test function multiple times.
