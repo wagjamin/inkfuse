@@ -23,4 +23,13 @@ std::stringstream Suboperator::getVarIdentifier() const
    return str;
 }
 
+std::string Suboperator::buildIUName(Pipeline::IUScoped iu) const
+{
+   std::stringstream str;
+   str << "iu_" << iu.iu.name << "_" << iu.scope_id;
+   return str.str();
+}
+
+
+
 }

@@ -76,11 +76,14 @@ struct Suboperator {
    virtual std::string id() const = 0;
    /// Get a variable identifier which is unique to this suboperator.
    std::stringstream getVarIdentifier() const;
+   /// Build the name for a given iu.
+   std::string buildIUName(Pipeline::IUScoped iu) const;
 
    /// How many ius does this suboperator depend on?
    size_t getNumSourceIUs() const { return source_ius.size(); }
 
    protected:
+
    /// The operator which decayed into this Suboperator.
    const RelAlgOp* source;
 

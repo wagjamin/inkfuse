@@ -44,8 +44,8 @@ void CompilationContext::declareIU(Pipeline::IUScoped iu, const IR::Stmt& stmt) 
    scoped_declarations[{&iu.iu, iu.scope_id}] = &stmt;
 }
 
-const IR::Stmt* CompilationContext::getIUDeclaraion(Pipeline::IUScoped iu) {
-   return scoped_declarations.at({&iu.iu, iu.scope_id});
+const IR::Stmt& CompilationContext::getIUDeclaration(Pipeline::IUScoped iu) {
+   return *scoped_declarations.at({&iu.iu, iu.scope_id});
 }
 
 IR::ExprPtr CompilationContext::accessGlobalState(const Suboperator& op) {

@@ -33,7 +33,7 @@ struct CompilationContext {
    /// Declare an IU within the context of the given suboperator.
    void declareIU(Pipeline::IUScoped iu, const IR::Stmt& stmt);
    /// Get an IU declaration.
-   const IR::Stmt* getIUDeclaraion(Pipeline::IUScoped iu);
+   const IR::Stmt& getIUDeclaration(Pipeline::IUScoped iu);
 
    /// Access the local state of the given sub-operator. Returns a void pointer.
    IR::ExprPtr accessGlobalState(const Suboperator& op);
