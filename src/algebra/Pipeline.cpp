@@ -1,4 +1,5 @@
 #include "algebra/Pipeline.h"
+#include "algebra/suboperators/Suboperator.h"
 #include <algorithm>
 
 namespace inkfuse {
@@ -36,17 +37,23 @@ Column &Pipeline::getScopedIU(IUScoped iu)
    return scopes[iu.scope_id]->getColumn(iu.iu);
 }
 
-Suboperator& Pipeline::getProvider(const Suboperator& op, IURef iu)
+
+Column &Pipeline::getSelectionCol(size_t scope_id)
 {
-    auto scope = resolveOperatorScope(op);
-    scopes[scope]->getProducer(iu);
+   assert(scope_id < scopes.size());
+   return scopes[scope_id]->getSel();
+}
+
+Suboperator & Pipeline::getProvider(IUScoped iu)
+{
+   return scopes[iu.scope_id]->getProducer(iu.iu);
 }
 
 size_t Pipeline::resolveOperatorScope(const Suboperator& op) const
 {
    // Find the index of the suboperator in the topological sort.
-   auto it = std::find(suboperators.cbegin(), suboperators.cend(), [&op](const SuboperatorPtr& target){
-      return target.get() == &op;
+   auto it = std::find_if(suboperators.cbegin(), suboperators.cend(), [&op](const SuboperatorPtr& target){
+     return target.get() == &op;
    });
    auto idx = std::distance(suboperators.cbegin(), it);
 
@@ -54,12 +61,6 @@ size_t Pipeline::resolveOperatorScope(const Suboperator& op) const
    auto it_scope = std::lower_bound(rescope_offsets.cbegin(), rescope_offsets.cend(), idx);
    // Go back one index as we have to reference the previous scope.
    return std::distance(rescope_offsets.begin(), it_scope) - 1;
-}
-
-Column &Pipeline::getSelectionCol(size_t scope_id)
-{
-   assert(scope_id < scopes.size());
-   return scopes[scope_id]->getSel();
 }
 
 void Pipeline::attachSuboperator(SuboperatorPtr subop) {

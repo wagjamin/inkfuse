@@ -5,9 +5,10 @@ namespace inkfuse {
 
 void Suboperator::produce(CompilationContext& context) const
 {
+   auto scope = context.resolveScope(*this);
    // Request the creation of all source ius this suboperator needs to consume.
    for (const auto& src_iu: source_ius) {
-      context.requestIU(src_iu);
+      context.requestIU(*this, {*src_iu, scope});
    }
 }
 

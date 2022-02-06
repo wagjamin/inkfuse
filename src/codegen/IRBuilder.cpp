@@ -14,8 +14,8 @@ If::If(FunctionBuilder& builder_, ExprPtr expr_)
    : builder(builder_),
      original_block(builder.curr_block),
      expr(std::move(expr_)),
-     if_block(std::make_unique<Block>(std::vector<StmtPtr>{})),
-     else_block(std::make_unique<Block>(std::vector<StmtPtr>{}))
+     if_block(std::make_unique<Block>(std::deque<StmtPtr>{})),
+     else_block(std::make_unique<Block>(std::deque<StmtPtr>{}))
 {
    // Install if block as the current one in the builder.
    // Form now on, all appendStmts in the backing builder will go into this block.
@@ -60,7 +60,7 @@ While::While(FunctionBuilder& builder_, ExprPtr expr_)
    : builder(builder_),
      original_block(builder.curr_block),
      expr(std::move(expr_)),
-     body(std::make_unique<Block>(std::vector<StmtPtr>{}))
+     body(std::make_unique<Block>(std::deque<StmtPtr>{}))
 {
    // Install body block as the current one in the builder.
    // Form now on, all appendStmts in the backing builder will go into this block.
@@ -88,7 +88,7 @@ FunctionBuilder::FunctionBuilder(IRBuilder& builder_, FunctionArc function_)
    if (function->body) {
       throw std::runtime_error("Cannot create function builder on function with non-empty body");
    }
-   function->body = std::make_unique<Block>(std::vector<StmtPtr>{});
+   function->body = std::make_unique<Block>(std::deque<StmtPtr>{});
    root_block = function->body.get();
    curr_block = root_block;
 }

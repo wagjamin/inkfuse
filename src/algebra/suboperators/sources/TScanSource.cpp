@@ -6,6 +6,9 @@
 
 namespace inkfuse {
 
+const char* TScanDriverState::name = "TScanDriverState";
+const char* TScanIUProviderState::name = "TScanIUProviderState";
+
 // static
 void TScanDriver::registerRuntime() {
    RuntimeStructBuilder{TScanDriverState::name}
@@ -18,15 +21,21 @@ void TSCanIUProvider::registerRuntime() {
       .addMember("start", IR::Pointer::build(IR::Void::build()));
 }
 
-std::unique_ptr<TScanDriver> TScanDriver::build(const RelAlgOp* source, const StoredRelation& rel) {
-   return std::unique_ptr<TScanDriver>(new TScanDriver(source, rel));
+std::unique_ptr<TScanDriver> TScanDriver::build(const RelAlgOp* source) {
+   return std::unique_ptr<TScanDriver>(new TScanDriver(source));
 }
 
-TScanDriver::TScanDriver(const RelAlgOp* source, const StoredRelation& rel)
-   : Suboperator(source, {}, {}), loop_driver_iu(IR::UnsignedInt::build(8)), rel_size(rel.getColumn(0).second.length()) {
-   if (source) {
+TScanDriver::TScanDriver(const RelAlgOp* source)
+   : Suboperator(source, {}, {}), loop_driver_iu(IR::UnsignedInt::build(8)) {
+   if (source && loop_driver_iu.name.empty()) {
       loop_driver_iu.name = "iu_" + source->op_name + "_idx";
    }
+}
+
+
+void TScanDriver::attachRuntimeParams(TScanDriverRuntimeParams runtime_params_)
+{
+   runtime_params = runtime_params_;
 }
 
 void TScanDriver::produce(CompilationContext& context) const {
@@ -93,13 +102,14 @@ bool TScanDriver::pickMorsel() {
    }
 
    // Go up to the maximum chunk size of the intermediate results or the total relation size.
-   state->end = std::min(state->start + DEFAULT_CHUNK_SIZE, rel_size);
+   state->end = std::min(state->start + DEFAULT_CHUNK_SIZE, runtime_params->rel_size);
 
    // If the starting point advanced to the end, then we know there are no more morsels to pick.
-   return state->start != rel_size;
+   return state->start != runtime_params->rel_size;
 }
 
 void TScanDriver::setUpState() {
+   assert(runtime_params);
    state = std::make_unique<TScanDriverState>();
 }
 
@@ -109,6 +119,46 @@ void TScanDriver::tearDownState() {
 
 void* TScanDriver::accessState() const {
    return state.get();
+}
+
+void TSCanIUProvider::attachRuntimeParams(TScanIUProviderRuntimeParams runtime_params_)
+{
+   runtime_params = runtime_params_;
+}
+
+void TSCanIUProvider::consume(IURef iu, CompilationContext& context) const
+{
+   assert(&iu.get() == *source_ius.begin());
+   // Declare IU.
+
+}
+
+void TSCanIUProvider::setUpState()
+{
+   assert(runtime_params);
+   state = std::make_unique<TScanIUProviderState>();
+   state->raw_data = runtime_params->raw_data;
+}
+
+void TSCanIUProvider::tearDownState()
+{
+   state.reset();
+}
+
+void * TSCanIUProvider::accessState() const
+{
+   return state.get();
+}
+
+std::string TSCanIUProvider::id() const
+{
+   return "TSCanIUProvider_" + params.type->id();
+}
+
+TSCanIUProvider::TSCanIUProvider(const RelAlgOp* source, IURef driver_iu, IURef produced_iu)
+: Suboperator(source, {&produced_iu.get()}, {&driver_iu.get()})
+{
+
 }
 
 }

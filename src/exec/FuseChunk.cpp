@@ -6,7 +6,7 @@ namespace inkfuse {
 
 Column::Column(const IR::Type& type, size_t capacity) {
    // Allocate raw array, note that it has to be aligned on the size boundary of the backing type.
-   raw_data = static_cast<char*>(std::aligned_alloc(type_.numBytes(), capacity * type_.numBytes()));
+   raw_data = static_cast<char*>(std::aligned_alloc(type.numBytes(), capacity * type.numBytes()));
 }
 
 Column::~Column() {

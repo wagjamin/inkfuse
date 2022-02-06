@@ -58,7 +58,7 @@ using FunctionArc = std::shared_ptr<Function>;
 
 /// A block of statements within a function.
 struct Block {
-   Block(std::deque<StmtPtr> statements_) : statements(std::move(statements_)){};
+   Block(std::deque<StmtPtr> statements_) : statements(std::move(statements_)) {};
 
    /// Append statement to the block.
    void appendStmt(StmtPtr stmt);

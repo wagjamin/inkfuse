@@ -42,7 +42,8 @@ struct RelAlgOp;
 /// parameter logic and codegen structure.
 struct Suboperator {
    /// Suboperator constructor. Parametrized as described above and also fitting a certain type.
-   Suboperator(const RelAlgOp* source_, std::set<IURef> provided_ius_, std::set<IURef> source_ius_)
+   Suboperator(const RelAlgOp* source_, std::set<IU*> provided_ius_, std::set<IU*> source_ius_)
+
       : source(source_), provided_ius(std::move(provided_ius_)), source_ius(std::move(source_ius_)) {}
 
    virtual ~Suboperator() = default;
@@ -68,7 +69,7 @@ struct Suboperator {
    /// Get a raw pointer to the state of this operator.
    virtual void* accessState() const { return nullptr; };
    /// Pick a morsel of work. Only relevant for source operators.
-   virtual bool pickMorsel() {}
+   virtual bool pickMorsel() { return false; }
 
    /// Build a unique identifier for this suboperator (unique given the parameter set).
    /// This is needed to effectively use the fragment cache during vectorized interpretation.
@@ -84,9 +85,9 @@ struct Suboperator {
    const RelAlgOp* source;
 
    /// IUs produced by this sub-operator.
-   std::set<IURef> provided_ius;
+   std::set<IU*> provided_ius;
    /// Source IUs on which this sub-operator depends.
-   std::set<IURef> source_ius;
+   std::set<IU*> source_ius;
 
 };
 

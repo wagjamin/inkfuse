@@ -1,9 +1,10 @@
 #ifndef INKFUSE_PIPELINE_H
 #define INKFUSE_PIPELINE_H
 
-#include "algebra/CompilationContext.h"
+#include "exec/FuseChunk.h"
 #include <memory>
 #include <vector>
+#include <set>
 
 namespace inkfuse {
 
@@ -64,6 +65,8 @@ struct Pipeline {
 
    /// A scoped IU represents a specific instance of the IU within the larger pipeline.
    struct IUScoped {
+      IUScoped(IURef iu_, size_t scope_id): iu(iu_), scope_id(scope_id) {}
+
       /// The IU being referenced.
       IURef iu;
       /// The scope id in which the IU is being referenced.
@@ -76,8 +79,8 @@ struct Pipeline {
    /// Get the selection vector for a given scope.
    Column& getSelectionCol(size_t scope_id);
 
-   /// Get the IU provider for a certain IU in the scope of a certain operator.
-   Suboperator& getProvider(const Suboperator& op, IURef iu);
+   /// Get the IU provider in a certain scope.
+   Suboperator& getProvider(IUScoped iu);
 
    /// Resolve the scope of a given operator.
    size_t resolveOperatorScope(const Suboperator& op) const;
