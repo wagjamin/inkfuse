@@ -256,7 +256,8 @@ void BackendC::compileStatement(const IR::Stmt& statement, ScopedWriter& writer)
       }
 
       bool visitAssignment(const IR::AssignmentStmt& stmt, ScopedWriter::Statement& writer) override {
-         writer.stream() << stmt.declaraion.name << " = ";
+         compileExpression(*stmt.left_side, writer);
+         writer.stream() << " = ";
          compileExpression(*stmt.expr, writer);
          return true;
       }

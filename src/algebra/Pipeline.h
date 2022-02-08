@@ -2,14 +2,12 @@
 #define INKFUSE_PIPELINE_H
 
 #include "exec/FuseChunk.h"
+#include "algebra/suboperators/Suboperator.h"
 #include <memory>
 #include <vector>
 #include <set>
 
 namespace inkfuse {
-
-struct Suboperator;
-using SuboperatorPtr = std::unique_ptr<Suboperator>;
 
 /// In inkfuse, a scope represents the maximum number of suboperators during whose execution
 /// a selection vector remains valid. When leaving a scope, a new FuseChunk and a new selection vector
@@ -63,16 +61,6 @@ struct Pipeline {
    /// Constructor which creates a root scope.
    Pipeline();
 
-   /// A scoped IU represents a specific instance of the IU within the larger pipeline.
-   struct IUScoped {
-      IUScoped(const IU& iu_, const size_t scope_id): iu(iu_), scope_id(scope_id) {}
-
-      /// The IU being referenced.
-      const IU& iu;
-      /// The scope id in which the IU is being referenced.
-      const size_t scope_id;
-   };
-
    /// Get the raw data given a scoped IU.
    Column& getScopedIU(IUScoped iu);
 
@@ -86,14 +74,14 @@ struct Pipeline {
    size_t resolveOperatorScope(const Suboperator& op) const;
 
    /// Add a new sub-operator to the pipeline.
-   void attachSuboperator(SuboperatorPtr subop);
+   void attachSuboperator(std::unique_ptr<Suboperator> subop);
 
    private:
    friend class CompilationContext;
 
    /// The sub-operators within this pipeline. These are arranged in a topological order of the backing
    /// DAG structure.
-   std::vector<SuboperatorPtr> suboperators;
+   std::vector<std::unique_ptr<Suboperator>> suboperators;
 
    /// The offsets of the sink sub-operators of this pipeline. These are the ones where interpretation needs to begin.
    std::set<size_t> sinks;

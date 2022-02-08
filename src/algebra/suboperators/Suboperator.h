@@ -1,9 +1,7 @@
 #ifndef INKFUSE_SUBOPERATOR_H
 #define INKFUSE_SUBOPERATOR_H
 
-#include "algebra/CompilationContext.h"
 #include "algebra/IU.h"
-#include "algebra/Pipeline.h"
 #include <sstream>
 #include <memory>
 #include <set>
@@ -14,6 +12,16 @@ namespace inkfuse {
 struct CompilationContext;
 struct FuseChunk;
 struct RelAlgOp;
+
+/// A scoped IU represents a specific instance of the IU within the larger pipeline.
+struct IUScoped {
+   IUScoped(const IU& iu_, const size_t scope_id): iu(iu_), scope_id(scope_id) {}
+
+   /// The IU being referenced.
+   const IU& iu;
+   /// The scope id in which the IU is being referenced.
+   const size_t scope_id;
+};
 
 /// A suboperator is a fragment of a central operator which has a corresponding vectorized primitive.
 /// An example might be the aggregation of an IU into some aggregation state.
@@ -56,6 +64,7 @@ struct Suboperator {
    /// Consume once all IUs are ready.
    virtual void consumeAllChildren(CompilationContext& context) const {};
 
+   // TODO Constify
    /// Is this a sink sub-operator which has no further descendants?
    virtual bool isSink() { return false; }
    /// Is this a source sub-operator driving execution?
@@ -77,10 +86,11 @@ struct Suboperator {
    /// Get a variable identifier which is unique to this suboperator.
    std::stringstream getVarIdentifier() const;
    /// Build the name for a given iu.
-   std::string buildIUName(Pipeline::IUScoped iu) const;
+   std::string buildIUName(IUScoped iu) const;
 
    /// How many ius does this suboperator depend on?
    size_t getNumSourceIUs() const { return source_ius.size(); }
+   const std::set<IU*>& getIUs() const { return provided_ius; }
 
    protected:
 

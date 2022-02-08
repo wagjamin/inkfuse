@@ -2,7 +2,6 @@
 #define INKFUSE_TSCANSOURCE_H
 
 #include "algebra/suboperators/Suboperator.h"
-#include "storage/Relation.h"
 
 // TODO Make attachRuntimeParams and ternary parameter structure
 //      a template class.
@@ -28,7 +27,7 @@ struct TScanDriverRuntimeParams {
 
 /// Loop driver for reading a morsel from an underlying table.
 struct TScanDriver : public Suboperator {
-   std::unique_ptr<TScanDriver> build(const RelAlgOp* source);
+   static std::unique_ptr<TScanDriver> build(const RelAlgOp* source);
 
    void attachRuntimeParams(TScanDriverRuntimeParams runtime_params_);
 
@@ -85,7 +84,7 @@ struct TScanIUProviderRuntimeParams {
 
 /// IU provider when reading from a table scan.
 struct TSCanIUProvider : public Suboperator {
-   static std::unique_ptr<TSCanIUProvider> build(const RelAlgOp* source, IURef driver_iu, IURef produced_iu, std::string_view column_name, const StoredRelation& rel);
+   static std::unique_ptr<TSCanIUProvider> build(const RelAlgOp* source, TScanIUProviderParams params, IURef driver_iu, IURef produced_iu);
 
    /// Attach runtime parameters for this sub-operator.
    void attachRuntimeParams(TScanIUProviderRuntimeParams runtime_params_);
@@ -102,7 +101,7 @@ struct TSCanIUProvider : public Suboperator {
    static void registerRuntime();
 
    private:
-   TSCanIUProvider(const RelAlgOp* source, IURef driver_iu, IURef produced_iu);
+   TSCanIUProvider(const RelAlgOp* source, TScanIUProviderParams params, IURef driver_iu, IURef produced_iu);
 
    /// Static parameters of the operator.
    TScanIUProviderParams params;

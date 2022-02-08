@@ -64,9 +64,13 @@ size_t Pipeline::resolveOperatorScope(const Suboperator& op) const
 }
 
 void Pipeline::attachSuboperator(SuboperatorPtr subop) {
-
+   if (subop->isSink()) {
+      sinks.emplace(suboperators.size());
+   }
+   for (auto iu: subop->getIUs()) {
+      scopes[0]->registerProducer(*iu, *subop);
+   }
+   suboperators.push_back(std::move(subop));
 }
-
-
 
 }

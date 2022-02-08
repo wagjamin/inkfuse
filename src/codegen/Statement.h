@@ -49,11 +49,14 @@ struct DeclareStmt : public Stmt {
 
 /// Assignment statement.
 struct AssignmentStmt : public Stmt {
-   AssignmentStmt(const Stmt& statement, ExprPtr expr_) : declaraion(reinterpret_cast<const DeclareStmt&>(statement)), expr(std::move(expr_)) {}
+   AssignmentStmt(const Stmt& statement, ExprPtr expr_) : left_side(IR::VarRefExpr::build(statement)), expr(std::move(expr_)) {}
    static StmtPtr build(const Stmt& statement, ExprPtr expr_);
 
-   /// Variable name to which to write.
-   const DeclareStmt& declaraion;
+   AssignmentStmt(ExprPtr left_side_, ExprPtr expr_) : left_side(std::move(left_side_)), expr(std::move(expr_)) {}
+   static StmtPtr build(ExprPtr left_side_, ExprPtr expr_);
+
+   /// Expression into which to assign.
+   ExprPtr left_side;
    /// Expression which should be assigned.
    ExprPtr expr;
 };

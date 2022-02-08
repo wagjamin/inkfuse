@@ -1,4 +1,5 @@
 #include "algebra/suboperators/sources/TScanSource.h"
+#include "algebra/CompilationContext.h"
 #include "algebra/RelAlgOp.h"
 #include "codegen/Type.h"
 #include "exec/FuseChunk.h"
@@ -31,6 +32,7 @@ TScanDriver::TScanDriver(const RelAlgOp* source)
    if (source && loop_driver_iu.name.empty()) {
       loop_driver_iu.name = "iu_" + source->op_name + "_idx";
    }
+   provided_ius.emplace(&loop_driver_iu);
 }
 
 
@@ -47,9 +49,11 @@ void TScanDriver::produce(CompilationContext& context) const {
    IR::Stmt* decl_end_ptr;
    {
       // In a first step we get the start and end value from the picked morsel and extract them into the root scope.
-      auto state_expr = context.accessGlobalState(*this);
+      auto state_expr_1 = context.accessGlobalState(*this);
+      auto state_expr_2 = context.accessGlobalState(*this);
       // Cast it to a TScanDriverState pointer.
-      auto cast_expr = IR::CastExpr(std::move(state_expr), IR::Pointer::build(program.getStruct(TScanDriverState::name)));
+      auto start_cast_expr = IR::CastExpr::build(std::move(state_expr_1), IR::Pointer::build(program.getStruct(TScanDriverState::name)));
+      auto end_cast_expr = IR::CastExpr::build(std::move(state_expr_2), IR::Pointer::build(program.getStruct(TScanDriverState::name)));
       // Build start and end variables. Start variable is also the index IU.
       auto end_var_name = getVarIdentifier();
       end_var_name << "_end";
@@ -58,8 +62,8 @@ void TScanDriver::produce(CompilationContext& context) const {
       auto decl_end = IR::DeclareStmt::build(end_var_name.str(), IR::UnsignedInt::build(8));
       decl_end_ptr = decl_end.get();
       // And assign.
-      auto assign_start = IR::AssignmentStmt::build(*decl_start, IR::StructAccesExpr::build(IR::VarRefExpr::build(*decl_start), "start"));
-      auto assign_end = IR::AssignmentStmt::build(*decl_end, IR::StructAccesExpr::build(IR::VarRefExpr::build(*decl_start), "end"));
+      auto assign_start = IR::AssignmentStmt::build(*decl_start, IR::StructAccesExpr::build(std::move(start_cast_expr), "start"));
+      auto assign_end = IR::AssignmentStmt::build(*decl_end, IR::StructAccesExpr::build(std::move(end_cast_expr), "end"));
       // Add this to the function preamble.
       std::deque<IR::StmtPtr> preamble_stmts;
       preamble_stmts.push_back(std::move(decl_start));
@@ -87,7 +91,7 @@ void TScanDriver::produce(CompilationContext& context) const {
          IR::ArithmeticExpr::build(
             IR::VarRefExpr::build(*decl_start_ptr),
             IR::ConstExpr::build(IR::UI<8>::build(1)),
-            IR::ArithmeticExpr::Opcode::Less
+            IR::ArithmeticExpr::Opcode::Add
             )
          );
       builder.appendStmt(std::move(increment));
@@ -125,6 +129,11 @@ void* TScanDriver::accessState() const {
    return state.get();
 }
 
+std::unique_ptr<TSCanIUProvider> TSCanIUProvider::build(const RelAlgOp* source, TScanIUProviderParams params, IURef driver_iu, IURef produced_iu)
+{
+   return std::unique_ptr<TSCanIUProvider>(new TSCanIUProvider{source, std::move(params), driver_iu, produced_iu});
+}
+
 void TSCanIUProvider::attachRuntimeParams(TScanIUProviderRuntimeParams runtime_params_)
 {
    runtime_params = runtime_params_;
@@ -143,10 +152,10 @@ void TSCanIUProvider::consume(const IU& iu, CompilationContext& context) const
       // In a first step we get the raw data pointer and extract it into the root scope.
       auto state_expr = context.accessGlobalState(*this);
       // Cast it to a TScanDriverState pointer.
-      auto cast_expr = IR::CastExpr(std::move(state_expr), IR::Pointer::build(program.getStruct(TScanIUProviderState::name)));
+      auto cast_expr = IR::CastExpr::build(std::move(state_expr), IR::Pointer::build(program.getStruct(TScanIUProviderState::name)));
       // Build data variable.
       auto data_var_name = getVarIdentifier();
-      data_var_name << "_data";
+      data_var_name << "_start";
       auto target_ptr_type = IR::Pointer::build(iu.type);
       auto decl_start = IR::DeclareStmt::build(data_var_name.str(), target_ptr_type);
       decl_data_ptr = decl_start.get();
@@ -154,7 +163,7 @@ void TSCanIUProvider::consume(const IU& iu, CompilationContext& context) const
       auto assign_start = IR::AssignmentStmt::build(
          *decl_start,
          IR::CastExpr::build(
-            IR::StructAccesExpr::build(IR::VarRefExpr::build(*decl_start), "start"),
+            IR::StructAccesExpr::build(std::move(cast_expr), "start"),
             target_ptr_type
             )
          );
@@ -166,7 +175,7 @@ void TSCanIUProvider::consume(const IU& iu, CompilationContext& context) const
    }
 
    // Declare IU.
-   Pipeline::IUScoped declared_iu{iu, 0};
+   IUScoped declared_iu{**provided_ius.begin(), 0};
    auto declare = IR::DeclareStmt::build(buildIUName(declared_iu), iu.type);
    context.declareIU(declared_iu, *declare);
    // Assign value to IU. This is done by adding the offset to the data pointer and dereferencing.
@@ -210,8 +219,8 @@ std::string TSCanIUProvider::id() const
    return "TSCanIUProvider_" + params.type->id();
 }
 
-TSCanIUProvider::TSCanIUProvider(const RelAlgOp* source, IURef driver_iu, IURef produced_iu)
-: Suboperator(source, {&produced_iu.get()}, {&driver_iu.get()})
+TSCanIUProvider::TSCanIUProvider(const RelAlgOp* source, TScanIUProviderParams params_, IURef driver_iu, IURef produced_iu)
+: Suboperator(source, {&produced_iu.get()}, {&driver_iu.get()}), params(std::move(params_))
 {
 
 }

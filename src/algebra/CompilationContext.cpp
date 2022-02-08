@@ -5,15 +5,28 @@
 namespace inkfuse {
 
 CompilationContext::CompilationContext(std::string program_name, Pipeline& pipeline_)
-   : pipeline(pipeline_), program(std::move(program_name), false), fct_builder(createFctBuilder(program)) {
+   : pipeline(pipeline_), program(std::move(program_name), false) {
+}
+
+void CompilationContext::compile() {
+   // Create the builders.
+   builder.emplace(program);
+   for (const auto sink_offset : pipeline.sinks) {
+      pipeline.suboperators[sink_offset]->produce(*this);
+   }
+   // Destroy the builders.
+   builder.reset();
 }
 
 size_t CompilationContext::resolveScope(const Suboperator& op) {
-   return pipeline.resolveOperatorScope(op);
+   // TODO HACK
+   return 0;
+   // return pipeline.resolveOperatorScope(op);
 }
 
 void CompilationContext::notifyIUsReady(const Suboperator& op) {
    // Fetch the sub-operator which requested the given IU.
+   computed.emplace(&op);
    auto [requestor, iu] = requests[&op];
    // Remove the now serviced request from the map again.
    requests.erase(&op);
@@ -26,7 +39,7 @@ void CompilationContext::notifyIUsReady(const Suboperator& op) {
    }
 }
 
-void CompilationContext::requestIU(const Suboperator& op, Pipeline::IUScoped iu) {
+void CompilationContext::requestIU(const Suboperator& op, IUScoped iu) {
    // Resolve the IU provider.
    Suboperator& provider = pipeline.getProvider(iu);
    // Store in the request map.
@@ -40,17 +53,18 @@ void CompilationContext::requestIU(const Suboperator& op, Pipeline::IUScoped iu)
    }
 }
 
-void CompilationContext::declareIU(Pipeline::IUScoped iu, const IR::Stmt& stmt) {
+void CompilationContext::declareIU(IUScoped iu, const IR::Stmt& stmt) {
    scoped_declarations[{&iu.iu, iu.scope_id}] = &stmt;
 }
 
-const IR::Stmt& CompilationContext::getIUDeclaration(Pipeline::IUScoped iu) {
+const IR::Stmt& CompilationContext::getIUDeclaration(IUScoped iu) {
    return *scoped_declarations.at({&iu.iu, iu.scope_id});
 }
 
 IR::ExprPtr CompilationContext::accessGlobalState(const Suboperator& op) {
+   assert(builder);
    // Get global state.
-   auto& global_state = fct_builder.getArg(0);
+   auto& global_state = builder->fct_builder.getArg(0);
    auto found = std::find_if(
       pipeline.suboperators.cbegin(),
       pipeline.suboperators.cend(),
@@ -70,10 +84,15 @@ const IR::Program& CompilationContext::getProgram() {
 }
 
 IR::FunctionBuilder& CompilationContext::getFctBuilder() {
-   return fct_builder;
+   return builder->fct_builder;
 }
 
-IR::FunctionBuilder CompilationContext::createFctBuilder(IR::Program& program) {
+CompilationContext::Builder::Builder(IR::Program& program)
+   : ir_builder(program.getIRBuilder()), fct_builder(createFctBuilder(ir_builder))
+{
+}
+
+IR::FunctionBuilder CompilationContext::createFctBuilder(IR::IRBuilder& program) {
    // Generated functions for execution have three void* arguments.
    static const std::vector<std::string> arg_names{
       "global_state",
@@ -85,7 +104,7 @@ IR::FunctionBuilder CompilationContext::createFctBuilder(IR::Program& program) {
    }
    /// Return 1 byte integer which can be cast to a yield-state enum.
    auto return_type = IR::UnsignedInt::build(1);
-   return program.getIRBuilder().createFunctionBuilder(std::make_shared<IR::Function>("execute", std::move(args), std::move(return_type)));
+   return program.createFunctionBuilder(std::make_shared<IR::Function>("execute", std::move(args), std::move(return_type)));
 }
 
 }

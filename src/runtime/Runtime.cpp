@@ -1,5 +1,6 @@
 #include "runtime/Runtime.h"
 #include "algebra/suboperators/sources/TScanSource.h"
+#include "algebra/suboperators/sinks/FuseChunkSink.h"
 
 namespace inkfuse {
 
@@ -10,6 +11,7 @@ GlobalRuntime::GlobalRuntime() : program(std::make_unique<IR::Program>("global_r
    // Register the different runtime structs of the suboperators.
    TScanDriver::registerRuntime();
    TSCanIUProvider::registerRuntime();
+   FuseChunkSink::registerRuntime();
 }
 
 RuntimeStructBuilder::~RuntimeStructBuilder() {

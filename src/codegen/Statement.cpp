@@ -21,6 +21,11 @@ StmtPtr AssignmentStmt::build(const Stmt& stmt, ExprPtr expr_) {
    return std::make_unique<AssignmentStmt>(stmt, std::move(expr_));
 }
 
+StmtPtr AssignmentStmt::build(ExprPtr left_side_, ExprPtr expr_)
+{
+   return std::make_unique<AssignmentStmt>(std::move(left_side_), std::move(expr_));
+}
+
 }
 
 }
