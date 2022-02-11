@@ -4,15 +4,18 @@
 
 namespace inkfuse {
 
-void Suboperator::produce(CompilationContext& context) const
+void Suboperator::open(CompilationContext& context)
 {
    auto scope = context.resolveScope(*this);
-   // TODO HACK
-   scope = 0;
    // Request the creation of all source ius this suboperator needs to consume.
    for (const auto& src_iu: source_ius) {
       context.requestIU(*this, {*src_iu, scope});
    }
+}
+
+void Suboperator::close(CompilationContext& context)
+{
+   context.notifyOpClosed(*this);
 }
 
 std::stringstream Suboperator::getVarIdentifier() const

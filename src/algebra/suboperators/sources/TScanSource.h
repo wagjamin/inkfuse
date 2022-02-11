@@ -2,6 +2,8 @@
 #define INKFUSE_TSCANSOURCE_H
 
 #include "algebra/suboperators/Suboperator.h"
+#include "codegen/IRBuilder.h"
+#include <optional>
 
 // TODO Make attachRuntimeParams and ternary parameter structure
 //      a template class.
@@ -31,11 +33,14 @@ struct TScanDriver : public Suboperator {
 
    void attachRuntimeParams(TScanDriverRuntimeParams runtime_params_);
 
-   /// Source - only produce is relevant and creates the respective loop driving execution.
-   void produce(CompilationContext& context) const override;
+   void rescopePipeline(Pipeline& pipe) override;
+
+   /// Source - only open and close are relevant and create the respective loop driving execution.
+   void open(CompilationContext& context) override;
+   void close(CompilationContext& context) override;
 
    /// The LoopDriver is a source operator which picks morsel ranges from the backing storage.
-   bool isSource() override { return true; }
+   bool isSource() const override { return true; }
    /// Pick then next set of tuples from the table scan up to the maximum chunk size.
    bool pickMorsel() override;
 
@@ -60,6 +65,9 @@ struct TScanDriver : public Suboperator {
    std::unique_ptr<TScanDriverState> state;
    /// Optional runtime parameters.
    std::optional<TScanDriverRuntimeParams> runtime_params;
+   /// If code generation is in progress - the generated while loop whose scope
+   /// has to be closed down the line.
+   std::optional<IR::While> opt_while;
 };
 
 struct TScanIUProviderState {
@@ -89,7 +97,7 @@ struct TSCanIUProvider : public Suboperator {
    /// Attach runtime parameters for this sub-operator.
    void attachRuntimeParams(TScanIUProviderRuntimeParams runtime_params_);
 
-   void consume(const IU& iu, CompilationContext& context) const override;
+   void consume(const IU& iu, CompilationContext& context) override;
 
    void setUpState() override;
    void tearDownState() override;

@@ -61,6 +61,11 @@ struct Pipeline {
    /// Constructor which creates a root scope.
    Pipeline();
 
+   /// Get the current scope.
+   Scope& getCurrentScope();
+   /// Rescope the pipeline.
+   void rescope(ScopePtr new_scope);
+
    /// Get the raw data given a scoped IU.
    Column& getScopedIU(IUScoped iu);
 

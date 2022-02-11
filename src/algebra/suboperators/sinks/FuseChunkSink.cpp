@@ -24,7 +24,7 @@ void FuseChunkSink::attachRuntimeParams(FuseChunkSinkStateRuntimeParams runtime_
    params = runtime_params_;
 }
 
-void FuseChunkSink::consume(const IU& iu, CompilationContext& context) const {
+void FuseChunkSink::consume(const IU& iu, CompilationContext& context) {
    assert(&iu == *source_ius.begin());
    auto& builder = context.getFctBuilder();
    const auto& program = context.getProgram();

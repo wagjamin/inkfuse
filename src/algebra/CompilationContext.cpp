@@ -9,22 +9,40 @@ CompilationContext::CompilationContext(std::string program_name, Pipeline& pipel
 }
 
 void CompilationContext::compile() {
-   // Create the builders.
+   // Create the builder.
    builder.emplace(program);
+   // Open all sources.
    for (const auto sink_offset : pipeline.sinks) {
-      pipeline.suboperators[sink_offset]->produce(*this);
+      pipeline.suboperators[sink_offset]->open(*this);
+   }
+   // And close them again.
+   for (const auto sink_offset : pipeline.sinks) {
+      pipeline.suboperators[sink_offset]->close(*this);
    }
    // Destroy the builders.
    builder.reset();
 }
 
-size_t CompilationContext::resolveScope(const Suboperator& op) {
-   // TODO HACK
-   return 0;
-   // return pipeline.resolveOperatorScope(op);
+void CompilationContext::notifyOpClosed(Suboperator& op)
+{
+   // Resolve the scope of the suboperator.
+   auto scope = resolveScope(op);
+   // Figure out the children of this operator.
+   for (const auto& requested_iu: op.getSourceIUs()) {
+      IUScoped iu(*requested_iu, scope);
+      Suboperator& provider = pipeline.getProvider(iu);
+      if (--properties[&provider].upstream_requests == 0) {
+         // This was the last upstream operator to close. Close the child as well.
+         provider.close(*this);
+      }
+   }
 }
 
-void CompilationContext::notifyIUsReady(const Suboperator& op) {
+size_t CompilationContext::resolveScope(const Suboperator& op) {
+   return pipeline.resolveOperatorScope(op);
+}
+
+void CompilationContext::notifyIUsReady(Suboperator& op) {
    // Fetch the sub-operator which requested the given IU.
    computed.emplace(&op);
    auto [requestor, iu] = requests[&op];
@@ -33,20 +51,22 @@ void CompilationContext::notifyIUsReady(const Suboperator& op) {
    assert(requestor);
    // Consume in the original requestor.
    requestor->consume(*iu, *this);
-   if (++serviced_requests[&op] == requestor->getNumSourceIUs()) {
+   if (++properties[&op].serviced_requests == requestor->getNumSourceIUs()) {
       // Consume in the original requestor notifying it that all children were produced successfuly.
       requestor->consumeAllChildren(*this);
    }
 }
 
-void CompilationContext::requestIU(const Suboperator& op, IUScoped iu) {
+void CompilationContext::requestIU(Suboperator& op, IUScoped iu) {
    // Resolve the IU provider.
    Suboperator& provider = pipeline.getProvider(iu);
+   // Update the upstream request count for the provider.
+   properties[&provider].upstream_requests++;
    // Store in the request map.
    requests[&provider] = {&op, &iu.iu};
    if (!computed.count(&provider)) {
       // Request to compute if it was not computed yet.
-      provider.produce(*this);
+      provider.open(*this);
    } else {
       // Otherwise directly notify the parent that we are ready.
       notifyIUsReady(provider);

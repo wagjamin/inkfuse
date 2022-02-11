@@ -29,9 +29,11 @@ struct CompilationContext {
    size_t resolveScope(const Suboperator& op);
 
    /// Notify the compilation context that the IUs of a given sub-operator are ready to be consumed.
-   void notifyIUsReady(const Suboperator& op);
+   void notifyIUsReady(Suboperator& op);
    /// Request a specific IU.
-   void requestIU(const Suboperator& op, IUScoped iu);
+   void requestIU(Suboperator& op, IUScoped iu);
+   /// Notify that one of the operators closed.
+   void notifyOpClosed(Suboperator& op);
 
    /// Declare an IU within the context of the given suboperator.
    void declareIU(IUScoped iu, const IR::Stmt& stmt);
@@ -55,6 +57,13 @@ struct CompilationContext {
       IR::FunctionBuilder fct_builder;
    };
 
+   struct NodeProperties {
+      /// How many of the children IUs were serviced already?
+      size_t serviced_requests = 0;
+      /// How many requests for this operator's IUs were there?
+      size_t upstream_requests = 0;
+   };
+
    /// The pipeline in whose context we generate the code.
    Pipeline& pipeline;
    /// The backing IR program.
@@ -63,10 +72,10 @@ struct CompilationContext {
    std::optional<Builder> builder;
    /// Which sub-operators were computed already? Needed to prevent double-computation in DAGs.
    std::set<const Suboperator*> computed;
-   /// How many of the IU requests were serviced for every operator.
-   std::unordered_map<const Suboperator*, size_t> serviced_requests;
+   /// Properties of the different nodes in the suboperator dag.
+   std::unordered_map<Suboperator*, NodeProperties> properties;
    /// The open IU requests which need to be mapped. (from -> to)
-   std::unordered_map<const Suboperator*, std::pair<const Suboperator*, const IU*>> requests;
+   std::unordered_map<Suboperator*, std::pair<Suboperator*, const IU*>> requests;
    /// Scoped IU declarations.
    std::map<std::pair<const IU*, size_t>, const IR::Stmt*> scoped_declarations;
 };

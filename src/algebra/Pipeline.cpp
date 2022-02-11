@@ -4,6 +4,7 @@
 
 namespace inkfuse {
 
+
 void Scope::registerProducer(const IU& iu, Suboperator &op)
 {
    iu_producers[&iu] = &op;
@@ -27,8 +28,17 @@ Column &Scope::getSel() const
 
 Pipeline::Pipeline()
 {
-   // Build the root scope of this compilation context.
-   scopes.push_back(std::make_unique<Scope>(0));
+}
+
+Scope & Pipeline::getCurrentScope() {
+   assert(!scopes.empty());
+   return **scopes.end();
+}
+
+void Pipeline::rescope(ScopePtr new_scope)
+{
+   scopes.push_back(std::move(new_scope));
+   rescope_offsets.push_back(scopes.size() - 1);
 }
 
 Column &Pipeline::getScopedIU(IUScoped iu)
@@ -58,7 +68,12 @@ size_t Pipeline::resolveOperatorScope(const Suboperator& op) const
    auto idx = std::distance(suboperators.cbegin(), it);
 
    // Find the index of the scope of the input ius of the target operator.
-   auto it_scope = std::lower_bound(rescope_offsets.cbegin(), rescope_offsets.cend(), idx);
+   if (idx == 0) {
+      // Source is a special operator which also resolves to scope 0.
+      // This is fine since the source will never have input ius it needs to resolve.
+      return 0;
+   }
+   auto it_scope = std::lower_bound(rescope_offsets.begin(), rescope_offsets.end(), idx);
    // Go back one index as we have to reference the previous scope.
    return std::distance(rescope_offsets.begin(), it_scope) - 1;
 }
@@ -67,8 +82,11 @@ void Pipeline::attachSuboperator(SuboperatorPtr subop) {
    if (subop->isSink()) {
       sinks.emplace(suboperators.size());
    }
+   // Rescope the pipeline.
+   subop->rescopePipeline(*this);
+   // Register IUs within the current scope.
    for (auto iu: subop->getIUs()) {
-      scopes[0]->registerProducer(*iu, *subop);
+      scopes.back()->registerProducer(*iu, *subop);
    }
    suboperators.push_back(std::move(subop));
 }

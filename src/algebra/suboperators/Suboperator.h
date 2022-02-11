@@ -12,10 +12,11 @@ namespace inkfuse {
 struct CompilationContext;
 struct FuseChunk;
 struct RelAlgOp;
+struct Pipeline;
 
 /// A scoped IU represents a specific instance of the IU within the larger pipeline.
 struct IUScoped {
-   IUScoped(const IU& iu_, const size_t scope_id): iu(iu_), scope_id(scope_id) {}
+   IUScoped(const IU& iu_, size_t scope_id): iu(iu_), scope_id(scope_id) {}
 
    /// The IU being referenced.
    const IU& iu;
@@ -56,19 +57,23 @@ struct Suboperator {
 
    virtual ~Suboperator() = default;
 
-   /// Prepare the children of this sub-operator for code generation.
-   /// The default implementation simply generated code for the children one by one.
-   virtual void produce(CompilationContext& context) const;
-   /// Consume a specific IU.
-   virtual void consume(const IU& iu, CompilationContext& context) const {};
-   /// Consume once all IUs are ready.
-   virtual void consumeAllChildren(CompilationContext& context) const {};
+   /// Rescope a pipeline based on this suboperator.
+   virtual void rescopePipeline(Pipeline& pipe) {};
 
-   // TODO Constify
+   /// Generate initial code for this operator when IUs are requested the first time.
+   /// Will usually call open on all children and make the target IUs available to the parent operator.
+   virtual void open(CompilationContext& context);
+   /// All downstream consumers have been closed - this operator can be closed as well.
+   virtual void close(CompilationContext& context);
+   /// Consume a specific IU from one of the children.
+   virtual void consume(const IU& iu, CompilationContext& context) {};
+   /// Consume once all IUs are ready.
+   virtual void consumeAllChildren(CompilationContext& context) {};
+
    /// Is this a sink sub-operator which has no further descendants?
-   virtual bool isSink() { return false; }
+   virtual bool isSink() const { return false; }
    /// Is this a source sub-operator driving execution?
-   virtual bool isSource() { return false; }
+   virtual bool isSource() const { return false; }
 
    /// Set up the state needed by this operator. In an IncrementalFusion engine it's easiest to actually
    /// make this interpreted.
@@ -90,6 +95,7 @@ struct Suboperator {
 
    /// How many ius does this suboperator depend on?
    size_t getNumSourceIUs() const { return source_ius.size(); }
+   const std::set<IU*>& getSourceIUs() const { return source_ius; }
    const std::set<IU*>& getIUs() const { return provided_ius; }
 
    protected:

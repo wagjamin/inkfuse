@@ -28,9 +28,9 @@ struct FuseChunkSink : public Suboperator {
    /// Attach runtime parameters for this sub-operator.
    void attachRuntimeParams(FuseChunkSinkStateRuntimeParams runtime_params_);
 
-   void consume(const IU& iu, CompilationContext& context) const override;
+   void consume(const IU& iu, CompilationContext& context) override;
 
-   bool isSink() override {return true;}
+   bool isSink() const override { return true;}
 
    void setUpState() override;
    void tearDownState() override;

@@ -55,6 +55,9 @@ struct If {
 // Helper struct for building a while statement.
 struct While {
    public:
+   While(While&& other);
+   While& operator=(While&& other) noexcept;
+
    // End the while statement.
    void End();
 
@@ -67,7 +70,7 @@ struct While {
    While(FunctionBuilder& builder_, ExprPtr expr_);
 
    /// Backing function builder.
-   FunctionBuilder& builder;
+   FunctionBuilder* builder;
    /// Original block of the backing builder.
    Block* original_block;
    /// Expression to be evaluated in the while.

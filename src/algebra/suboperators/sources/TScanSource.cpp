@@ -41,7 +41,14 @@ void TScanDriver::attachRuntimeParams(TScanDriverRuntimeParams runtime_params_)
    runtime_params = runtime_params_;
 }
 
-void TScanDriver::produce(CompilationContext& context) const {
+void TScanDriver::rescopePipeline(Pipeline& pipe)
+{
+   // Root scope will always have id 0.
+   ScopePtr scope = std::make_unique<Scope>(0);
+   pipe.rescope(std::move(scope));
+}
+
+void TScanDriver::open(CompilationContext& context) {
    auto& builder = context.getFctBuilder();
    const auto& program = context.getProgram();
 
@@ -78,11 +85,11 @@ void TScanDriver::produce(CompilationContext& context) const {
 
    {
       // Next up we create the driving for-loop.
-      auto while_block = builder.buildWhile(
+      opt_while.emplace(builder.buildWhile(
          IR::ArithmeticExpr::build(
             IR::VarRefExpr::build(*decl_start_ptr),
             IR::VarRefExpr::build(*decl_end_ptr),
-            IR::ArithmeticExpr::Opcode::Less));
+            IR::ArithmeticExpr::Opcode::Less)));
       // Alright, the loop variable is ready.
       context.notifyIUsReady(*this);
       // And update the loop counter
@@ -95,8 +102,13 @@ void TScanDriver::produce(CompilationContext& context) const {
             )
          );
       builder.appendStmt(std::move(increment));
-      while_block.End();
    }
+}
+
+void TScanDriver::close(CompilationContext& context)
+{
+   opt_while->End();
+   opt_while.reset();
 }
 
 bool TScanDriver::pickMorsel() {
@@ -139,7 +151,7 @@ void TSCanIUProvider::attachRuntimeParams(TScanIUProviderRuntimeParams runtime_p
    runtime_params = runtime_params_;
 }
 
-void TSCanIUProvider::consume(const IU& iu, CompilationContext& context) const
+void TSCanIUProvider::consume(const IU& iu, CompilationContext& context)
 {
    assert(&iu == *source_ius.begin());
    auto& builder = context.getFctBuilder();
@@ -176,7 +188,7 @@ void TSCanIUProvider::consume(const IU& iu, CompilationContext& context) const
 
    // Declare IU.
    IUScoped declared_iu{**provided_ius.begin(), 0};
-   auto declare = IR::DeclareStmt::build(buildIUName(declared_iu), iu.type);
+   auto declare = IR::DeclareStmt::build(buildIUName(declared_iu), (*provided_ius.begin())->type);
    context.declareIU(declared_iu, *declare);
    // Assign value to IU. This is done by adding the offset to the data pointer and dereferencing.
    auto assign = IR::AssignmentStmt::build(

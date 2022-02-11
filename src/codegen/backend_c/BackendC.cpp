@@ -204,7 +204,7 @@ void BackendC::compileBlock(const IR::Block& block, ScopedWriter& writer) {
 
 void BackendC::compileStatement(const IR::Stmt& statement, ScopedWriter& writer) {
 
-   // Control flow statements produce more than one statement.
+   // Control flow statements open more than one statement.
    struct ControlFlowVisitor final : public IR::StmtVisitor<ScopedWriter&> {
 
       bool visitIf(const IR::IfStmt& stmt, ScopedWriter& writer)

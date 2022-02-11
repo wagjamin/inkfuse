@@ -57,28 +57,45 @@ While::~While()
 }
 
 While::While(FunctionBuilder& builder_, ExprPtr expr_)
-   : builder(builder_),
-     original_block(builder.curr_block),
+   : builder(&builder_),
+     original_block(builder->curr_block),
      expr(std::move(expr_)),
      body(std::make_unique<Block>(std::deque<StmtPtr>{}))
 {
    // Install body block as the current one in the builder.
    // Form now on, all appendStmts in the backing builder will go into this block.
-   builder.curr_block = body.get();
+   builder->curr_block = body.get();
+}
+
+While::While(While&& other)
+{
+   *this = std::move(other);
+}
+
+While & While::operator=(While&& other) noexcept
+{
+   builder = other.builder;
+   original_block = other.original_block;
+   expr.swap(other.expr);
+   body.swap(other.body);
+   finished = other.finished;
+   other.finished = true;
+   return *this;
 }
 
 void While::End()
 {
    if (finished) {
+      // If this if finished already or was moved out of, don't end the loop.
       return;
    }
 
    // Install original block again.
-   builder.curr_block = original_block;
+   builder->curr_block = original_block;
    // Create the while statement.
    StmtPtr stmt = std::make_unique<WhileStmt>(std::move(expr), std::move(body));
    // Add it as the first one to the original builder.
-   builder.appendStmt(std::move(stmt));
+   builder->appendStmt(std::move(stmt));
    // Finished can only be entered once.
    finished = true;
 }
