@@ -8,6 +8,8 @@ namespace inkfuse {
 void Scope::registerProducer(const IU& iu, Suboperator &op)
 {
    iu_producers[&iu] = &op;
+   // TODO cleaner to not build the chunk in the actual pipeline, but rather down the line.
+   chunk->attachColumn(iu);
 }
 
 Suboperator& Scope::getProducer(const IU& iu) const
@@ -22,8 +24,7 @@ Column &Scope::getColumn(const IU& iu) const
 
 Column &Scope::getSel() const
 {
-   IURef ref(*selection);
-   return getColumn(ref);
+   return getColumn(*selection);
 }
 
 Pipeline::Pipeline()
@@ -54,9 +55,19 @@ Column &Pipeline::getSelectionCol(size_t scope_id)
    return scopes[scope_id]->getSel();
 }
 
-Suboperator & Pipeline::getProvider(IUScoped iu)
+const std::vector<Suboperator*>& Pipeline::getConsumers(Suboperator& subop) const
 {
-   return scopes[iu.scope_id]->getProducer(iu.iu);
+   return graph.outgoing_edges.at(&subop);
+}
+
+const std::vector<Suboperator*>& Pipeline::getProducers(Suboperator& subop) const
+{
+   return graph.incoming_edges.at(&subop);
+}
+
+Suboperator & Pipeline::getProvider(IUScoped iu) const
+{
+   return scopes.at(iu.scope_id)->getProducer(iu.iu);
 }
 
 size_t Pipeline::resolveOperatorScope(const Suboperator& op) const
@@ -78,17 +89,51 @@ size_t Pipeline::resolveOperatorScope(const Suboperator& op) const
    return std::distance(rescope_offsets.begin(), it_scope) - 1;
 }
 
-void Pipeline::attachSuboperator(SuboperatorPtr subop) {
+Suboperator& Pipeline::attachSuboperator(SuboperatorPtr subop) {
    if (subop->isSink()) {
       sinks.emplace(suboperators.size());
    }
-   // Rescope the pipeline.
+   if (!subop->isSource()) {
+      auto scope = rescope_offsets.size() - 1;
+      for (const auto& depends: subop->getSourceIUs()) {
+         // Resolve input.
+         IUScoped scoped_iu{*depends, scope};
+         auto& provider = getProvider(scoped_iu);
+         // Add edges.
+         graph.outgoing_edges[&provider].push_back(subop.get());
+         graph.incoming_edges[subop.get()].push_back(&provider);
+      }
+   }
+   // Rescope the pipeline (if necessary).
    subop->rescopePipeline(*this);
-   // Register IUs within the current scope.
+   // Register new IUs within the current scope.
    for (auto iu: subop->getIUs()) {
       scopes.back()->registerProducer(*iu, *subop);
    }
    suboperators.push_back(std::move(subop));
+   return *suboperators.back();
+}
+
+const std::vector<SuboperatorPtr>& Pipeline::getSubops() const
+{
+   return suboperators;
+}
+
+Pipeline& PipelineDAG::getCurrentPipeline() const
+{
+   assert(!pipelines.empty());
+   return *pipelines.back();
+}
+
+Pipeline& PipelineDAG::buildNewPipeline()
+{
+   pipelines.push_back(std::make_unique<Pipeline>());
+   return *pipelines.back();
+}
+
+const std::vector<PipelinePtr>& PipelineDAG::getPipelines() const
+{
+   return pipelines;
 }
 
 }

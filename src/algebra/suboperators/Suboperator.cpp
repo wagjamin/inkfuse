@@ -6,10 +6,9 @@ namespace inkfuse {
 
 void Suboperator::open(CompilationContext& context)
 {
-   auto scope = context.resolveScope(*this);
    // Request the creation of all source ius this suboperator needs to consume.
    for (const auto& src_iu: source_ius) {
-      context.requestIU(*this, {*src_iu, scope});
+      context.requestIU(*this, *src_iu);
    }
 }
 
@@ -22,7 +21,7 @@ std::stringstream Suboperator::getVarIdentifier() const
 {
    std::stringstream str;
    if (source) {
-      str << "iu_" << source->op_name << "_" << this;
+      str << "iu_" << source->getName() << "_" << this;
    } else {
       str << "iu" << this;
    }
@@ -32,7 +31,9 @@ std::stringstream Suboperator::getVarIdentifier() const
 std::string Suboperator::buildIUName(IUScoped iu) const
 {
    std::stringstream str;
-   str << "iu_" << iu.iu.name << "_" << iu.scope_id;
+   std::string name = iu.iu.name;
+   std::replace(name.begin(), name.end(), '.', '_');
+   str << "iu_" << name << "_" << iu.scope_id;
    return str.str();
 }
 

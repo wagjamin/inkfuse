@@ -23,7 +23,7 @@ struct FuseChunkSinkStateRuntimeParams {
 
 struct FuseChunkSink : public Suboperator {
 
-   static std::unique_ptr<FuseChunkSink> build(const RelAlgOp* source, IU& iu_to_write);
+   static std::unique_ptr<FuseChunkSink> build(const RelAlgOp* source, const IU& iu_to_write);
 
    /// Attach runtime parameters for this sub-operator.
    void attachRuntimeParams(FuseChunkSinkStateRuntimeParams runtime_params_);
@@ -42,7 +42,7 @@ struct FuseChunkSink : public Suboperator {
    static void registerRuntime();
 
    private:
-   FuseChunkSink(const RelAlgOp* source, IU& iu_to_write);
+   FuseChunkSink(const RelAlgOp* source, const IU& iu_to_write);
    /// Runtime parameters.
    std::optional<FuseChunkSinkStateRuntimeParams> params;
    /// Runtime state.

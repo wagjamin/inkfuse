@@ -47,6 +47,8 @@ set(INCLUDE_H
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/sources/TScanSource.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/sources/FuseChunkSource.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/Pipeline.h"
+        "${CMAKE_SOURCE_DIR}/src/algebra/RelAlgOp.h"
+        "${CMAKE_SOURCE_DIR}/src/algebra/TableScan.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/CompilationContext.h"
         "${CMAKE_SOURCE_DIR}/src/codegen/backend_c/BackendC.h"
         "${CMAKE_SOURCE_DIR}/src/codegen/backend_c/ScopedWriter.h"
@@ -58,6 +60,7 @@ set(INCLUDE_H
         "${CMAKE_SOURCE_DIR}/src/exec/FuseChunk.h"
         "${CMAKE_SOURCE_DIR}/src/exec/ExecutionContext.h"
         "${CMAKE_SOURCE_DIR}/src/exec/InterpretationResult.h"
+        "${CMAKE_SOURCE_DIR}/src/exec/PipelineExecutor.h"
         "${CMAKE_SOURCE_DIR}/src/interpreter/FragmentCache.h"
         "${CMAKE_SOURCE_DIR}/src/interpreter/FragmentGenerator.h"
         "${CMAKE_SOURCE_DIR}/src/interpreter/FragmentGenerator.h"
@@ -72,6 +75,8 @@ set(SRC_CC
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/sinks/FuseChunkSink.cpp"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/sources/TScanSource.cpp"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/sources/FuseChunkSource.cpp"
+        "${CMAKE_SOURCE_DIR}/src/algebra/TableScan.cpp"
+        "${CMAKE_SOURCE_DIR}/src/algebra/RelAlgOp.cpp"
         "${CMAKE_SOURCE_DIR}/src/storage/Relation.cc"
         "${CMAKE_SOURCE_DIR}/src/codegen/Expression.cpp"
         "${CMAKE_SOURCE_DIR}/src/codegen/IR.cpp"
@@ -83,6 +88,7 @@ set(SRC_CC
         "${CMAKE_SOURCE_DIR}/src/codegen/backend_c/ScopedWriter.cpp"
         "${CMAKE_SOURCE_DIR}/src/runtime/Runtime.cpp"
         "${CMAKE_SOURCE_DIR}/src/exec/ExecutionContext.cpp"
+        "${CMAKE_SOURCE_DIR}/src/exec/PipelineExecutor.cpp"
         "${CMAKE_SOURCE_DIR}/src/exec/FuseChunk.cpp"
         )
 
@@ -90,7 +96,8 @@ set(TEST_CC
         "${CMAKE_SOURCE_DIR}/test/test_ir.cpp"
         "${CMAKE_SOURCE_DIR}/test/test_c_backend.cpp"
         "${CMAKE_SOURCE_DIR}/test/test_runtime.cpp"
-        "${CMAKE_SOURCE_DIR}/test/suboperators/minimal_pipeline.cpp"
+        "${CMAKE_SOURCE_DIR}/test/operators/test_table_scan.cpp"
+        "${CMAKE_SOURCE_DIR}/test/suboperators/test_minimal_pipeline.cpp"
         )
 
 set(TOOLS_SRC

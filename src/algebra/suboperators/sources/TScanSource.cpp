@@ -18,7 +18,7 @@ void TScanDriver::registerRuntime() {
       .addMember("end", IR::UnsignedInt::build(8));
 }
 
-void TSCanIUProvider::registerRuntime() {
+void TScanIUProvider::registerRuntime() {
    RuntimeStructBuilder{TScanIUProviderState::name}
       .addMember("start", IR::Pointer::build(IR::Void::build()));
 }
@@ -30,7 +30,7 @@ std::unique_ptr<TScanDriver> TScanDriver::build(const RelAlgOp* source) {
 TScanDriver::TScanDriver(const RelAlgOp* source)
    : Suboperator(source, {}, {}), loop_driver_iu(IR::UnsignedInt::build(8)) {
    if (source && loop_driver_iu.name.empty()) {
-      loop_driver_iu.name = "iu_" + source->op_name + "_idx";
+      loop_driver_iu.name = "iu_" + source->getName() + "_idx";
    }
    provided_ius.emplace(&loop_driver_iu);
 }
@@ -90,23 +90,24 @@ void TScanDriver::open(CompilationContext& context) {
             IR::VarRefExpr::build(*decl_start_ptr),
             IR::VarRefExpr::build(*decl_end_ptr),
             IR::ArithmeticExpr::Opcode::Less)));
-      // Alright, the loop variable is ready.
+      // Generate code for downstream consumers.
       context.notifyIUsReady(*this);
-      // And update the loop counter
-      auto increment = IR::AssignmentStmt::build(
-         *decl_start_ptr,
-         IR::ArithmeticExpr::build(
-            IR::VarRefExpr::build(*decl_start_ptr),
-            IR::ConstExpr::build(IR::UI<8>::build(1)),
-            IR::ArithmeticExpr::Opcode::Add
-            )
-         );
-      builder.appendStmt(std::move(increment));
    }
 }
 
 void TScanDriver::close(CompilationContext& context)
 {
+   // And update the loop counter
+   auto& decl_start = context.getIUDeclaration(IUScoped{loop_driver_iu, 0});
+   auto increment = IR::AssignmentStmt::build(
+      decl_start,
+      IR::ArithmeticExpr::build(
+         IR::VarRefExpr::build(decl_start),
+         IR::ConstExpr::build(IR::UI<8>::build(1)),
+         IR::ArithmeticExpr::Opcode::Add
+      )
+   );
+   context.getFctBuilder().appendStmt(std::move(increment));
    opt_while->End();
    opt_while.reset();
 }
@@ -135,23 +136,24 @@ void TScanDriver::setUpState() {
 
 void TScanDriver::tearDownState() {
    state.reset();
+   first_picked = false;
 }
 
 void* TScanDriver::accessState() const {
    return state.get();
 }
 
-std::unique_ptr<TSCanIUProvider> TSCanIUProvider::build(const RelAlgOp* source, TScanIUProviderParams params, IURef driver_iu, IURef produced_iu)
+std::unique_ptr<TScanIUProvider> TScanIUProvider::build(const RelAlgOp* source, const IU& driver_iu, const IU& produced_iu)
 {
-   return std::unique_ptr<TSCanIUProvider>(new TSCanIUProvider{source, std::move(params), driver_iu, produced_iu});
+   return std::unique_ptr<TScanIUProvider>(new TScanIUProvider{source, driver_iu, produced_iu});
 }
 
-void TSCanIUProvider::attachRuntimeParams(TScanIUProviderRuntimeParams runtime_params_)
+void TScanIUProvider::attachRuntimeParams(TScanIUProviderRuntimeParams runtime_params_)
 {
    runtime_params = runtime_params_;
 }
 
-void TSCanIUProvider::consume(const IU& iu, CompilationContext& context)
+void TScanIUProvider::consume(const IU& iu, CompilationContext& context)
 {
    assert(&iu == *source_ius.begin());
    auto& builder = context.getFctBuilder();
@@ -209,32 +211,31 @@ void TSCanIUProvider::consume(const IU& iu, CompilationContext& context)
    context.notifyIUsReady(*this);
 }
 
-void TSCanIUProvider::setUpState()
+void TScanIUProvider::setUpState()
 {
    assert(runtime_params);
    state = std::make_unique<TScanIUProviderState>();
    state->raw_data = runtime_params->raw_data;
 }
 
-void TSCanIUProvider::tearDownState()
+void TScanIUProvider::tearDownState()
 {
    state.reset();
 }
 
-void * TSCanIUProvider::accessState() const
+void * TScanIUProvider::accessState() const
 {
    return state.get();
 }
 
-std::string TSCanIUProvider::id() const
+std::string TScanIUProvider::id() const
 {
-   return "TSCanIUProvider_" + params.type->id();
+   return "TSCanIUProvider_" + (*provided_ius.begin())->type->id();
 }
 
-TSCanIUProvider::TSCanIUProvider(const RelAlgOp* source, TScanIUProviderParams params_, IURef driver_iu, IURef produced_iu)
-: Suboperator(source, {&produced_iu.get()}, {&driver_iu.get()}), params(std::move(params_))
+TScanIUProvider::TScanIUProvider(const RelAlgOp* source, const IU& driver_iu, const IU& produced_iu)
+: Suboperator(source, {&produced_iu}, {&driver_iu})
 {
-
 }
 
 }

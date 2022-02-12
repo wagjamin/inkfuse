@@ -48,6 +48,8 @@ struct FuseChunk {
 
    /// Attach a new column corresponding to the provided IU.
    void attachColumn(const IU& iu);
+   /// Clear the columns in the chunk, i.e. resetting their size to 0.
+   void clearColumns();
 
    /// Get capacity of columns within the fuse chunk.
    uint64_t getCapacity() const;

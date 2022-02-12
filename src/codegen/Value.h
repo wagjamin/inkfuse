@@ -11,6 +11,7 @@ namespace IR {
 /// Value of a certain type
 struct Value {
    virtual TypeArc getType() const = 0;
+   virtual std::string str() const { return ""; };
 
    virtual ~Value() = default;
 };
@@ -36,6 +37,10 @@ struct UI : public Value {
    TypeArc getType() const override {
       return std::make_unique<UnsignedInt>(size);
    }
+
+   std::string str() const override {
+      return std::to_string(value);
+   }
 };
 
 template <unsigned size>
@@ -50,6 +55,10 @@ struct SI : public Value {
 
    int64_t getValue() const {
       return value;
+   }
+
+   std::string str() const override {
+      return std::to_string(value);
    }
 
    TypeArc getType() const override {

@@ -25,6 +25,13 @@ void FuseChunk::attachColumn(const IU& iu) {
    columns[&iu] = std::move(column);
 }
 
+void FuseChunk::clearColumns()
+{
+   for (auto& column: columns) {
+      column.second->size = 0;
+   }
+}
+
 uint64_t FuseChunk::getCapacity() const {
    return capacity;
 }

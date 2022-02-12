@@ -35,10 +35,8 @@ TEST(test_minimal_pipeline, pipeline_2) {
    auto tscan_driver = TScanDriver::build(nullptr);
    auto& driver_iu = **tscan_driver->getIUs().begin();
    // IU providers.
-   auto params_1 = TScanIUProviderParams {.type = IR::UnsignedInt::build(8)};
-   auto provider_1 = TSCanIUProvider::build(nullptr, params_1, driver_iu, scan_iu_1);
-   auto params_2 = TScanIUProviderParams {.type = IR::UnsignedInt::build(4)};
-   auto provider_2 = TSCanIUProvider::build(nullptr, params_2, driver_iu, scan_iu_2);
+   auto provider_1 = TScanIUProvider::build(nullptr, driver_iu, scan_iu_1);
+   auto provider_2 = TScanIUProvider::build(nullptr, driver_iu, scan_iu_2);
    // Sinks.
    auto sink_1 = FuseChunkSink::build(nullptr, scan_iu_1);
    auto sink_2 = FuseChunkSink::build(nullptr, scan_iu_2);
@@ -56,6 +54,7 @@ TEST(test_minimal_pipeline, pipeline_2) {
    BackendC backend;
    auto program = backend.generate(codegen.getProgram());
    program->dump();
+   program->compileToMachinecode();
 }
 
 }

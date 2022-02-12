@@ -12,11 +12,11 @@ void FuseChunkSink::registerRuntime() {
       .addMember("size", IR::Pointer::build(IR::UnsignedInt::build(8)));
 }
 
-std::unique_ptr<FuseChunkSink> FuseChunkSink::build(const RelAlgOp* source, IU& iu_to_write) {
+std::unique_ptr<FuseChunkSink> FuseChunkSink::build(const RelAlgOp* source, const IU& iu_to_write) {
    return std::unique_ptr<FuseChunkSink>(new FuseChunkSink(source, iu_to_write));
 }
 
-FuseChunkSink::FuseChunkSink(const RelAlgOp* source, IU& iu_to_write): Suboperator(source, {}, {&iu_to_write})
+FuseChunkSink::FuseChunkSink(const RelAlgOp* source, const IU& iu_to_write): Suboperator(source, {}, {&iu_to_write})
 {
 }
 

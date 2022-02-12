@@ -30,9 +30,6 @@ struct IU {
    std::string name;
 };
 
-/// Reference to an IU so that it can be easily stored in collections.
-using IURef = std::reference_wrapper<IU>;
-
 }
 
 #endif //INKFUSE_IU_H

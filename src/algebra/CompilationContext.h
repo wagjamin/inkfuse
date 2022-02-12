@@ -20,7 +20,9 @@ struct Suboperator;
 /// Context for compiling a single pipeline.
 struct CompilationContext {
    /// Set up a compilation context for generating code for a given pipeline.
-   CompilationContext(std::string program_name, Pipeline& pipeline_);
+   CompilationContext(std::string program_name, const Pipeline& pipeline_);
+   /// Set up a compilation context which will generate the code within a specific IR program.
+   CompilationContext(IR::ProgramArc program_, std::string fct_name_, const Pipeline& pipeline_);
 
    /// Compile the backing pipeline.
    void compile();
@@ -31,7 +33,7 @@ struct CompilationContext {
    /// Notify the compilation context that the IUs of a given sub-operator are ready to be consumed.
    void notifyIUsReady(Suboperator& op);
    /// Request a specific IU.
-   void requestIU(Suboperator& op, IUScoped iu);
+   void requestIU(Suboperator& op, const IU& iu);
    /// Notify that one of the operators closed.
    void notifyOpClosed(Suboperator& op);
 
@@ -48,10 +50,10 @@ struct CompilationContext {
    IR::FunctionBuilder& getFctBuilder();
 
    private:
-   static IR::FunctionBuilder createFctBuilder(IR::IRBuilder& program);
+   static IR::FunctionBuilder createFctBuilder(IR::IRBuilder& program, std::string fct_name);
 
    struct Builder {
-      Builder(IR::Program& program);
+      Builder(IR::Program& program, std::string fct_name);
 
       IR::IRBuilder ir_builder;
       IR::FunctionBuilder fct_builder;
@@ -65,9 +67,11 @@ struct CompilationContext {
    };
 
    /// The pipeline in whose context we generate the code.
-   Pipeline& pipeline;
+   const Pipeline& pipeline;
+   /// The function name.
+   std::string fct_name;
    /// The backing IR program.
-   IR::Program program;
+   IR::ProgramArc program;
    /// The function builder for the generated code.
    std::optional<Builder> builder;
    /// Which sub-operators were computed already? Needed to prevent double-computation in DAGs.

@@ -96,7 +96,7 @@ using namespace imlab;
         command << "clang++-11 " << fname_cc;
         // Initial attempt with rdynamic flags.
         // command << " -S -O3 -fPIC -Wl,-export_dynamic -std=c++17";
-        command << " -O3 -fPIC -std=c++17";
+        command << " -O3 -g -fPIC -std=c++17";
         if constexpr (imlab::Settings::USE_TBB) {
             command << " -ltbb";
         }

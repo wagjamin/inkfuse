@@ -7,7 +7,6 @@ namespace inkfuse {
 
 /// Basic expression sub-operator, taking a set of input IUs and producing one output IU.
 struct ExpressionSubop : public Suboperator {
-   ExpressionSubop
 };
 
 struct BinaryArithmeticOp : public ExpressionSubop {

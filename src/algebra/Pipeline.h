@@ -1,11 +1,11 @@
 #ifndef INKFUSE_PIPELINE_H
 #define INKFUSE_PIPELINE_H
 
-#include "exec/FuseChunk.h"
 #include "algebra/suboperators/Suboperator.h"
+#include "exec/FuseChunk.h"
 #include <memory>
-#include <vector>
 #include <set>
+#include <vector>
 
 namespace inkfuse {
 
@@ -24,7 +24,9 @@ struct Scope {
    }
 
    /// Create a completely new scope with a clean chunk.
-   Scope(size_t id_) : Scope(id_, std::make_shared<FuseChunk>()){};
+   Scope(size_t id_) : Scope(id_, std::make_shared<FuseChunk>()) {
+      chunk->attachColumn(*selection);
+   };
 
    /// Register an IU producer within the given scope.
    void registerProducer(const IU& iu, Suboperator& op);
@@ -50,6 +52,15 @@ struct Scope {
    std::unordered_map<const IU*, Suboperator*> iu_producers;
 };
 
+/// Pipelines are DAG structured through IU dependencies. The PipelineGraph explicitly
+/// models the edges induced by IU dependencies between sub-operators.
+struct PipelineGraph {
+   /// Incoming edges into a given sub-operator.
+   std::unordered_map<const Suboperator*, std::vector<Suboperator*>> incoming_edges;
+   /// Outgoing edges out of a given sub-operator.
+   std::unordered_map<const Suboperator*, std::vector<Suboperator*>> outgoing_edges;
+};
+
 using ScopePtr = std::unique_ptr<Scope>;
 
 /// Execution pipeline containing all the different operators within one pipeline.
@@ -72,21 +83,33 @@ struct Pipeline {
    /// Get the selection vector for a given scope.
    Column& getSelectionCol(size_t scope_id);
 
+   /// Get the downstream consumers of IUs for a given sub-operator.
+   const std::vector<Suboperator*>& getConsumers(Suboperator& subop) const;
+   /// Get the upstream producers of IUs for a .
+   const std::vector<Suboperator*>& getProducers(Suboperator& subop) const;
+
    /// Get the IU provider in a certain scope.
-   Suboperator& getProvider(IUScoped iu);
+   Suboperator& getProvider(IUScoped iu) const;
 
    /// Resolve the scope of a given operator.
    size_t resolveOperatorScope(const Suboperator& op) const;
 
    /// Add a new sub-operator to the pipeline.
-   void attachSuboperator(std::unique_ptr<Suboperator> subop);
+   Suboperator& attachSuboperator(std::unique_ptr<Suboperator> subop);
+
+   /// Get the sub-operators in this pipeline.
+   const std::vector<SuboperatorPtr>& getSubops() const;
 
    private:
    friend class CompilationContext;
+   friend class PipelineExecutor;
 
    /// The sub-operators within this pipeline. These are arranged in a topological order of the backing
    /// DAG structure.
    std::vector<std::unique_ptr<Suboperator>> suboperators;
+
+   /// Explicit graph structure induced by the sub-operators.
+   PipelineGraph graph;
 
    /// The offsets of the sink sub-operators of this pipeline. These are the ones where interpretation needs to begin.
    std::set<size_t> sinks;
@@ -106,7 +129,9 @@ struct PipelineDAG {
    /// Get the current pipeline.
    Pipeline& getCurrentPipeline() const;
 
-   Pipeline& buildNewPipeline() const;
+   Pipeline& buildNewPipeline();
+
+   const std::vector<PipelinePtr>& getPipelines() const;
 
    private:
    /// Internally the PipelineDAG is represented as a vector of pipelines within a topological order.

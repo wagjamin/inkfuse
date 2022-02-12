@@ -31,7 +31,7 @@ void BackendProgramC::compileToMachinecode() {
       std::stringstream command;
       command << "clang-11 ";
       command << path(program_name);
-      command << " -O3 -fPIC";
+      command << " -g -O3 -fPIC";
       command << " -shared";
       command << " -o ";
       command << so_path(program_name);
@@ -357,11 +357,7 @@ void BackendC::compileExpression(const IR::Expr& expr, ScopedWriter::Statement& 
 }
 
 void BackendC::compileValue(const IR::Value& value, ScopedWriter::Statement& str) {
-   if (auto elem = dynamic_cast<const IR::UI<4>*>(&value); elem) {
-      str.stream() << std::to_string(elem->value);
-   } else if (auto elem = dynamic_cast<const IR::UI<8>*>(&value); elem) {
-      str.stream() << std::to_string(elem->value);
-   }
+   str.stream() << value.str();
 }
 
 }

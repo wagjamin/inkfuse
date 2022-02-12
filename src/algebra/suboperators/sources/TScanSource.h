@@ -77,11 +77,6 @@ struct TScanIUProviderState {
    void* raw_data;
 };
 
-struct TScanIUProviderParams {
-   /// Type being read by the table scan.
-   IR::TypeArc type;
-};
-
 /// Runtime parameters which are not needed for code generation of the respective operator.
 struct TScanIUProviderRuntimeParams {
    /// Raw data.
@@ -91,8 +86,8 @@ struct TScanIUProviderRuntimeParams {
 };
 
 /// IU provider when reading from a table scan.
-struct TSCanIUProvider : public Suboperator {
-   static std::unique_ptr<TSCanIUProvider> build(const RelAlgOp* source, TScanIUProviderParams params, IURef driver_iu, IURef produced_iu);
+struct TScanIUProvider : public Suboperator {
+   static std::unique_ptr<TScanIUProvider> build(const RelAlgOp* source, const IU& driver_iu, const IU& produced_iu);
 
    /// Attach runtime parameters for this sub-operator.
    void attachRuntimeParams(TScanIUProviderRuntimeParams runtime_params_);
@@ -109,10 +104,8 @@ struct TSCanIUProvider : public Suboperator {
    static void registerRuntime();
 
    private:
-   TSCanIUProvider(const RelAlgOp* source, TScanIUProviderParams params, IURef driver_iu, IURef produced_iu);
+   TScanIUProvider(const RelAlgOp* source, const IU& driver_iu, const IU& produced_iu);
 
-   /// Static parameters of the operator.
-   TScanIUProviderParams params;
    /// Runtime state.
    std::unique_ptr<TScanIUProviderState> state;
    /// Optional runtime parameters.

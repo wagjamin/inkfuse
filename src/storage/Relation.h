@@ -30,7 +30,7 @@ class BaseColumn {
    virtual void loadValue(const char* str, uint32_t strLen) = 0;
 
    /// Get a pointer to the backing raw data.
-   virtual const void* getRawData() const = 0;
+   virtual void* getRawData() = 0;
 
    /// Get the type of this .
    virtual IR::TypeArc getType() const = 0;
@@ -59,22 +59,19 @@ class TypedColumn final : public BaseColumn {
    };
 
    void loadValue(const char* str, uint32_t strLen) override {
-      storage.push_back(std::move(T::castString(str, strLen)));
+      /*storage.push_back(std::move(T::castString(str, strLen)));*/
+      // TODO
    };
 
-   const void* getRawData() const override {
+   void* getRawData() override {
       return storage.data();
    }
 
-   IR::TypeArc getType() const override {
-      return type;
-   };
+   IR::TypeArc getType() const override;
 
    private:
    /// Backing storage.
    std::vector<T> storage;
-   /// Actual data type.
-   IR::TypeArc type;
 };
 
 using BaseColumnPtr = std::unique_ptr<BaseColumn>;
@@ -99,17 +96,15 @@ class StoredRelation {
 
    /// Emplace a new column into a relation.
    template <typename T>
-   void attachTypedColumn(std::string_view name, bool nullable = false) {
+   TypedColumn<T>& attachTypedColumn(std::string_view name, bool nullable = false) {
       for (const auto& [n, _] : columns) {
          if (n == name) {
             throw std::runtime_error("Column name in StoredRelation must be unique");
          }
       }
-      columns.template emplace_back(name, std::make_unique<TypedColumn<T>>(nullable));
+      auto& res = columns.template emplace_back(name, std::make_unique<TypedColumn<T>>(nullable));
+      return reinterpret_cast<TypedColumn<T>&>(*res.second);
    }
-
-   /// Set the primary key of the table.
-   void setPrimaryKey(std::vector<size_t> pk_);
 
    /// Load TSV rows into the table until the table is exhausted.
    void loadRows(std::istream& stream);
@@ -120,15 +115,10 @@ class StoredRelation {
    /// Add a row to the back of the active bitvector.
    void appendRow();
 
-   /// Add the last row to the indexes.
-   virtual void addLastRowToIndex() = 0;
-
    private:
    /// Backing columns.
    /// We use a vector to exploit ordering during the scan.
    std::vector<std::pair<std::string, std::unique_ptr<BaseColumn>>> columns;
-   /// Primary key, index vector into columns.
-   std::vector<size_t> pk;
 };
 
 } // namespace inkfuse

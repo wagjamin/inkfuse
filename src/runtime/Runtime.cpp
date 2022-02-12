@@ -10,7 +10,7 @@ GlobalRuntime global_runtime = GlobalRuntime();
 GlobalRuntime::GlobalRuntime() : program(std::make_unique<IR::Program>("global_runtime", true)) {
    // Register the different runtime structs of the suboperators.
    TScanDriver::registerRuntime();
-   TSCanIUProvider::registerRuntime();
+   TScanIUProvider::registerRuntime();
    FuseChunkSink::registerRuntime();
 }
 
