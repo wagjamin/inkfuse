@@ -50,7 +50,7 @@ namespace inkfuse {
                 // Cast the first argument to a pointer to the ColumnScanState
                 IR::CastExpr::build(
                         IR::VarRefExpr::build(fct_builder.getArg(0)),
-                        IR::Pointer::build(runtime.getStruct(TScanDriverState::name))),
+                        IR::Pointer::build(runtime.getStruct(LoopDriverState::name))),
                 "start");
         auto stmt = IR::ReturnStmt::build(std::move(expr));
         fct_builder.appendStmt(std::move(stmt));
@@ -66,11 +66,11 @@ namespace inkfuse {
         c_program->compileToMachinecode();
 
         // Get a handle to the function.
-        auto fct_compiled = reinterpret_cast<uint64_t (*)(TScanDriverState*)>(c_program->getFunction("test_fct"));
+        auto fct_compiled = reinterpret_cast<uint64_t (*)(LoopDriverState*)>(c_program->getFunction("test_fct"));
 
         for (uint64_t i : {1, 100, 1000, 42, 311}) {
             // Set up actual parameter.
-            TScanDriverState param {
+            LoopDriverState param {
                .start = i,
                .end = 2 * i,
             };

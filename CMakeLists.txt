@@ -44,6 +44,7 @@ include_directories(
 set(INCLUDE_H
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/Suboperator.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/IndexedIUProvider.h"
+        "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/LoopDriver.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/sinks/FuseChunkSink.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/sources/TScanSource.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/sources/FuseChunkSource.h"
@@ -73,6 +74,7 @@ set(SRC_CC
         "${CMAKE_SOURCE_DIR}/src/algebra/Pipeline.cpp"
         "${CMAKE_SOURCE_DIR}/src/algebra/CompilationContext.cpp"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/IndexedIUProvider.cpp"
+        "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/LoopDriver.cpp"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/Suboperator.cpp"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/sinks/FuseChunkSink.cpp"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/sources/TScanSource.cpp"
