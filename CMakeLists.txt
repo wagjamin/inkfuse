@@ -63,7 +63,7 @@ set(INCLUDE_H
         "${CMAKE_SOURCE_DIR}/src/exec/PipelineExecutor.h"
         "${CMAKE_SOURCE_DIR}/src/interpreter/FragmentCache.h"
         "${CMAKE_SOURCE_DIR}/src/interpreter/FragmentGenerator.h"
-        "${CMAKE_SOURCE_DIR}/src/interpreter/FragmentGenerator.h"
+        "${CMAKE_SOURCE_DIR}/src/interpreter/TScanFragmentizer.h"
         "${CMAKE_SOURCE_DIR}/src/runtime/Runtime.h"
         "${CMAKE_SOURCE_DIR}/src/storage/Relation.h"
         )
@@ -90,7 +90,10 @@ set(SRC_CC
         "${CMAKE_SOURCE_DIR}/src/exec/ExecutionContext.cpp"
         "${CMAKE_SOURCE_DIR}/src/exec/PipelineExecutor.cpp"
         "${CMAKE_SOURCE_DIR}/src/exec/FuseChunk.cpp"
-        )
+        "${CMAKE_SOURCE_DIR}/src/interpreter/FragmentCache.cpp"
+        "${CMAKE_SOURCE_DIR}/src/interpreter/FragmentGenerator.cpp"
+        "${CMAKE_SOURCE_DIR}/src/interpreter/TScanFragmentizer.cpp"
+        src/interpreter/FragmentCache.cpp src/interpreter/FragmentGenerator.cpp src/interpreter/TScanFragmentizer.cpp)
 
 set(TEST_CC
         "${CMAKE_SOURCE_DIR}/test/test_ir.cpp"
@@ -98,6 +101,8 @@ set(TEST_CC
         "${CMAKE_SOURCE_DIR}/test/test_runtime.cpp"
         "${CMAKE_SOURCE_DIR}/test/operators/test_table_scan.cpp"
         "${CMAKE_SOURCE_DIR}/test/suboperators/test_minimal_pipeline.cpp"
+        "${CMAKE_SOURCE_DIR}/test/test_fragmentizors.cpp"
+        "${CMAKE_SOURCE_DIR}/test/test_repipe.cpp"
         )
 
 set(TOOLS_SRC

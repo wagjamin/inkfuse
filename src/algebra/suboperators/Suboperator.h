@@ -110,7 +110,7 @@ struct Suboperator {
 
 };
 
-using SuboperatorPtr = std::unique_ptr<Suboperator>;
+using SuboperatorArc = std::shared_ptr<Suboperator>;
 
 }
 

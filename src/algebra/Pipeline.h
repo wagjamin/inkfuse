@@ -3,6 +3,7 @@
 
 #include "algebra/suboperators/Suboperator.h"
 #include "exec/FuseChunk.h"
+#include <map>
 #include <memory>
 #include <set>
 #include <vector>
@@ -43,7 +44,7 @@ struct Scope {
    /// Scope id.
    size_t id;
    /// Boolean IU for the selection vector. We need a pointer to retain IU stability.
-   std::unique_ptr<IU> selection;
+   std::shared_ptr<IU> selection;
    /// Backing chunk of data within this scope. For efficiency reasons, a new scope somtimes can refer
    /// to the same backing FuseChunk as the previous ones. This is done to ensure that a filter sub-operator
    /// does not have to copy all data.
@@ -72,6 +73,10 @@ struct Pipeline {
    /// Constructor which creates a root scope.
    Pipeline();
 
+   /// Rebuild the pipeline for a subset of the sub-operators in the given range.
+   /// Inserts face sources and fake sinks.
+   std::unique_ptr<Pipeline> repipe(size_t start, size_t end, bool materialize_all = false) const;
+
    /// Get the current scope.
    Scope& getCurrentScope();
    /// Rescope the pipeline.
@@ -92,33 +97,43 @@ struct Pipeline {
    Suboperator& getProvider(IUScoped iu) const;
 
    /// Resolve the scope of a given operator.
-   size_t resolveOperatorScope(const Suboperator& op) const;
+   /// Incoming indicates whether the scope should be resolved for incoming
+   /// our outgoing edges.
+   size_t resolveOperatorScope(const Suboperator& op, bool incoming = true) const;
 
    /// Add a new sub-operator to the pipeline.
-   Suboperator& attachSuboperator(std::unique_ptr<Suboperator> subop);
+   Suboperator& attachSuboperator(SuboperatorArc subop);
 
    /// Get the sub-operators in this pipeline.
-   const std::vector<SuboperatorPtr>& getSubops() const;
+   const std::vector<SuboperatorArc>& getSubops() const;
 
    private:
    friend class CompilationContext;
    friend class PipelineExecutor;
 
+   /// Custom order opartor on scoped IUs.
+   struct ScopeCmp {
+      bool operator()(const IUScoped& l, const IUScoped& r) const {
+         return &l.iu <= &r.iu && l.scope_id < r.scope_id;
+      }
+   };
+
    /// The sub-operators within this pipeline. These are arranged in a topological order of the backing
    /// DAG structure.
-   std::vector<std::unique_ptr<Suboperator>> suboperators;
+   std::vector<SuboperatorArc> suboperators;
 
    /// Explicit graph structure induced by the sub-operators.
    PipelineGraph graph;
-
-   /// The offsets of the sink sub-operators of this pipeline. These are the ones where interpretation needs to begin.
-   std::set<size_t> sinks;
 
    /// The offsets of operators which re-scope the pipeline.
    std::vector<size_t> rescope_offsets;
 
    /// The scopes of this pipeline.
    std::vector<ScopePtr> scopes;
+
+   /// Specific fuse operators which are inserted automagically by the pipeline
+   /// in order to ease adaptive execution down the line.
+   std::map<IUScoped, std::pair<SuboperatorArc, SuboperatorArc>, ScopeCmp> iu_fusers;
 };
 
 using PipelinePtr = std::unique_ptr<Pipeline>;

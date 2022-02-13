@@ -15,13 +15,20 @@ CompilationContext::CompilationContext(IR::ProgramArc program_, std::string fct_
 void CompilationContext::compile() {
    // Create the builder.
    builder.emplace(*program, fct_name);
-   // Open all sources.
-   for (const auto sink_offset : pipeline.sinks) {
-      pipeline.suboperators[sink_offset]->open(*this);
+   // Collect all sinks.
+   std::set<Suboperator*> sinks;
+   std::for_each(pipeline.suboperators.begin(), pipeline.suboperators.end(), [&](const SuboperatorArc& op){
+     if (op->isSink()) {
+        sinks.insert(op.get());
+     }
+   });
+   // Open all sinks.
+   for (auto sink: sinks) {
+      sink->open(*this);
    }
    // And close them again.
-   for (const auto sink_offset : pipeline.sinks) {
-      pipeline.suboperators[sink_offset]->close(*this);
+   for (auto sink: sinks) {
+      sink->close(*this);
    }
    // Return 0 for the time being.
    builder->fct_builder.appendStmt(IR::ReturnStmt::build(IR::ConstExpr::build(IR::UI<1>::build(0))));
@@ -30,7 +37,7 @@ void CompilationContext::compile() {
 }
 
 void CompilationContext::notifyOpClosed(Suboperator& op) {
-   for (auto producer: pipeline.getProducers(op)) {
+   for (auto producer : pipeline.getProducers(op)) {
       if (--properties[producer].upstream_requests == 0) {
          // This was the last upstream operator to close. Close the child as well.
          producer->close(*this);
@@ -59,8 +66,7 @@ void CompilationContext::notifyIUsReady(Suboperator& op) {
 
 void CompilationContext::requestIU(Suboperator& op, const IU& iu) {
    // Resolve the IU provider.
-   for (auto provider: pipeline.getProducers(op))
-   {
+   for (auto provider : pipeline.getProducers(op)) {
       if (provider->getIUs().count(&iu)) {
          properties[provider].upstream_requests++;
          requests[provider] = {&op, &iu};
@@ -90,7 +96,7 @@ IR::ExprPtr CompilationContext::accessGlobalState(const Suboperator& op) {
    auto found = std::find_if(
       pipeline.suboperators.cbegin(),
       pipeline.suboperators.cend(),
-      [&op](const SuboperatorPtr& ptr) {
+      [&op](const SuboperatorArc& ptr) {
          return ptr.get() == &op;
       });
    auto idx = std::distance(pipeline.suboperators.cbegin(), found);
@@ -123,7 +129,7 @@ IR::FunctionBuilder CompilationContext::createFctBuilder(IR::IRBuilder& program,
       {"resumption_state", IR::Pointer::build(IR::Void::build())},
    };
    std::vector<IR::StmtPtr> args;
-   for (const auto& [arg, type]: arg_names) {
+   for (const auto& [arg, type] : arg_names) {
       args.push_back(IR::DeclareStmt::build(arg, type));
    }
    // Return 1 byte integer which can be cast to a yield-state enum.

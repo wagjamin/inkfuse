@@ -19,12 +19,12 @@ struct Suboperator;
 
 /// Context for compiling a single pipeline.
 struct CompilationContext {
-   /// Set up a compilation context for generating code for a given pipeline.
+   /// Set up a compilation context for generating code for a full given pipeline.
    CompilationContext(std::string program_name, const Pipeline& pipeline_);
-   /// Set up a compilation context which will generate the code within a specific IR program.
+   /// Set up a compilation context which will generate the code within a specific IR program for the full pipeline.
    CompilationContext(IR::ProgramArc program_, std::string fct_name_, const Pipeline& pipeline_);
 
-   /// Compile the backing pipeline.
+   /// Compile the code for this context.
    void compile();
 
    /// Resolve the scope of a sub-operator.
@@ -69,7 +69,7 @@ struct CompilationContext {
    /// The pipeline in whose context we generate the code.
    const Pipeline& pipeline;
    /// The function name.
-   std::string fct_name;
+   const std::string fct_name;
    /// The backing IR program.
    IR::ProgramArc program;
    /// The function builder for the generated code.
