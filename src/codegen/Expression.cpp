@@ -6,7 +6,8 @@ namespace inkfuse {
 
 namespace IR {
 
-CastExpr::CastExpr(ExprPtr child_, TypeArc target_) : UnaryExpr(std::move(target_), std::move(child_)) {
+CastExpr::CastExpr(ExprPtr child_, TypeArc target_) : UnaryExpr(std::move(target_)) {
+   children.push_back(std::move(child_));
    auto res = validateCastable(*(children[0]->type), *type);
    if (res == CastResult::Forbidden) {
       throw std::runtime_error("forbidden IR cast");
@@ -18,7 +19,7 @@ ExprPtr VarRefExpr::build(const Stmt& declaration_) {
 }
 
 VarRefExpr::VarRefExpr(const Stmt& declaration_)
-   : Expr({}, dynamic_cast<const DeclareStmt&>(declaration_).type), declaration(dynamic_cast<const DeclareStmt&>(declaration_)) {
+   : Expr(dynamic_cast<const DeclareStmt&>(declaration_).type), declaration(dynamic_cast<const DeclareStmt&>(declaration_)) {
 }
 
 ExprPtr ConstExpr::build(ValuePtr value_) {
@@ -26,8 +27,9 @@ ExprPtr ConstExpr::build(ValuePtr value_) {
 }
 
 InvokeFctExpr::InvokeFctExpr(const Function& fct_, std::vector<ExprPtr> args_)
-    : Expr(std::move(args_), fct_.return_type), fct(fct_)
+    : Expr(fct_.return_type), fct(fct_)
 {
+   children = std::move(args_);
 }
 
 bool ArithmeticExpr::isComparison(Opcode code)

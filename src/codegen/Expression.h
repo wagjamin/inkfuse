@@ -21,7 +21,7 @@ namespace IR {
 struct Expr {
    public:
    /// Constructor taking a vector of child expressions.
-   Expr(std::vector<std::unique_ptr<Expr>> children_, TypeArc type_) : children(std::move(children_)), type(std::move(type_)) {
+   Expr(TypeArc type_) : type(std::move(type_)) {
       /// Every expression must have a type.
       assert(type);
    };
@@ -55,7 +55,7 @@ struct VarRefExpr : public Expr {
 /// Basic constant expression.
 struct ConstExpr : public Expr {
    /// Create a new constant expression based on the given value.
-   ConstExpr(ValuePtr value_) : Expr({}, value_->getType()), value(std::move(value_)){};
+   ConstExpr(ValuePtr value_) : Expr(value_->getType()), value(std::move(value_)){};
    static ExprPtr build(ValuePtr value_);
 
    /// Backing value.
@@ -75,7 +75,7 @@ struct ConstExpr : public Expr {
 /// does not need the parameter.
 template <typename BackingType>
 struct SubstitutableParameter : public Expr {
-   SubstitutableParameter(std::string param_name_, TypeArc type_) : Expr({}, std::move(type_)), param_name(std::move(param_name_)){};
+   SubstitutableParameter(std::string param_name_, TypeArc type_) : Expr(std::move(type_)), param_name(std::move(param_name_)){};
 
    static_assert(std::is_convertible<BackingType*, Type*>::value, "SubsitutableParameter must go over type.");
 
@@ -99,10 +99,7 @@ struct InvokeFctExpr : public Expr {
 
 /// Binary expression - only exists for convenience.
 struct BinaryExpr : public Expr {
-   BinaryExpr(TypeArc type_, ExprPtr child_l_, ExprPtr child_r_) : Expr(std::vector<ExprPtr>{}, std::move(type_)) {
-      children.emplace_back(std::move(child_l_));
-      children.emplace_back(std::move(child_r_));
-   };
+   BinaryExpr(TypeArc type_) : Expr(std::move(type_)){};
 };
 
 /// Arithmetic expression doing some form of computation.
@@ -129,7 +126,10 @@ struct ArithmeticExpr : public BinaryExpr {
    static TypeArc deriveType(const Expr& child_l, const Expr& child_r, Opcode code);
 
    /// Constructor, suitable result type is inferred from child types and opcode.
-   ArithmeticExpr(ExprPtr child_l_, ExprPtr child_r_, Opcode code_) : BinaryExpr(deriveType(*child_l_, *child_r_, code_), std::move(child_l_), std::move(child_r_)), code(code_){};
+   ArithmeticExpr(ExprPtr child_l_, ExprPtr child_r_, Opcode code_) : BinaryExpr(deriveType(*child_l_, *child_r_, code_)), code(code_) {
+      children.push_back(std::move(child_l_));
+      children.push_back(std::move(child_r_));
+   };
 
    static ExprPtr build(ExprPtr child_l_, ExprPtr child_r_, Opcode code_) {
       return std::make_unique<ArithmeticExpr>(std::move(child_l_), std::move(child_r_), code_);
@@ -138,41 +138,40 @@ struct ArithmeticExpr : public BinaryExpr {
 
 /// Unary expression - only exists for convenience.
 struct UnaryExpr : public Expr {
-   UnaryExpr(TypeArc type_, ExprPtr child_) : Expr(std::vector<ExprPtr>{}, std::move(type_)) {
-      children.emplace_back(std::move(child_));
-   };
+   UnaryExpr(TypeArc type_) : Expr(std::move(type_)){};
 };
 
 /// Dereference a pointer. Child must be an expression with a pointer type.
 struct DerefExpr : public UnaryExpr {
+   DerefExpr(ExprPtr child_) : UnaryExpr(deriveType(*child_)) {
+      children.push_back(std::move(child_));
+   }
 
-    DerefExpr(ExprPtr child_) : UnaryExpr(deriveType(*child_), std::move(child_)) {}
+   /// Derive the result type of an expression.
+   static TypeArc deriveType(const Expr& child);
 
-    /// Derive the result type of an expression.
-    static TypeArc deriveType(const Expr& child);
-
-    static ExprPtr build(ExprPtr child_) {
-        return std::make_unique<DerefExpr>(std::move(child_));
-    }
-
+   static ExprPtr build(ExprPtr child_) {
+      return std::make_unique<DerefExpr>(std::move(child_));
+   }
 };
 
 /// Access a member of a struct - return type is the type of the struct member.
 /// The child expression must be typed a struct.
 struct StructAccesExpr : public UnaryExpr {
+   StructAccesExpr(ExprPtr child_, std::string field_) : UnaryExpr(deriveType(*child_, field_)), field(std::move(field_)) {
+      children.push_back(std::move(child_));
+   };
 
-    StructAccesExpr(ExprPtr child_, std::string field_): UnaryExpr(deriveType(*child_, field_), std::move(child_)), field(std::move(field_)) {};
+   /// Derive the result type of accessing a struct member.
+   static TypeArc deriveType(const Expr& child, const std::string& field);
 
-    /// Derive the result type of accessing a struct member.
-    static TypeArc deriveType(const Expr& child, const std::string& field);
+   /// Build a struct access expression. Accepts a child expression of type struct or pointer
+   /// to struct. Note that if the child is a pointer type, we add a deref expression below
+   /// the struct access expression.
+   static ExprPtr build(ExprPtr child_, std::string field_);
 
-    /// Build a struct access expression. Accepts a child expression of type struct or pointer
-    /// to struct. Note that if the child is a pointer type, we add a deref expression below
-    /// the struct access expression.
-    static ExprPtr build(ExprPtr child_, std::string field_);
-
-    /// Which field to access.
-    std::string field;
+   /// Which field to access.
+   std::string field;
 };
 
 /// Cast expression.
@@ -181,7 +180,7 @@ struct CastExpr : public UnaryExpr {
    CastExpr(ExprPtr child, TypeArc target_);
 
    static ExprPtr build(ExprPtr child, TypeArc target_) {
-       return std::make_unique<CastExpr>(std::move(child), std::move(target_));
+      return std::make_unique<CastExpr>(std::move(child), std::move(target_));
    }
 
    /// Possible results for casting.
@@ -201,44 +200,42 @@ struct CastExpr : public UnaryExpr {
 /// Expression visitor utility.
 template <typename Arg>
 struct ExprVisitor {
-public:
-    void visit(const Expr& expr, Arg arg) {
-        if (const auto elem = dynamic_cast<const VarRefExpr*>(&expr)) {
-            visitVarRef(*elem, arg);
-        } else if (auto elem = dynamic_cast<const ConstExpr*>(&expr)) {
-            visitConst(*elem, arg);
-        } else if (auto elem = dynamic_cast<const InvokeFctExpr*>(&expr)) {
-            visitInvokeFct(*elem, arg);
-        } else if (auto elem = dynamic_cast<const ArithmeticExpr*>(&expr)) {
-            visitArithmetic(*elem, arg);
-        } else if (auto elem = dynamic_cast<const DerefExpr*>(&expr)) {
-            visitDeref(*elem, arg);
-        } else if (auto elem = dynamic_cast<const StructAccesExpr*>(&expr)) {
-            visitStructAccess(*elem, arg);
-        } else if (auto elem = dynamic_cast<const CastExpr*>(&expr)) {
-            visitCast(*elem, arg);
-        } else {
-            assert(false);
-        }
-    }
+   public:
+   void visit(const Expr& expr, Arg arg) {
+      if (const auto elem = dynamic_cast<const VarRefExpr*>(&expr)) {
+         visitVarRef(*elem, arg);
+      } else if (auto elem = dynamic_cast<const ConstExpr*>(&expr)) {
+         visitConst(*elem, arg);
+      } else if (auto elem = dynamic_cast<const InvokeFctExpr*>(&expr)) {
+         visitInvokeFct(*elem, arg);
+      } else if (auto elem = dynamic_cast<const ArithmeticExpr*>(&expr)) {
+         visitArithmetic(*elem, arg);
+      } else if (auto elem = dynamic_cast<const DerefExpr*>(&expr)) {
+         visitDeref(*elem, arg);
+      } else if (auto elem = dynamic_cast<const StructAccesExpr*>(&expr)) {
+         visitStructAccess(*elem, arg);
+      } else if (auto elem = dynamic_cast<const CastExpr*>(&expr)) {
+         visitCast(*elem, arg);
+      } else {
+         assert(false);
+      }
+   }
 
-private:
-    virtual void visitVarRef(const VarRefExpr& type, Arg arg) { }
+   private:
+   virtual void visitVarRef(const VarRefExpr& type, Arg arg) {}
 
-    virtual void visitConst(const ConstExpr& type, Arg arg) { }
+   virtual void visitConst(const ConstExpr& type, Arg arg) {}
 
-    virtual void visitInvokeFct(const InvokeFctExpr& type, Arg arg) { }
+   virtual void visitInvokeFct(const InvokeFctExpr& type, Arg arg) {}
 
-    virtual void visitArithmetic(const ArithmeticExpr& type, Arg arg) { }
+   virtual void visitArithmetic(const ArithmeticExpr& type, Arg arg) {}
 
-    virtual void visitDeref(const DerefExpr& type, Arg arg) { }
+   virtual void visitDeref(const DerefExpr& type, Arg arg) {}
 
-    virtual void visitStructAccess(const StructAccesExpr& type, Arg arg) { }
+   virtual void visitStructAccess(const StructAccesExpr& type, Arg arg) {}
 
-    virtual void visitCast(const CastExpr& type, Arg arg) { }
-
+   virtual void visitCast(const CastExpr& type, Arg arg) {}
 };
-
 
 }
 
