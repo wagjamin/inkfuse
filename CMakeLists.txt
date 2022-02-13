@@ -42,6 +42,7 @@ include_directories(
 # ---------------------------------------------------------------------------
 
 set(INCLUDE_H
+        "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/Copy.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/Suboperator.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/IndexedIUProvider.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/LoopDriver.h"
@@ -66,6 +67,7 @@ set(INCLUDE_H
         "${CMAKE_SOURCE_DIR}/src/interpreter/FragmentCache.h"
         "${CMAKE_SOURCE_DIR}/src/interpreter/FragmentGenerator.h"
         "${CMAKE_SOURCE_DIR}/src/interpreter/TScanFragmentizer.h"
+        "${CMAKE_SOURCE_DIR}/src/interpreter/CopyFragmentizer.h"
         "${CMAKE_SOURCE_DIR}/src/runtime/Runtime.h"
         "${CMAKE_SOURCE_DIR}/src/storage/Relation.h"
         )
@@ -73,6 +75,7 @@ set(INCLUDE_H
 set(SRC_CC
         "${CMAKE_SOURCE_DIR}/src/algebra/Pipeline.cpp"
         "${CMAKE_SOURCE_DIR}/src/algebra/CompilationContext.cpp"
+        "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/Copy.cpp"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/IndexedIUProvider.cpp"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/LoopDriver.cpp"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/Suboperator.cpp"
@@ -97,6 +100,7 @@ set(SRC_CC
         "${CMAKE_SOURCE_DIR}/src/interpreter/FragmentCache.cpp"
         "${CMAKE_SOURCE_DIR}/src/interpreter/FragmentGenerator.cpp"
         "${CMAKE_SOURCE_DIR}/src/interpreter/TScanFragmentizer.cpp"
+        "${CMAKE_SOURCE_DIR}/src/interpreter/CopyFragmentizer.cpp"
         )
 
 set(TEST_CC
@@ -105,6 +109,7 @@ set(TEST_CC
         "${CMAKE_SOURCE_DIR}/test/test_runtime.cpp"
         "${CMAKE_SOURCE_DIR}/test/operators/test_table_scan.cpp"
         "${CMAKE_SOURCE_DIR}/test/suboperators/test_minimal_pipeline.cpp"
+        "${CMAKE_SOURCE_DIR}/test/suboperators/test_sources.cpp"
         "${CMAKE_SOURCE_DIR}/test/test_fragmentizors.cpp"
         "${CMAKE_SOURCE_DIR}/test/test_repipe.cpp"
         )

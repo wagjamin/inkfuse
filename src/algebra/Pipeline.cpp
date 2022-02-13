@@ -14,6 +14,15 @@ Suboperator& Scope::getProducer(const IU& iu) const {
    return *iu_producers.at(&iu);
 }
 
+Suboperator* Scope::tryGetProducer(const IU& iu) const
+{
+   auto it = iu_producers.find(&iu);
+   if (it == iu_producers.end()) {
+      return nullptr;
+   }
+   return it->second;
+}
+
 Pipeline::Pipeline() {
 }
 
@@ -44,7 +53,15 @@ std::unique_ptr<Pipeline> Pipeline::repipe(size_t start, size_t end, bool materi
       });
 
    // Build a FuseChunkSource for those.
-   // TODO
+   if (!in_required.empty()) {
+      // Build the loop driver.
+      auto& driver = new_pipe->attachSuboperator(FuseChunkSourceDriver::build());
+      auto& driver_iu = **driver.getIUs().begin();
+      // And the IU providers.
+      for (auto iu: in_required) {
+         new_pipe->attachSuboperator(FuseChunkSourceIUProvider::build(driver_iu, *iu));
+      }
+   }
 
    // Copy all intermediate operators.
    std::for_each(
@@ -53,11 +70,6 @@ std::unique_ptr<Pipeline> Pipeline::repipe(size_t start, size_t end, bool materi
       [&](const SuboperatorArc& op) {
          new_pipe->attachSuboperator(op);
       });
-
-   // All intermediate scopes can be copied as-is.
-   for (size_t copy_scope = in_scope + 1; copy_scope < out_scope; ++copy_scope) {
-      // TODO?!
-   }
 
    // Find output IUs which have to be materialized.
    std::set<const IU*> out_required;
@@ -118,6 +130,11 @@ Suboperator& Pipeline::getProvider(IUScoped iu) const {
    return scopes.at(iu.scope_id)->getProducer(iu.iu);
 }
 
+Suboperator* Pipeline::tryGetProvider(IUScoped iu) const
+{
+   return scopes.at(iu.scope_id)->tryGetProducer(iu.iu);
+}
+
 size_t Pipeline::resolveOperatorScope(const Suboperator& op, bool incoming) const {
    // Find the index of the suboperator in the topological sort.
    auto it = std::find_if(suboperators.cbegin(), suboperators.cend(), [&op](const SuboperatorArc& target) {
@@ -142,6 +159,11 @@ size_t Pipeline::resolveOperatorScope(const Suboperator& op, bool incoming) cons
 }
 
 Suboperator& Pipeline::attachSuboperator(SuboperatorArc subop) {
+   if (suboperators.empty() && !subop->isSource()) {
+      // Create a fake initial scope.
+      scopes.push_back(std::make_unique<Scope>(0, nullptr));
+      rescope_offsets.push_back(0);
+   }
    if (!subop->isSource()) {
       auto scope = rescope_offsets.size() - 1;
       for (const auto& depends : subop->getSourceIUs()) {

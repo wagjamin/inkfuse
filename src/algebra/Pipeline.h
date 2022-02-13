@@ -24,6 +24,8 @@ struct Scope {
 
    /// Get the producing sub-operator of an IU within the given scope.
    Suboperator& getProducer(const IU& iu) const;
+   /// Try getting the producing sub-operator of an IU within the given scope.
+   Suboperator* tryGetProducer(const IU& iu) const;
 
    /// Scope id.
    size_t id;
@@ -69,6 +71,7 @@ struct Pipeline {
 
    /// Get the IU provider in a certain scope.
    Suboperator& getProvider(IUScoped iu) const;
+   Suboperator* tryGetProvider(IUScoped iu) const;
 
    /// Resolve the scope of a given operator.
    /// Incoming indicates whether the scope should be resolved for incoming

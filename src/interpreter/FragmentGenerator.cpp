@@ -1,6 +1,7 @@
 #include "algebra/CompilationContext.h"
 #include "interpreter/FragmentGenerator.h"
 #include "interpreter/TScanFragmentizer.h"
+#include "interpreter/CopyFragmentizer.h"
 
 namespace inkfuse {
 
@@ -42,6 +43,7 @@ IR::ProgramArc FragmentGenerator::build()
    // Set up the suboperator fragmentizers.
    std::vector<std::unique_ptr<Fragmentizer>> fragmentizers;
    fragmentizers.push_back(std::make_unique<TScanFragmetizer>());
+   fragmentizers.push_back(std::make_unique<CopyFragmentizer>());
 
    // Create the IR program.
    auto program = std::make_shared<IR::Program>("fragments", false);

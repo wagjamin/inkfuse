@@ -8,10 +8,6 @@ stages:
 tests:
     stage: test
     script:
-        - clang --version
-        - which clang-11
-        - which clang-12
-        - which clang-12
         - mkdir -p build
         - cd build
         - cmake -GNinja -DCMAKE_BUILD_TYPE=Debug ..

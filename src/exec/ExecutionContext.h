@@ -27,7 +27,6 @@ struct ExecutionContext {
    /// Create the execution context for a given base pipeline.
    ExecutionContext(const Pipeline& pipe_);
 
-
    /// Get the raw data column for the given IU.
    Column& getColumn(IUScoped iu) const;
 

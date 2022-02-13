@@ -4,7 +4,6 @@
 #include "algebra/suboperators/Suboperator.h"
 #include "algebra/suboperators/IndexedIUProvider.h"
 #include "algebra/suboperators/LoopDriver.h"
-#include "codegen/IRBuilder.h"
 
 /// This file contains the necessary sub-operators for reading from a base table.
 namespace inkfuse {

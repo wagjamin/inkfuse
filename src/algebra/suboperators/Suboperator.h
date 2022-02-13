@@ -101,6 +101,9 @@ struct Suboperator {
 
 };
 
+/// Empty state which can be used in the templated suboperators.
+struct EmptyState {};
+
 /// Templated suboperator providing functionality required across multiple operators.
 /// @tparam GlobalState execution state of the operator hooked up into the inkfuse runtime.
 /// @tparam RuntimeParams runtime parameters needed to construct the global state.
@@ -114,7 +117,10 @@ struct TemplatedSuboperator : public Suboperator
 
    void setUpState(const ExecutionContext& context) override {
       assert(!state);
-      assert(params);
+      if constexpr (!std::is_same<EmptyState, RuntimeParams>::value) {
+         // Params have to be attached for every suboperator which does not operate on empty runtime state.
+         throw std::runtime_error("Runtime parameters need to be attached before state cna be set up.");
+      }
       state = std::make_unique<GlobalState>();
       setUpStateImpl(context);
    };

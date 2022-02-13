@@ -1,6 +1,7 @@
 #ifndef INKFUSE_LOOPDRIVER_H
 #define INKFUSE_LOOPDRIVER_H
 
+#include "algebra/RelAlgOp.h"
 #include "algebra/CompilationContext.h"
 #include "algebra/suboperators/Suboperator.h"
 #include "codegen/IRBuilder.h"
