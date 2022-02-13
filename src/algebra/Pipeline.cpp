@@ -155,7 +155,6 @@ Suboperator& Pipeline::attachSuboperator(SuboperatorArc subop) {
    }
    // Rescope the pipeline (if necessary).
    subop->rescopePipeline(*this);
-   auto new_scope = scopes.size() - 1;
    // Register new IUs within the current scope.
    for (auto iu : subop->getIUs()) {
       // Add the produced IU to the (potentially) new scope.

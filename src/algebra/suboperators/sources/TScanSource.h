@@ -2,11 +2,8 @@
 #define INKFUSE_TSCANSOURCE_H
 
 #include "algebra/suboperators/Suboperator.h"
+#include "algebra/suboperators/IndexedIUProvider.h"
 #include "codegen/IRBuilder.h"
-#include <optional>
-
-// TODO Make attachRuntimeParams and ternary parameter structure
-//      a template class.
 
 /// This file contains the necessary sub-operators for reading from a base table.
 namespace inkfuse {
@@ -28,10 +25,8 @@ struct TScanDriverRuntimeParams {
 };
 
 /// Loop driver for reading a morsel from an underlying table.
-struct TScanDriver : public Suboperator {
+struct TScanDriver : public TemplatedSuboperator<TScanDriverState, TScanDriverRuntimeParams> {
    static std::unique_ptr<TScanDriver> build(const RelAlgOp* source);
-
-   void attachRuntimeParams(TScanDriverRuntimeParams runtime_params_);
 
    void rescopePipeline(Pipeline& pipe) override;
 
@@ -43,10 +38,6 @@ struct TScanDriver : public Suboperator {
    bool isSource() const override { return true; }
    /// Pick then next set of tuples from the table scan up to the maximum chunk size.
    bool pickMorsel() override;
-
-   void setUpState(const ExecutionContext& context) override;
-   void tearDownState() override;
-   void* accessState() const override;
 
    std::string id() const override { return "tscandriver"; };
 
@@ -61,55 +52,28 @@ struct TScanDriver : public Suboperator {
    IU loop_driver_iu;
    /// Was the first morsel picked already?
    bool first_picked = false;
-   /// Runtime state.
-   std::unique_ptr<TScanDriverState> state;
-   /// Optional runtime parameters.
-   std::optional<TScanDriverRuntimeParams> runtime_params;
    /// If code generation is in progress - the generated while loop whose scope
    /// has to be closed down the line.
    std::optional<IR::While> opt_while;
 };
 
-struct TScanIUProviderState {
-   static const char* name;
-
-   /// Pointer to the raw data of the underlying column.
-   void* raw_data;
-};
-
-/// Runtime parameters which are not needed for code generation of the respective operator.
+/// Runtime parameters which are needed to get a table scan IU provider running.
 struct TScanIUProviderRuntimeParams {
-   /// Raw data.
+   /// Raw data for the backing relation.
    void* raw_data;
-   /// Actual name of the column to be read.
-   std::string col_name;
 };
 
 /// IU provider when reading from a table scan.
-struct TScanIUProvider : public Suboperator {
+struct TScanIUProvider final : public IndexedIUProvider<TScanIUProviderRuntimeParams> {
    static std::unique_ptr<TScanIUProvider> build(const RelAlgOp* source, const IU& driver_iu, const IU& produced_iu);
 
-   /// Attach runtime parameters for this sub-operator.
-   void attachRuntimeParams(TScanIUProviderRuntimeParams runtime_params_);
+   protected:
+   void setUpStateImpl(const ExecutionContext& context) override;
 
-   void consume(const IU& iu, CompilationContext& context) override;
-
-   void setUpState(const ExecutionContext& context) override;
-   void tearDownState() override;
-   void* accessState() const override;
-
-   std::string id() const override;
-
-   /// Register runtime structs and functions.
-   static void registerRuntime();
+   std::string providerName() const override;
 
    private:
    TScanIUProvider(const RelAlgOp* source, const IU& driver_iu, const IU& produced_iu);
-
-   /// Runtime state.
-   std::unique_ptr<TScanIUProviderState> state;
-   /// Optional runtime parameters.
-   std::optional<TScanIUProviderRuntimeParams> runtime_params;
 };
 
 }

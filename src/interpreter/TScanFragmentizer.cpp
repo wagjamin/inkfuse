@@ -3,14 +3,15 @@
 
 namespace inkfuse {
 
-std::vector<IR::TypeArc> types =
+namespace {
+const std::vector<IR::TypeArc> types =
    TypeDecorator()
       .attachIntegers()
       .produce();
+}
 
-TScanFragmetizer::TScanFragmetizer()
-{
-   for (auto& type: types) {
+TScanFragmetizer::TScanFragmetizer() {
+   for (auto& type : types) {
       // A table scan fragments consists of a tscan loop driver and the IU provider afterwards.
       auto& [name, pipe] = pipes.emplace_back();
       auto& op = pipe.attachSuboperator(TScanDriver::build(nullptr));
@@ -22,8 +23,7 @@ TScanFragmetizer::TScanFragmetizer()
    }
 }
 
-const std::list<std::pair<std::string, Pipeline>>& TScanFragmetizer::getFragments() const
-{
+const std::list<std::pair<std::string, Pipeline>>& TScanFragmetizer::getFragments() const {
    return pipes;
 }
 

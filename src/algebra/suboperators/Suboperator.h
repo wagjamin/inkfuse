@@ -6,6 +6,7 @@
 #include <memory>
 #include <set>
 #include <vector>
+#include <optional>
 
 namespace inkfuse {
 
@@ -90,7 +91,6 @@ struct Suboperator {
    const std::set<const IU*>& getIUs() const { return provided_ius; }
 
    protected:
-
    /// The operator which decayed into this Suboperator.
    const RelAlgOp* source;
 
@@ -98,6 +98,47 @@ struct Suboperator {
    std::set<const IU*> provided_ius;
    /// Source IUs on which this sub-operator depends.
    std::set<const IU*> source_ius;
+
+};
+
+/// Templated suboperator providing functionality required across multiple operators.
+/// @tparam GlobalState execution state of the operator hooked up into the inkfuse runtime.
+/// @tparam RuntimeParams runtime parameters needed to construct the global state.
+template <class GlobalState, class RuntimeParams>
+struct TemplatedSuboperator : public Suboperator
+{
+   /// Add runtime parameters to the given suboperator.
+   void attachRuntimeParams(RuntimeParams params_) {
+      params = params_;
+   };
+
+   void setUpState(const ExecutionContext& context) override {
+      assert(!state);
+      assert(params);
+      state = std::make_unique<GlobalState>();
+      setUpStateImpl(context);
+   };
+
+   void tearDownState() override {
+      state.reset();
+   };
+
+   void* accessState() const override {
+      return state.get();
+   };
+
+   protected:
+   TemplatedSuboperator(const RelAlgOp* source_, std::set<const IU*> provided_ius_, std::set<const IU*> source_ius_)
+      : Suboperator(source_, std::move(provided_ius_), std::move(source_ius_)) {};
+
+   /// Set up the state given that the precondition that both params and state
+   /// are non-empty is satisfied.
+   virtual void setUpStateImpl(const ExecutionContext& context) {};
+
+   /// Global state of the respective operator.
+   std::unique_ptr<GlobalState> state;
+   /// Runtime parameters not needed for code generation.
+   std::optional<RuntimeParams> params;
 
 };
 

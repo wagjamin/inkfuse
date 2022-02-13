@@ -37,6 +37,4 @@ std::string Suboperator::buildIUName(IUScoped iu) const
    return str.str();
 }
 
-
-
 }

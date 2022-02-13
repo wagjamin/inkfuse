@@ -1,4 +1,5 @@
 #include "runtime/Runtime.h"
+#include "algebra/suboperators/IndexedIUProvider.h"
 #include "algebra/suboperators/sources/TScanSource.h"
 #include "algebra/suboperators/sinks/FuseChunkSink.h"
 
@@ -10,7 +11,7 @@ GlobalRuntime global_runtime = GlobalRuntime();
 GlobalRuntime::GlobalRuntime() : program(std::make_unique<IR::Program>("global_runtime", true)) {
    // Register the different runtime structs of the suboperators.
    TScanDriver::registerRuntime();
-   TScanIUProvider::registerRuntime();
+   IndexedIUProviderRuntime::registerRuntime();
    FuseChunkSink::registerRuntime();
 }
 

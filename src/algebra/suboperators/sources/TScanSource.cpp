@@ -9,7 +9,6 @@
 namespace inkfuse {
 
 const char* TScanDriverState::name = "TScanDriverState";
-const char* TScanIUProviderState::name = "TScanIUProviderState";
 
 // static
 void TScanDriver::registerRuntime() {
@@ -18,27 +17,16 @@ void TScanDriver::registerRuntime() {
       .addMember("end", IR::UnsignedInt::build(8));
 }
 
-void TScanIUProvider::registerRuntime() {
-   RuntimeStructBuilder{TScanIUProviderState::name}
-      .addMember("start", IR::Pointer::build(IR::Void::build()));
-}
-
 std::unique_ptr<TScanDriver> TScanDriver::build(const RelAlgOp* source) {
    return std::unique_ptr<TScanDriver>(new TScanDriver(source));
 }
 
 TScanDriver::TScanDriver(const RelAlgOp* source)
-   : Suboperator(source, {}, {}), loop_driver_iu(IR::UnsignedInt::build(8)) {
+   : TemplatedSuboperator<TScanDriverState, TScanDriverRuntimeParams>(source, {}, {}), loop_driver_iu(IR::UnsignedInt::build(8)) {
    if (source && loop_driver_iu.name.empty()) {
       loop_driver_iu.name = "iu_" + source->getName() + "_idx";
    }
    provided_ius.emplace(&loop_driver_iu);
-}
-
-
-void TScanDriver::attachRuntimeParams(TScanDriverRuntimeParams runtime_params_)
-{
-   runtime_params = runtime_params_;
 }
 
 void TScanDriver::rescopePipeline(Pipeline& pipe)
@@ -123,24 +111,20 @@ bool TScanDriver::pickMorsel() {
    }
 
    // Go up to the maximum chunk size of the intermediate results or the total relation size.
-   state->end = std::min(state->start + DEFAULT_CHUNK_SIZE, runtime_params->rel_size);
+   state->end = std::min(state->start + DEFAULT_CHUNK_SIZE, params->rel_size);
 
    // If the starting point advanced to the end, then we know there are no more morsels to pick.
-   return state->start != runtime_params->rel_size;
+   return state->start != params->rel_size;
 }
 
-void TScanDriver::setUpState(const ExecutionContext&) {
-   assert(runtime_params);
-   state = std::make_unique<TScanDriverState>();
+void TScanIUProvider::setUpStateImpl(const ExecutionContext& context)
+{
+   state->raw_data = params->raw_data;
 }
 
-void TScanDriver::tearDownState() {
-   state.reset();
-   first_picked = false;
-}
-
-void* TScanDriver::accessState() const {
-   return state.get();
+std::string TScanIUProvider::providerName() const
+{
+   return "TScanIUProvider";
 }
 
 std::unique_ptr<TScanIUProvider> TScanIUProvider::build(const RelAlgOp* source, const IU& driver_iu, const IU& produced_iu)
@@ -148,93 +132,9 @@ std::unique_ptr<TScanIUProvider> TScanIUProvider::build(const RelAlgOp* source, 
    return std::unique_ptr<TScanIUProvider>(new TScanIUProvider{source, driver_iu, produced_iu});
 }
 
-void TScanIUProvider::attachRuntimeParams(TScanIUProviderRuntimeParams runtime_params_)
-{
-   runtime_params = runtime_params_;
-}
-
-void TScanIUProvider::consume(const IU& iu, CompilationContext& context)
-{
-   assert(&iu == *source_ius.begin());
-   auto& builder = context.getFctBuilder();
-   const auto& program = context.getProgram();
-
-   const auto& loop_idx = context.getIUDeclaration({**source_ius.begin(), 0});
-
-   const IR::Stmt* decl_data_ptr;
-   {
-      // In a first step we get the raw data pointer and extract it into the root scope.
-      auto state_expr = context.accessGlobalState(*this);
-      // Cast it to a TScanDriverState pointer.
-      auto cast_expr = IR::CastExpr::build(std::move(state_expr), IR::Pointer::build(program.getStruct(TScanIUProviderState::name)));
-      // Build data variable.
-      auto data_var_name = getVarIdentifier();
-      data_var_name << "_start";
-      auto target_ptr_type = IR::Pointer::build(iu.type);
-      auto decl_start = IR::DeclareStmt::build(data_var_name.str(), target_ptr_type);
-      decl_data_ptr = decl_start.get();
-      // And assign the casted raw pointer.
-      auto assign_start = IR::AssignmentStmt::build(
-         *decl_start,
-         IR::CastExpr::build(
-            IR::StructAccesExpr::build(std::move(cast_expr), "start"),
-            target_ptr_type
-            )
-         );
-      // Add this to the function preamble.
-      std::deque<IR::StmtPtr> preamble_stmts;
-      preamble_stmts.push_back(std::move(decl_start));
-      preamble_stmts.push_back(std::move(assign_start));
-      builder.getRootBlock().appendStmts(std::move(preamble_stmts));
-   }
-
-   // Declare IU.
-   IUScoped declared_iu{**provided_ius.begin(), 0};
-   auto declare = IR::DeclareStmt::build(buildIUName(declared_iu), (*provided_ius.begin())->type);
-   context.declareIU(declared_iu, *declare);
-   // Assign value to IU. This is done by adding the offset to the data pointer and dereferencing.
-   auto assign = IR::AssignmentStmt::build(
-      *declare,
-      IR::DerefExpr::build(
-         IR::ArithmeticExpr::build(
-            IR::VarRefExpr::build(*decl_data_ptr),
-            IR::VarRefExpr::build(loop_idx),
-            IR::ArithmeticExpr::Opcode::Add
-            )
-         )
-      );
-   // Add the statements to the program.
-   builder.appendStmt(std::move(declare));
-   builder.appendStmt(std::move(assign));
-
-   // And notify consumer that the IU is ready.
-   context.notifyIUsReady(*this);
-}
-
-void TScanIUProvider::setUpState(const ExecutionContext&)
-{
-   assert(runtime_params);
-   state = std::make_unique<TScanIUProviderState>();
-   state->raw_data = runtime_params->raw_data;
-}
-
-void TScanIUProvider::tearDownState()
-{
-   state.reset();
-}
-
-void * TScanIUProvider::accessState() const
-{
-   return state.get();
-}
-
-std::string TScanIUProvider::id() const
-{
-   return "TSCanIUProvider_" + (*provided_ius.begin())->type->id();
-}
 
 TScanIUProvider::TScanIUProvider(const RelAlgOp* source, const IU& driver_iu, const IU& produced_iu)
-: Suboperator(source, {&produced_iu}, {&driver_iu})
+: IndexedIUProvider<TScanIUProviderRuntimeParams>(source, driver_iu, produced_iu)
 {
 }
 

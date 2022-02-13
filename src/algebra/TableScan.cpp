@@ -33,7 +33,6 @@ void TableScan::decay(std::set<const IU*> required, PipelineDAG& dag) const
       TScanIUProviderRuntimeParams iu_params
          {
             .raw_data = data_col.getRawData(),
-            .col_name = col.first,
          };
       provider.attachRuntimeParams(iu_params);
    }
