@@ -48,6 +48,7 @@ TypeArc ArithmeticExpr::deriveType(const Expr& child_l, const Expr& child_r, Opc
       return Bool::build();
    }
    // TODO nasty hack for the time being.
+   assert(child_l.type);
    return child_l.type;
 }
 

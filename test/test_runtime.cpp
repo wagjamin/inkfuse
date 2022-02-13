@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include "algebra/suboperators/sources/TScanSource.h"
+#include "algebra/suboperators/sources/TableScanSource.h"
 #include "codegen/backend_c/BackendC.h"
 #include "codegen/Expression.h"
 #include "codegen/IR.h"

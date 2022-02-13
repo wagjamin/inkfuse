@@ -12,7 +12,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O0 -fsanitize=address")
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g -O0 -fsanitize=address")
 
 # ---------------------------------------------------------------------------
 # Dependencies
@@ -46,7 +46,7 @@ set(INCLUDE_H
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/IndexedIUProvider.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/LoopDriver.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/sinks/FuseChunkSink.h"
-        "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/sources/TScanSource.h"
+        "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/sources/TableScanSource.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/sources/FuseChunkSource.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/Pipeline.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/RelAlgOp.h"
@@ -77,7 +77,7 @@ set(SRC_CC
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/LoopDriver.cpp"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/Suboperator.cpp"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/sinks/FuseChunkSink.cpp"
-        "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/sources/TScanSource.cpp"
+        "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/sources/TableScanSource.cpp"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/sources/FuseChunkSource.cpp"
         "${CMAKE_SOURCE_DIR}/src/algebra/TableScan.cpp"
         "${CMAKE_SOURCE_DIR}/src/algebra/RelAlgOp.cpp"

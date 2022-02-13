@@ -1,7 +1,6 @@
 #include "algebra/CompilationContext.h"
 #include "interpreter/FragmentGenerator.h"
 #include "interpreter/TScanFragmentizer.h"
-#include <iostream>
 
 namespace inkfuse {
 
@@ -54,7 +53,6 @@ IR::ProgramArc FragmentGenerator::build()
          // This in turn means that sub-operators don't have to create fuse chunk sources and sinks themselves.
          auto repiped = pipe.repipe(0, pipe.getSubops().size(), true);
          CompilationContext context(program, name, *repiped);
-         std::cout << name;
          context.compile();
       }
    }

@@ -2,7 +2,7 @@
 #define INKFUSE_COLUMNSCANFRAGMENTIZER_H
 
 #include "algebra/Pipeline.h"
-#include "algebra/suboperators/sources/TScanSource.h"
+#include "algebra/suboperators/sources/TableScanSource.h"
 #include "interpreter/FragmentGenerator.h"
 #include <list>
 

@@ -1,5 +1,5 @@
-#ifndef INKFUSE_TSCANSOURCE_H
-#define INKFUSE_TSCANSOURCE_H
+#ifndef INKFUSE_TABLESCANSOURCE_H
+#define INKFUSE_TABLESCANSOURCE_H
 
 #include "algebra/suboperators/Suboperator.h"
 #include "algebra/suboperators/IndexedIUProvider.h"
@@ -53,4 +53,4 @@ struct TScanIUProvider final : public IndexedIUProvider<TScanIUProviderRuntimePa
 
 }
 
-#endif //INKFUSE_TSCANSOURCE_H
+#endif //INKFUSE_TABLESCANSOURCE_H

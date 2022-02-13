@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 #include "algebra/CompilationContext.h"
 #include "algebra/Pipeline.h"
-#include "algebra/suboperators/sources/TScanSource.h"
+#include "algebra/suboperators/sources/TableScanSource.h"
 #include "algebra/suboperators/sinks/FuseChunkSink.h"
 #include "codegen/backend_c/BackendC.h"
 

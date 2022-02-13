@@ -1,6 +1,6 @@
 #include "algebra/TableScan.h"
 #include "algebra/Pipeline.h"
-#include "algebra/suboperators/sources/TScanSource.h"
+#include "algebra/suboperators/sources/TableScanSource.h"
 #include "exec/FuseChunk.h"
 
 namespace inkfuse {

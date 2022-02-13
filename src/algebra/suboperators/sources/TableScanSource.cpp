@@ -1,4 +1,4 @@
-#include "algebra/suboperators/sources/TScanSource.h"
+#include "algebra/suboperators/sources/TableScanSource.h"
 #include "algebra/CompilationContext.h"
 #include "algebra/RelAlgOp.h"
 #include "codegen/Type.h"
