@@ -1,5 +1,6 @@
 #include "algebra/suboperators/sinks/FuseChunkSink.h"
 #include "algebra/CompilationContext.h"
+#include "exec/ExecutionContext.h"
 #include "runtime/Runtime.h"
 
 namespace inkfuse {
@@ -18,10 +19,6 @@ std::unique_ptr<FuseChunkSink> FuseChunkSink::build(const RelAlgOp* source, cons
 
 FuseChunkSink::FuseChunkSink(const RelAlgOp* source, const IU& iu_to_write): Suboperator(source, {}, {&iu_to_write})
 {
-}
-
-void FuseChunkSink::attachRuntimeParams(FuseChunkSinkStateRuntimeParams runtime_params_) {
-   params = runtime_params_;
 }
 
 void FuseChunkSink::consume(const IU& iu, CompilationContext& context) {
@@ -94,10 +91,12 @@ void FuseChunkSink::consume(const IU& iu, CompilationContext& context) {
    builder.appendStmt(std::move(update_counter));
 }
 
-void FuseChunkSink::setUpState() {
+void FuseChunkSink::setUpState(const ExecutionContext& context) {
    state = std::make_unique<FuseChunkSinkState>();
-   state->raw_data = params->raw_data;
-   state->size = params->size;
+   auto scope = context.getPipe().resolveOperatorScope(*this);
+   auto& col = context.getColumn({**source_ius.begin(), scope});
+   state->raw_data = col.raw_data;
+   state->size = &col.size;
 }
 
 void FuseChunkSink::tearDownState() {

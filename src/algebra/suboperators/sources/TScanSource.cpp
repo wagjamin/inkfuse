@@ -43,8 +43,8 @@ void TScanDriver::attachRuntimeParams(TScanDriverRuntimeParams runtime_params_)
 
 void TScanDriver::rescopePipeline(Pipeline& pipe)
 {
-   // Root scope will always have id 0.
-   ScopePtr scope = std::make_unique<Scope>(0);
+   // Root scope will always have id 0. No selection vector.
+   ScopePtr scope = std::make_unique<Scope>(0, nullptr);
    pipe.rescope(std::move(scope));
 }
 
@@ -129,7 +129,7 @@ bool TScanDriver::pickMorsel() {
    return state->start != runtime_params->rel_size;
 }
 
-void TScanDriver::setUpState() {
+void TScanDriver::setUpState(const ExecutionContext&) {
    assert(runtime_params);
    state = std::make_unique<TScanDriverState>();
 }
@@ -211,7 +211,7 @@ void TScanIUProvider::consume(const IU& iu, CompilationContext& context)
    context.notifyIUsReady(*this);
 }
 
-void TScanIUProvider::setUpState()
+void TScanIUProvider::setUpState(const ExecutionContext&)
 {
    assert(runtime_params);
    state = std::make_unique<TScanIUProviderState>();

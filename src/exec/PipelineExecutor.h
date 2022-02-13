@@ -1,6 +1,7 @@
 #ifndef INKFUSE_PIPELINEEXECUTOR_H
 #define INKFUSE_PIPELINEEXECUTOR_H
 
+#include "exec/ExecutionContext.h"
 #include <string>
 #include <functional>
 #include <vector>
@@ -22,6 +23,9 @@ struct PipelineExecutor {
    void runFused();
    /// Run the pipeline in interpreted mode.
    void runInterpreted();
+   /// Get the execution context of this executor.
+   /// Mainly needed for testing.
+   const ExecutionContext& getExecutionContext();
 
    private:
    /// Run a single morsel in fused mode.
@@ -34,6 +38,8 @@ struct PipelineExecutor {
    std::function<uint8_t(void**, void**, void*)> fct;
    /// The pipeline which has to be executed.
    const Pipeline& pipe;
+   /// The execution context.
+   ExecutionContext context;
    /// Name of the pipeline/program to be generated.
    std::string name;
    /// The prepared states for different operator intervals.

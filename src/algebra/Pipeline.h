@@ -16,18 +16,8 @@ namespace inkfuse {
 /// an input and and output tuple generate a new scope.
 /// Note that this corresponds very closely to actual scopes in the generated code.
 struct Scope {
-   /// Create a new scope which re-uses an old chunk.
-   Scope(size_t id_, std::shared_ptr<FuseChunk> chunk_) : selection(std::make_unique<IU>(IR::Bool::build(), "sel_scope" + std::to_string(id))),
-                                                          id(id_),
-                                                          chunk(std::move(chunk_)) {
-      // We need a column containing the current selection vector.
-      chunk->attachColumn(*selection);
-   }
-
-   /// Create a completely new scope with a clean chunk.
-   Scope(size_t id_) : Scope(id_, std::make_shared<FuseChunk>()) {
-      chunk->attachColumn(*selection);
-   };
+   /// Create a new scope.
+   Scope(size_t id_, const IU* sel_): id(id_), sel(sel_) { }
 
    /// Register an IU producer within the given scope.
    void registerProducer(const IU& iu, Suboperator& op);
@@ -35,20 +25,10 @@ struct Scope {
    /// Get the producing sub-operator of an IU within the given scope.
    Suboperator& getProducer(const IU& iu) const;
 
-   /// Get the raw data column for the given IU.
-   Column& getColumn(const IU& iu) const;
-
-   /// Get the raw data column for the selection vector.
-   Column& getSel() const;
-
    /// Scope id.
    size_t id;
-   /// Boolean IU for the selection vector. We need a pointer to retain IU stability.
-   std::shared_ptr<IU> selection;
-   /// Backing chunk of data within this scope. For efficiency reasons, a new scope somtimes can refer
-   /// to the same backing FuseChunk as the previous ones. This is done to ensure that a filter sub-operator
-   /// does not have to copy all data.
-   std::shared_ptr<FuseChunk> chunk;
+   /// Selection IU for this scope.
+   const IU* sel;
    /// A map from IUs to the producing operators.
    std::unordered_map<const IU*, Suboperator*> iu_producers;
 };
@@ -78,15 +58,9 @@ struct Pipeline {
    std::unique_ptr<Pipeline> repipe(size_t start, size_t end, bool materialize_all = false) const;
 
    /// Get the current scope.
-   Scope& getCurrentScope();
+   const Scope& getScope(size_t id) const;
    /// Rescope the pipeline.
    void rescope(ScopePtr new_scope);
-
-   /// Get the raw data given a scoped IU.
-   Column& getScopedIU(IUScoped iu);
-
-   /// Get the selection vector for a given scope.
-   Column& getSelectionCol(size_t scope_id);
 
    /// Get the downstream consumers of IUs for a given sub-operator.
    const std::vector<Suboperator*>& getConsumers(Suboperator& subop) const;
@@ -110,6 +84,7 @@ struct Pipeline {
    private:
    friend class CompilationContext;
    friend class PipelineExecutor;
+   friend class ExecutionContext;
 
    /// Custom order opartor on scoped IUs.
    struct ScopeCmp {

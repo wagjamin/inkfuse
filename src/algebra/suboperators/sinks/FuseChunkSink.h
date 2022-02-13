@@ -25,14 +25,11 @@ struct FuseChunkSink : public Suboperator {
 
    static std::unique_ptr<FuseChunkSink> build(const RelAlgOp* source, const IU& iu_to_write);
 
-   /// Attach runtime parameters for this sub-operator.
-   void attachRuntimeParams(FuseChunkSinkStateRuntimeParams runtime_params_);
-
    void consume(const IU& iu, CompilationContext& context) override;
 
    bool isSink() const override { return true;}
 
-   void setUpState() override;
+   void setUpState(const ExecutionContext& context) override;
    void tearDownState() override;
    void* accessState() const override;
 
@@ -43,8 +40,6 @@ struct FuseChunkSink : public Suboperator {
 
    private:
    FuseChunkSink(const RelAlgOp* source, const IU& iu_to_write);
-   /// Runtime parameters.
-   std::optional<FuseChunkSinkStateRuntimeParams> params;
    /// Runtime state.
    std::unique_ptr<FuseChunkSinkState> state;
 };

@@ -8,20 +8,10 @@ namespace inkfuse {
 
 void Scope::registerProducer(const IU& iu, Suboperator& op) {
    iu_producers[&iu] = &op;
-   // TODO cleaner to not build the chunk in the actual pipeline, but rather down the line.
-   chunk->attachColumn(iu);
 }
 
 Suboperator& Scope::getProducer(const IU& iu) const {
    return *iu_producers.at(&iu);
-}
-
-Column& Scope::getColumn(const IU& iu) const {
-   return chunk->getColumn(iu);
-}
-
-Column& Scope::getSel() const {
-   return getColumn(*selection);
 }
 
 Pipeline::Pipeline() {
@@ -106,24 +96,14 @@ std::unique_ptr<Pipeline> Pipeline::repipe(size_t start, size_t end, bool materi
    return new_pipe;
 }
 
-Scope& Pipeline::getCurrentScope() {
-   assert(!scopes.empty());
-   return **scopes.end();
+const Scope& Pipeline::getScope(size_t id) const {
+   assert(id < scopes.size());
+   return *scopes[id];
 }
 
 void Pipeline::rescope(ScopePtr new_scope) {
    scopes.push_back(std::move(new_scope));
    rescope_offsets.push_back(scopes.size() - 1);
-}
-
-Column& Pipeline::getScopedIU(IUScoped iu) {
-   assert(iu.scope_id < scopes.size());
-   return scopes[iu.scope_id]->getColumn(iu.iu);
-}
-
-Column& Pipeline::getSelectionCol(size_t scope_id) {
-   assert(scope_id < scopes.size());
-   return scopes[scope_id]->getSel();
 }
 
 const std::vector<Suboperator*>& Pipeline::getConsumers(Suboperator& subop) const {
@@ -180,29 +160,6 @@ Suboperator& Pipeline::attachSuboperator(SuboperatorArc subop) {
    for (auto iu : subop->getIUs()) {
       // Add the produced IU to the (potentially) new scope.
       scopes.back()->registerProducer(*iu, *subop);
-      /*
-      auto& column = scopes.back()->getColumn(*iu);
-      // Insert fake fuse operators for all the IUs which are created by this sub-operator.
-      std::pair<SuboperatorPtr, SuboperatorPtr> fusers;
-      if (!subop->isSource()) {
-         // This is not needed for sources as those are part of vectorized primitives for IU providers anyways and
-         // thus don't get interpreted.
-         auto sink = FuseChunkSink::build(nullptr, *iu);
-         sink->attachRuntimeParams(
-            FuseChunkSinkStateRuntimeParams {
-               .raw_data = column.raw_data,
-               .size = &column.size,
-            });
-         fusers.second = std::move(sink);
-         graph.incoming_edges[fusers.second.get()].push_back(subop.get());
-         // TODO Source
-      }
-      if (!subop->isSink()) {
-         // Sinks meanwhile need a source interpreter but no sink one.
-         // TODO Source
-      }
-      iu_fusers[IUScoped(*iu, new_scope)] = std::move(fusers);
-       */
    }
    suboperators.push_back(std::move(subop));
    return *suboperators.back();

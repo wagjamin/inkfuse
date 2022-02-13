@@ -30,6 +30,16 @@ struct IU {
    std::string name;
 };
 
+/// A scoped IU represents a specific instance of the IU within a larger pipeline.
+struct IUScoped {
+   IUScoped(const IU& iu_, size_t scope_id): iu(iu_), scope_id(scope_id) {}
+
+   /// The IU being referenced.
+   const IU& iu;
+   /// The scope id in which the IU is being referenced.
+   const size_t scope_id;
+};
+
 }
 
 #endif //INKFUSE_IU_H

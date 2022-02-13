@@ -44,7 +44,7 @@ struct TScanDriver : public Suboperator {
    /// Pick then next set of tuples from the table scan up to the maximum chunk size.
    bool pickMorsel() override;
 
-   void setUpState() override;
+   void setUpState(const ExecutionContext& context) override;
    void tearDownState() override;
    void* accessState() const override;
 
@@ -94,7 +94,7 @@ struct TScanIUProvider : public Suboperator {
 
    void consume(const IU& iu, CompilationContext& context) override;
 
-   void setUpState() override;
+   void setUpState(const ExecutionContext& context) override;
    void tearDownState() override;
    void* accessState() const override;
 

@@ -10,19 +10,10 @@
 namespace inkfuse {
 
 struct CompilationContext;
+struct ExecutionContext;
 struct FuseChunk;
 struct RelAlgOp;
 struct Pipeline;
-
-/// A scoped IU represents a specific instance of the IU within the larger pipeline.
-struct IUScoped {
-   IUScoped(const IU& iu_, size_t scope_id): iu(iu_), scope_id(scope_id) {}
-
-   /// The IU being referenced.
-   const IU& iu;
-   /// The scope id in which the IU is being referenced.
-   const size_t scope_id;
-};
 
 /// A suboperator is a fragment of a central operator which has a corresponding vectorized primitive.
 /// An example might be the aggregation of an IU into some aggregation state.
@@ -77,16 +68,16 @@ struct Suboperator {
 
    /// Set up the state needed by this operator. In an IncrementalFusion engine it's easiest to actually
    /// make this interpreted.
-   virtual void setUpState(){};
+   virtual void setUpState(const ExecutionContext& context) {};
    /// Tear down the state needed by this operator.
-   virtual void tearDownState(){};
+   virtual void tearDownState() {};
    /// Get a raw pointer to the state of this operator.
    virtual void* accessState() const { return nullptr; };
    /// Pick a morsel of work. Only relevant for source operators.
    virtual bool pickMorsel() { return false; }
 
    /// Build a unique identifier for this suboperator (unique given the parameter set).
-   /// This is needed to effectively use the fragment cache during vectorized interpretation.
+   /// This is neded to effectively use the fragment cache during vectorized interpretation.
    virtual std::string id() const = 0;
    /// Get a variable identifier which is unique to this suboperator.
    std::stringstream getVarIdentifier() const;

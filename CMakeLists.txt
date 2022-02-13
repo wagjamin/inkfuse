@@ -93,7 +93,7 @@ set(SRC_CC
         "${CMAKE_SOURCE_DIR}/src/interpreter/FragmentCache.cpp"
         "${CMAKE_SOURCE_DIR}/src/interpreter/FragmentGenerator.cpp"
         "${CMAKE_SOURCE_DIR}/src/interpreter/TScanFragmentizer.cpp"
-        src/interpreter/FragmentCache.cpp src/interpreter/FragmentGenerator.cpp src/interpreter/TScanFragmentizer.cpp)
+        )
 
 set(TEST_CC
         "${CMAKE_SOURCE_DIR}/test/test_ir.cpp"

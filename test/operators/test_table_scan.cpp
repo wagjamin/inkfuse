@@ -31,16 +31,10 @@ TEST(test_table_scan, scan_1) {
 
    // Add fuse chunk sink.
    auto& sink = reinterpret_cast<FuseChunkSink&>(pipe.attachSuboperator(FuseChunkSink::build(nullptr, **ius.begin())));
-   IUScoped scoped{**pipe.getSubops()[1]->getIUs().begin(), 0};
-   auto& col = pipe.getScopedIU(scoped);
-   FuseChunkSinkStateRuntimeParams params {
-      .raw_data = col.raw_data,
-      .size = &col.size,
-   };
-   sink.attachRuntimeParams(params);
 
    PipelineExecutor exec(pipe, "test_table_scan_test_1");
    EXPECT_NO_THROW(exec.run());
+   auto& col = exec.getExecutionContext().getColumn({**ius.begin(), 0});
 
    for (uint64_t k = 0; k < 1000; ++k)
    {

@@ -6,7 +6,7 @@ namespace inkfuse {
 
 uint64_t executor_id = 0;
 
-PipelineExecutor::PipelineExecutor(const Pipeline& pipe_, std::string name_) : pipe(pipe_), name(std::move(name_))
+PipelineExecutor::PipelineExecutor(const Pipeline& pipe_, std::string name_) : pipe(pipe_), context(pipe), name(std::move(name_))
 {
    assert(pipe.suboperators[0]->isSource());
    if (name.empty()) {
@@ -17,7 +17,7 @@ PipelineExecutor::PipelineExecutor(const Pipeline& pipe_, std::string name_) : p
 void PipelineExecutor::run()
 {
    for (auto& op: pipe.suboperators) {
-      op->setUpState();
+      op->setUpState(context);
    }
    runFused();
    for (auto& op: pipe.suboperators) {
@@ -28,12 +28,12 @@ void PipelineExecutor::run()
 void PipelineExecutor::runFused()
 {
    // Create IR program for the pipeline.
-   CompilationContext context(name, pipe);
-   context.compile();
+   CompilationContext comp(name, pipe);
+   comp.compile();
 
    // Generate C code.
    BackendC backend;
-   auto program = backend.generate(context.getProgram());
+   auto program = backend.generate(comp.getProgram());
    program->compileToMachinecode();
    fct = reinterpret_cast<uint8_t(*)(void**, void**, void*)>(program->getFunction("execute"));
 
@@ -64,11 +64,16 @@ bool PipelineExecutor::runFusedMorsel()
       return false;
    }
    auto state = setUpState(0, pipe.suboperators.size());
-   for (auto& scope: pipe.scopes) {
-      scope->chunk->clearColumns();
+   for (size_t k = 0; k < pipe.scopes.size(); ++k) {
+      context.clear(k);
    }
    fct(state, nullptr, nullptr);
    return true;
+}
+
+const ExecutionContext& PipelineExecutor::getExecutionContext()
+{
+   return context;
 }
 
 }
