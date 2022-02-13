@@ -2,6 +2,9 @@
 # Inkfuse Gitlab CI
 # ---------------------------------------------------------------------------
 
+default:
+    image: kunitoki/clang-11
+
 stages:
     - test
 
