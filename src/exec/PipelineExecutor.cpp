@@ -9,6 +9,7 @@ uint64_t executor_id = 0;
 PipelineExecutor::PipelineExecutor(const Pipeline& pipe_, std::string name_) : pipe(pipe_), context(pipe), name(std::move(name_))
 {
    assert(pipe.suboperators[0]->isSource());
+   assert(pipe.suboperators.back()->isSink());
    if (name.empty()) {
       name = "pipeline_" + std::to_string(executor_id++);
    }

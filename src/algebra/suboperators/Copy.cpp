@@ -15,11 +15,11 @@ void Copy::consume(const IU& iu, CompilationContext& context)
    auto scope = context.resolveScope(*this);
    const auto& in = context.getIUDeclaration({iu, scope});
    // Declare the new IU.
-   auto declare = IR::DeclareStmt::build(buildIUName({iu, scope}), iu.type);
+   auto declare = IR::DeclareStmt::build(buildIUName({produced, scope}), iu.type);
    auto assign = IR::AssignmentStmt::build(*declare, IR::VarRefExpr::build(in));
 
    // Register it with the context.
-   context.declareIU({iu, scope}, *declare);
+   context.declareIU({produced, scope}, *declare);
 
    // Add the statements to the generated program.
    builder.appendStmt(std::move(declare));
@@ -35,7 +35,7 @@ std::string Copy::id() const
 }
 
 Copy::Copy(const IU& copy_iu)
-: TemplatedSuboperator<EmptyState, EmptyState>(nullptr, {&copy_iu}, {&produced}), produced(copy_iu)
+: TemplatedSuboperator<EmptyState, EmptyState>(nullptr, {&produced}, {&copy_iu}), produced(copy_iu.type)
 {
 }
 

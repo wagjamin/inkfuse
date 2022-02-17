@@ -89,13 +89,6 @@ struct Pipeline {
    friend class PipelineExecutor;
    friend class ExecutionContext;
 
-   /// Custom order opartor on scoped IUs.
-   struct ScopeCmp {
-      bool operator()(const IUScoped& l, const IUScoped& r) const {
-         return &l.iu <= &r.iu && l.scope_id < r.scope_id;
-      }
-   };
-
    /// The sub-operators within this pipeline. These are arranged in a topological order of the backing
    /// DAG structure.
    std::vector<SuboperatorArc> suboperators;
@@ -108,10 +101,6 @@ struct Pipeline {
 
    /// The scopes of this pipeline.
    std::vector<ScopePtr> scopes;
-
-   /// Specific fuse operators which are inserted automagically by the pipeline
-   /// in order to ease adaptive execution down the line.
-   std::map<IUScoped, std::pair<SuboperatorArc, SuboperatorArc>, ScopeCmp> iu_fusers;
 };
 
 using PipelinePtr = std::unique_ptr<Pipeline>;

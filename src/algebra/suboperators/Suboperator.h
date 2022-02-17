@@ -118,8 +118,10 @@ struct TemplatedSuboperator : public Suboperator
    void setUpState(const ExecutionContext& context) override {
       assert(!state);
       if constexpr (!std::is_same<EmptyState, RuntimeParams>::value) {
-         // Params have to be attached for every suboperator which does not operate on empty runtime state.
-         throw std::runtime_error("Runtime parameters need to be attached before state cna be set up.");
+         if (!params) {
+            // Params have to be attached for every suboperator which does not operate on empty runtime state.
+            throw std::runtime_error("Runtime parameters need to be attached before state can be set up.");
+         }
       }
       state = std::make_unique<GlobalState>();
       setUpStateImpl(context);

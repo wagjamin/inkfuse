@@ -169,10 +169,11 @@ Suboperator& Pipeline::attachSuboperator(SuboperatorArc subop) {
       for (const auto& depends : subop->getSourceIUs()) {
          // Resolve input.
          IUScoped scoped_iu{*depends, scope};
-         auto& provider = getProvider(scoped_iu);
-         // Add edges.
-         graph.outgoing_edges[&provider].push_back(subop.get());
-         graph.incoming_edges[subop.get()].push_back(&provider);
+         if (auto provider = tryGetProvider(scoped_iu)) {
+            // Add edges.
+            graph.outgoing_edges[provider].push_back(subop.get());
+            graph.incoming_edges[subop.get()].push_back(provider);
+         }
       }
    }
    // Rescope the pipeline (if necessary).

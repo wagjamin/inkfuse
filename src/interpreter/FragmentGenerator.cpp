@@ -42,7 +42,7 @@ IR::ProgramArc FragmentGenerator::build()
 {
    // Set up the suboperator fragmentizers.
    std::vector<std::unique_ptr<Fragmentizer>> fragmentizers;
-   fragmentizers.push_back(std::make_unique<TScanFragmetizer>());
+   // fragmentizers.push_back(std::make_unique<TScanFragmetizer>());
    fragmentizers.push_back(std::make_unique<CopyFragmentizer>());
 
    // Create the IR program.

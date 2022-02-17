@@ -17,17 +17,17 @@ void CompilationContext::compile() {
    builder.emplace(*program, fct_name);
    // Collect all sinks.
    std::set<Suboperator*> sinks;
-   std::for_each(pipeline.suboperators.begin(), pipeline.suboperators.end(), [&](const SuboperatorArc& op){
-     if (op->isSink()) {
-        sinks.insert(op.get());
-     }
+   std::for_each(pipeline.suboperators.begin(), pipeline.suboperators.end(), [&](const SuboperatorArc& op) {
+      if (op->isSink()) {
+         sinks.insert(op.get());
+      }
    });
    // Open all sinks.
-   for (auto sink: sinks) {
+   for (auto sink : sinks) {
       sink->open(*this);
    }
    // And close them again.
-   for (auto sink: sinks) {
+   for (auto sink : sinks) {
       sink->close(*this);
    }
    // Return 0 for the time being.
@@ -67,16 +67,15 @@ void CompilationContext::notifyIUsReady(Suboperator& op) {
 void CompilationContext::requestIU(Suboperator& op, const IU& iu) {
    // Resolve the IU provider.
    for (auto provider : pipeline.getProducers(op)) {
-      if (provider->getIUs().count(&iu)) {
-         properties[provider].upstream_requests++;
-         requests[provider] = {&op, &iu};
-         if (!computed.count(provider)) {
-            // Request to compute if it was not computed yet.
-            provider->open(*this);
-         } else {
-            // Otherwise directly notify the parent that we are ready.
-            notifyIUsReady(*provider);
-         }
+      assert(provider->getIUs().count(&iu));
+      properties[provider].upstream_requests++;
+      requests[provider] = {&op, &iu};
+      if (!computed.count(provider)) {
+         // Request to compute if it was not computed yet.
+         provider->open(*this);
+      } else {
+         // Otherwise directly notify the parent that we are ready.
+         notifyIUsReady(*provider);
       }
    }
 }
