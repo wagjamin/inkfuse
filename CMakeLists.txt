@@ -26,6 +26,13 @@ include("${CMAKE_SOURCE_DIR}/cmake/clang-tidy.cmake")
 include("${CMAKE_SOURCE_DIR}/vendor/googletest.cmake")
 include("${CMAKE_SOURCE_DIR}/vendor/gflags.cmake")
 
+option(WITH_COVERAGE "Build inkfuse with coverage information attached" OFF)
+if (WITH_COVERAGE)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --coverage")
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} --coverage")
+endif()
+
+
 # ---------------------------------------------------------------------------
 # Includes
 # ---------------------------------------------------------------------------
@@ -164,6 +171,8 @@ add_dependencies(lint ${lint_targets})
 message(STATUS "[IMLAB] settings")
 message(STATUS "    GFLAGS_INCLUDE_DIR          = ${GFLAGS_INCLUDE_DIR}")
 message(STATUS "    GFLAGS_LIBRARY_PATH         = ${GFLAGS_LIBRARY_PATH}")
+message(STATUS "    CMAKE_CXX_FLAGS             = ${CMAKE_CXX_FLAGS}")
+message(STATUS "    CMAKE_CXX_FLAGS_DEBUG       = ${CMAKE_CXX_FLAGS_DEBUG}")
 message(STATUS "[TEST] settings")
 message(STATUS "    GTEST_INCLUDE_DIR           = ${GTEST_INCLUDE_DIR}")
 message(STATUS "    GTEST_LIBRARY_PATH          = ${GTEST_LIBRARY_PATH}")
