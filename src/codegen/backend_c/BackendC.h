@@ -20,6 +20,9 @@ struct BackendProgramC : public IR::BackendProgram {
 
    ~BackendProgramC() override;
 
+   /// Link the backend program. This way, it doesn't get linked lazily during the first lookup.
+   void link() override;
+
    /// Compile the backend program to actual machine code.
    void compileToMachinecode() override;
 

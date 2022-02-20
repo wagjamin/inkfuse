@@ -15,6 +15,9 @@ struct BackendProgram {
    /// Virtual base destructor.
    virtual ~BackendProgram() = default;
 
+   /// Link the backend program. This way, it doesn't get linked lazily during the first lookup.
+   virtual void link() = 0;
+
    /// Compile the backend program to actual machine code.
    virtual void compileToMachinecode() = 0;
 

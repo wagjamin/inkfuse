@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include "interpreter/FragmentGenerator.h"
+#include "interpreter/FragmentCache.h"
 #include "codegen/backend_c/BackendC.h"
 
 namespace inkfuse {
@@ -21,8 +22,15 @@ TEST(test_fragmentizors, fragment_generation) {
    EXPECT_NO_THROW(program->compileToMachinecode());
 }
 
-TEST(test_fragmentizors, fragment_execution) {
+TEST(test_fragmentizors, fragment_cache) {
 
+   auto& cache = FragmentCache::instance();
+   auto fragments = FragmentGenerator::build();
+   for (auto& fragment: fragments->getFunctions()) {
+      // Try to get handles to every function.
+      const auto& name = fragment->name;
+      EXPECT_NE(nullptr, cache.getFragment(name));
+   }
 }
 
 }

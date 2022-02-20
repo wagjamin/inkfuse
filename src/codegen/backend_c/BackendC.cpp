@@ -48,19 +48,27 @@ BackendProgramC::~BackendProgramC() {
    // TODO dlclose
 }
 
-void* BackendProgramC::getFunction(std::string_view name) {
-   if (!was_compiled) {
-      throw std::runtime_error("Function has to be compiled before a handle can be returned");
-   }
+void BackendProgramC::link()
+{
    if (!handle) {
       // Dlopen for the first time
       auto soname = so_path(program_name);
       handle = dlopen(soname.c_str(), RTLD_NOW);
+      if (!handle) {
+         throw std::runtime_error("Could not link BackendProgramC.");
+      }
    }
-   if (!handle) {
-      throw std::runtime_error("Error during dlopen: " + std::string(dlerror()));
+}
+
+void* BackendProgramC::getFunction(std::string_view name) {
+   if (!was_compiled) {
+      throw std::runtime_error("Function has to be compiled before a handle can be returned");
    }
 
+   // Lazily link if it did not happen before.
+   link();
+
+   // Fetch the function.
    auto fn = dlsym(handle, name.data());
 
    return fn;
