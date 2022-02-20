@@ -16,12 +16,12 @@ namespace IR {
 
 /// IR Expr returning some type when evaluated. An expression can have children which are again expressions.
 /// Expressions can then be wrapped within IR statements for e.g. variable assignments or control blocks.
-/// TODO - It would make to have some context of lvalues and rvalues here - but we can cut corners here.
 /// Why? Because we are very careful in generating code, we can just assume every expression can be referenced.
+/// TODO - It would make to have some context of lvalues and rvalues here - but we can cut corners here.
 struct Expr {
    public:
    /// Constructor taking a vector of child expressions.
-   Expr(TypeArc type_) : type(std::move(type_)) {
+   explicit Expr(TypeArc type_) : type(std::move(type_)) {
       /// Every expression must have a type.
       assert(type);
    };
@@ -197,7 +197,7 @@ struct CastExpr : public UnaryExpr {
    static CastResult validateCastable(const Type& src, const Type& target);
 };
 
-/// Expression visitor utility.
+/// ExpressionOp visitor utility.
 template <typename Arg>
 struct ExprVisitor {
    public:

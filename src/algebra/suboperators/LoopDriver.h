@@ -98,7 +98,7 @@ struct LoopDriver : public TemplatedSuboperator<LoopDriverState, RuntimeParams> 
       if (this->source && loop_driver_iu.name.empty()) {
          loop_driver_iu.name = "iu_" + this->source->getName() + "_idx";
       }
-      this->provided_ius.emplace(&loop_driver_iu);
+      this->provided_ius.push_back(&loop_driver_iu);
    }
 
    /// Loop counter IU provided by the TScanDriver.

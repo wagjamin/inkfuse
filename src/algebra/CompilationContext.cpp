@@ -67,7 +67,7 @@ void CompilationContext::notifyIUsReady(Suboperator& op) {
 void CompilationContext::requestIU(Suboperator& op, const IU& iu) {
    // Resolve the IU provider.
    for (auto provider : pipeline.getProducers(op)) {
-      assert(provider->getIUs().count(&iu));
+      assert(std::find(provider->getIUs().begin(), provider->getIUs().end(), &iu) != provider->getIUs().end());
       properties[provider].upstream_requests++;
       requests[provider] = {&op, &iu};
       if (!computed.count(provider)) {

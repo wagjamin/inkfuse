@@ -27,7 +27,7 @@ using StmtPtr = std::unique_ptr<Stmt>;
 /// Function invocation statement.
 struct InvokeFctStmt : public Stmt {
    InvokeFctStmt(ExprPtr invoke_fct_expr_) : invoke_fct_expr(std::move(invoke_fct_expr_)) {
-      if (!dynamic_cast<IR::InvokeFctExpr*>(invoke_fct_expr.get())) {
+      if (!dynamic_cast<InvokeFctExpr*>(invoke_fct_expr.get())) {
          throw std::runtime_error("cannot wrap non invoke expression in invoke statement");
       }
    }
@@ -55,9 +55,9 @@ struct AssignmentStmt : public Stmt {
    AssignmentStmt(ExprPtr left_side_, ExprPtr expr_) : left_side(std::move(left_side_)), expr(std::move(expr_)) {}
    static StmtPtr build(ExprPtr left_side_, ExprPtr expr_);
 
-   /// Expression into which to assign.
+   /// ExpressionOp into which to assign.
    ExprPtr left_side;
-   /// Expression which should be assigned.
+   /// ExpressionOp which should be assigned.
    ExprPtr expr;
 };
 
@@ -67,7 +67,7 @@ struct ReturnStmt : public Stmt {
       return std::make_unique<ReturnStmt>(ReturnStmt{std::move(expr_)});
    }
 
-   /// Expression to be evaluated, the result gets returned.
+   /// ExpressionOp to be evaluated, the result gets returned.
    ExprPtr expr;
 
    private:
@@ -78,7 +78,7 @@ struct ReturnStmt : public Stmt {
 struct IfStmt : public Stmt {
    IfStmt(ExprPtr expr_, BlockPtr if_block_, BlockPtr else_block_);
 
-   /// Expression to evaluate within the if statement.
+   /// ExpressionOp to evaluate within the if statement.
    ExprPtr expr;
    /// If block.
    BlockPtr if_block;
@@ -90,7 +90,7 @@ struct IfStmt : public Stmt {
 struct WhileStmt : public Stmt {
    WhileStmt(ExprPtr expr_, BlockPtr while_block_);
 
-   /// Expression to evaluate to decide whether to enter the while loop.
+   /// ExpressionOp to evaluate to decide whether to enter the while loop.
    ExprPtr expr;
    /// Block within the while statement.
    BlockPtr while_block;

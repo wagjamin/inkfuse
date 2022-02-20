@@ -41,7 +41,7 @@ struct If {
    FunctionBuilder& builder;
    /// Original block of the backing builder.
    Block* original_block;
-   /// Expression to be evaluated in the if.
+   /// ExpressionOp to be evaluated in the if.
    ExprPtr expr;
    /// If Block.
    BlockPtr if_block;
@@ -73,7 +73,7 @@ struct While {
    FunctionBuilder* builder;
    /// Original block of the backing builder.
    Block* original_block;
-   /// Expression to be evaluated in the while.
+   /// ExpressionOp to be evaluated in the while.
    ExprPtr expr;
    /// While body.
    BlockPtr body;
