@@ -146,8 +146,7 @@ target_link_libraries(inkfuse PRIVATE gflags dl Threads::Threads)
 # inkfuse benchmarking binary for running TPC-H queries
 add_executable(inkfuse_runner tools/inkfuse_runner.cc)
 set_property(TARGET inkfuse_runner PROPERTY ENABLE_EXPORTS 1)
-target_link_libraries(inkfuse_runner PUBLIC inkfuse)
-target_link_libraries(inkfuse_runner PRIVATE gflags Threads::Threads)
+target_link_libraries(inkfuse_runner PRIVATE inkfuse gflags Threads::Threads)
 
 # ---------------------------------------------------------------------------
 # Tests
