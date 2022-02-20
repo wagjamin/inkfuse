@@ -304,7 +304,15 @@ void BackendC::compileExpression(const IR::Expr& expr, ScopedWriter::Statement& 
                     stmt.stream() << " - ";
                     break;
                 }
-                case IR::ArithmeticExpr::Opcode::Less: {
+               case IR::ArithmeticExpr::Opcode::Multiply: {
+                  stmt.stream() << " * ";
+                  break;
+               }
+               case IR::ArithmeticExpr::Opcode::Divide: {
+                  stmt.stream() << " / ";
+                  break;
+               }
+               case IR::ArithmeticExpr::Opcode::Less: {
                     stmt.stream() << " < ";
                     break;
                 }

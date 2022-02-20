@@ -39,7 +39,7 @@ struct IndexedIUProvider : public TemplatedSuboperator<IndexedIUProviderState, R
          // Build data variable.
          auto data_var_name = this->getVarIdentifier();
          data_var_name << "_start";
-         auto target_ptr_type = IR::Pointer::build(iu.type);
+         auto target_ptr_type = IR::Pointer::build(this->provided_ius[0]->type);
          auto decl_start = IR::DeclareStmt::build(data_var_name.str(), target_ptr_type);
          decl_data_ptr = decl_start.get();
          // And assign the casted raw pointer.

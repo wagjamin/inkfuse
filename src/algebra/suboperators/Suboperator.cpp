@@ -30,11 +30,7 @@ std::stringstream Suboperator::getVarIdentifier() const
 
 std::string Suboperator::buildIUName(IUScoped iu) const
 {
-   std::stringstream str;
-   std::string name = iu.iu.name;
-   std::replace(name.begin(), name.end(), '.', '_');
-   str << "iu_" << name << "_" << iu.scope_id;
-   return str.str();
+   return getVarIdentifier().str();
 }
 
 }

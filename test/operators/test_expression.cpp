@@ -66,7 +66,6 @@ TEST_F(ExpressionT, decay) {
    EXPECT_ANY_THROW(pipe.getConsumers(*ops[2]));
 }
 
-/*
 TEST_F(ExpressionT, exec) {
    PipelineDAG dag;
    dag.buildNewPipeline();
@@ -85,9 +84,49 @@ TEST_F(ExpressionT, exec) {
    context.compile();
    BackendC backend;
    auto compiled = backend.generate(context.getProgram());
-   compiled->dump();
+   EXPECT_NO_THROW(compiled->compileToMachinecode());
+   auto fct = compiled->getFunction("execute");
+   EXPECT_NE(fct, nullptr);
+
+   // Get ready for execution.
+   PipelineExecutor exec(*repiped);
+   exec.setUpState();
+
+   // Prepare input chunk.
+   auto& ctx = exec.getExecutionContext();
+   auto& c_in1 = ctx.getColumn({in1, 0});
+   auto& c_in2 = ctx.getColumn({in2, 0});
+
+   c_in1.size = 10;
+   c_in2.size = 10;
+   for (uint16_t  k = 0; k < 10; ++k) {
+      reinterpret_cast<uint16_t*>(c_in1.raw_data)[k] = k + 1;
+      reinterpret_cast<uint16_t*>(c_in2.raw_data)[k] = k;
+   }
+
+   // And run a single morsel.
+   exec.runFused(1);
+
+   // Check results.
+   auto iu_c_3 = pipe.getSubops()[0]->getIUs()[0];
+   auto iu_c_4 = pipe.getSubops()[1]->getIUs()[0];
+   auto iu_c_5 = pipe.getSubops()[2]->getIUs()[0];
+   auto& c_iu_c_3 = ctx.getColumn({*iu_c_3, 0});
+   auto& c_iu_c_4 = ctx.getColumn({*iu_c_4, 0});
+   auto& c_iu_c_5 = ctx.getColumn({*iu_c_5, 0});
+   for (uint16_t k = 0; k < 10; ++k) {
+      uint16_t c_3_expected = k + k + 1;
+      uint16_t c_4_expected = k + 1;
+      uint16_t c_5_expected = c_3_expected * c_4_expected;
+      EXPECT_EQ(c_iu_c_3.size, 10);
+      EXPECT_EQ(c_iu_c_4.size, 10);
+      EXPECT_EQ(c_iu_c_5.size, 10);
+      EXPECT_EQ(reinterpret_cast<uint16_t*>(c_iu_c_3.raw_data)[k], c_3_expected);
+      EXPECT_EQ(reinterpret_cast<uint16_t*>(c_iu_c_4.raw_data)[k], c_4_expected);
+      EXPECT_EQ(reinterpret_cast<uint16_t*>(c_iu_c_5.raw_data)[k], c_5_expected);
+   }
+
 }
- */
 
 }
 

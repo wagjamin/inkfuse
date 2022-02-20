@@ -17,16 +17,26 @@ PipelineExecutor::PipelineExecutor(const Pipeline& pipe_, std::string name_) : p
 
 void PipelineExecutor::run()
 {
+   setUpState();
+   runFused();
+   tearDownState();
+}
+
+void PipelineExecutor::setUpState()
+{
    for (auto& op: pipe.suboperators) {
       op->setUpState(context);
    }
-   runFused();
+}
+
+void PipelineExecutor::tearDownState()
+{
    for (auto& op: pipe.suboperators) {
       op->tearDownState();
    }
 }
 
-void PipelineExecutor::runFused()
+void PipelineExecutor::runFused(std::optional<size_t> morsels)
 {
    // Create IR program for the pipeline.
    CompilationContext comp(name, pipe);
@@ -38,7 +48,14 @@ void PipelineExecutor::runFused()
    program->compileToMachinecode();
    fct = reinterpret_cast<uint8_t(*)(void**, void**, void*)>(program->getFunction("execute"));
 
-   while(runFusedMorsel()) {};
+   if (!morsels) {
+      while (runFusedMorsel()) {};
+   } else {
+      size_t idx = 0;
+      while (idx < *morsels && runFusedMorsel()) {
+         idx++;
+      }
+   }
 }
 
 void PipelineExecutor::runInterpreted()

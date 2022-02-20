@@ -20,12 +20,17 @@ struct PipelineExecutor {
    /// to interpret, fuse, or do adaptive execution.
    void run();
    /// Run the pipeline in fused mode.
-   void runFused();
+   void runFused(std::optional<size_t> morsels = {});
    /// Run the pipeline in interpreted mode.
    void runInterpreted();
    /// Get the execution context of this executor.
    /// Mainly needed for testing.
    const ExecutionContext& getExecutionContext();
+
+   /// Set up the state, i.e. the execution context.
+   void setUpState();
+   /// Tear down the state again.
+   void tearDownState();
 
    private:
    /// Run a single morsel in fused mode.

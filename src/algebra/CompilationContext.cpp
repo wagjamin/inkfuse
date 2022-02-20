@@ -58,7 +58,7 @@ void CompilationContext::notifyIUsReady(Suboperator& op) {
    assert(requestor);
    // Consume in the original requestor.
    requestor->consume(*iu, *this);
-   if (++properties[&op].serviced_requests == requestor->getNumSourceIUs()) {
+   if (++properties[requestor].serviced_requests == requestor->getNumSourceIUs()) {
       // Consume in the original requestor notifying it that all children were produced successfuly.
       requestor->consumeAllChildren(*this);
    }
@@ -68,7 +68,7 @@ void CompilationContext::requestIU(Suboperator& op, const IU& iu) {
    // Resolve the IU provider.
    bool found = false;
    for (auto provider : pipeline.getProducers(op)) {
-      auto& provided = provider->getIUs();
+      const auto& provided = provider->getIUs();
       if (std::find(provided.cbegin(), provided.cend(), &iu) != provided.cend()) {
          properties[provider].upstream_requests++;
          requests[provider] = {&op, &iu};
