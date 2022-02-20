@@ -13,6 +13,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g -O0 -fsanitize=address")
+set(CMAKE_CXX_FLAGS_RELWITHDEBINFO  "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
 
 # ---------------------------------------------------------------------------
 # Dependencies
@@ -52,12 +53,14 @@ set(INCLUDE_H
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/Copy.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/Suboperator.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/IndexedIUProvider.h"
+        "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/ExpressionSubop.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/LoopDriver.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/sinks/FuseChunkSink.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/sources/TableScanSource.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/sources/FuseChunkSource.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/Pipeline.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/RelAlgOp.h"
+        "${CMAKE_SOURCE_DIR}/src/algebra/ExpressionOp.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/TableScan.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/CompilationContext.h"
         "${CMAKE_SOURCE_DIR}/src/codegen/backend_c/BackendC.h"
@@ -83,6 +86,7 @@ set(SRC_CC
         "${CMAKE_SOURCE_DIR}/src/algebra/Pipeline.cpp"
         "${CMAKE_SOURCE_DIR}/src/algebra/CompilationContext.cpp"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/Copy.cpp"
+        "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/ExpressionSubop.cpp"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/IndexedIUProvider.cpp"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/LoopDriver.cpp"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/Suboperator.cpp"
@@ -90,6 +94,7 @@ set(SRC_CC
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/sources/TableScanSource.cpp"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/sources/FuseChunkSource.cpp"
         "${CMAKE_SOURCE_DIR}/src/algebra/TableScan.cpp"
+        "${CMAKE_SOURCE_DIR}/src/algebra/ExpressionOp.cpp"
         "${CMAKE_SOURCE_DIR}/src/algebra/RelAlgOp.cpp"
         "${CMAKE_SOURCE_DIR}/src/storage/Relation.cc"
         "${CMAKE_SOURCE_DIR}/src/codegen/Expression.cpp"
@@ -115,6 +120,7 @@ set(TEST_CC
         "${CMAKE_SOURCE_DIR}/test/test_c_backend.cpp"
         "${CMAKE_SOURCE_DIR}/test/test_runtime.cpp"
         "${CMAKE_SOURCE_DIR}/test/operators/test_table_scan.cpp"
+        "${CMAKE_SOURCE_DIR}/test/operators/test_expression.cpp"
         "${CMAKE_SOURCE_DIR}/test/suboperators/test_minimal_pipeline.cpp"
         "${CMAKE_SOURCE_DIR}/test/suboperators/test_sources.cpp"
         "${CMAKE_SOURCE_DIR}/test/test_fragmentizors.cpp"
@@ -173,6 +179,8 @@ message(STATUS "    GFLAGS_INCLUDE_DIR          = ${GFLAGS_INCLUDE_DIR}")
 message(STATUS "    GFLAGS_LIBRARY_PATH         = ${GFLAGS_LIBRARY_PATH}")
 message(STATUS "    CMAKE_CXX_FLAGS             = ${CMAKE_CXX_FLAGS}")
 message(STATUS "    CMAKE_CXX_FLAGS_DEBUG       = ${CMAKE_CXX_FLAGS_DEBUG}")
+message(STATUS "    CMAKE_CXX_FLAGS_RELEASE     = ${CMAKE_CXX_FLAGS_RELEASE}")
+message(STATUS "    CMAKE_CXX_FLAGS_RELWITHDEB  = ${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
 message(STATUS "[TEST] settings")
 message(STATUS "    GTEST_INCLUDE_DIR           = ${GTEST_INCLUDE_DIR}")
 message(STATUS "    GTEST_LIBRARY_PATH          = ${GTEST_LIBRARY_PATH}")

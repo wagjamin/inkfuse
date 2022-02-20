@@ -66,17 +66,25 @@ void CompilationContext::notifyIUsReady(Suboperator& op) {
 
 void CompilationContext::requestIU(Suboperator& op, const IU& iu) {
    // Resolve the IU provider.
+   bool found = false;
    for (auto provider : pipeline.getProducers(op)) {
-      assert(std::find(provider->getIUs().begin(), provider->getIUs().end(), &iu) != provider->getIUs().end());
-      properties[provider].upstream_requests++;
-      requests[provider] = {&op, &iu};
-      if (!computed.count(provider)) {
-         // Request to compute if it was not computed yet.
-         provider->open(*this);
-      } else {
-         // Otherwise directly notify the parent that we are ready.
-         notifyIUsReady(*provider);
+      auto& provided = provider->getIUs();
+      if (std::find(provided.cbegin(), provided.cend(), &iu) != provided.cend()) {
+         properties[provider].upstream_requests++;
+         requests[provider] = {&op, &iu};
+         if (!computed.count(provider)) {
+            // Request to compute if it was not computed yet.
+            provider->open(*this);
+         } else {
+            // Otherwise directly notify the parent that we are ready.
+            notifyIUsReady(*provider);
+         }
+         found = true;
+         break;
       }
+   }
+   if (!found) {
+      throw std::runtime_error("No child produces the IU.");
    }
 }
 

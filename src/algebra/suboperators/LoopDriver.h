@@ -68,11 +68,11 @@ struct LoopDriver : public TemplatedSuboperator<LoopDriverState, RuntimeParams> 
 
       {
          // Next up we create the driving for-loop.
-         this->opt_while.emplace(builder.buildWhile(
+         this->opt_while = builder.buildWhile(
             IR::ArithmeticExpr::build(
                IR::VarRefExpr::build(*decl_start_ptr),
                IR::VarRefExpr::build(*decl_end_ptr),
-               IR::ArithmeticExpr::Opcode::Less)));
+               IR::ArithmeticExpr::Opcode::Less));
          // Generate code for downstream consumers.
          context.notifyIUsReady(*this);
       }

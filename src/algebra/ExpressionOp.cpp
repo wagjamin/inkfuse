@@ -58,7 +58,7 @@ void ExpressionOp::decayNode(Node* node, std::unordered_map<Node*, const IU*>& b
       for (const auto child : compute_node->children) {
          // Decay all children.
          decayNode(child, built, dag);
-         source_ius.push_back(built[node]);
+         source_ius.push_back(built[child]);
       }
       // And add the suboperator for this node.
       std::vector<const IU*> out_ius{&compute_node->out};
