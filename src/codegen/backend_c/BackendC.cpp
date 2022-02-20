@@ -8,19 +8,20 @@ namespace inkfuse {
 
 namespace {
 
-    /// Generate the path for the c program.
-    std::string path(std::string_view program_name) {
-        std::stringstream stream;
-        stream << "/tmp/" << program_name << ".c";
-        return stream.str();
-    }
+/// Generate the path for the c program.
+std::string path(std::string_view program_name) {
+   std::stringstream stream;
+   stream << "/tmp/" << program_name << ".c";
+   return stream.str();
+}
 
-    /// Generate the path for the so.
-    std::string so_path(std::string_view program_name) {
-        std::stringstream stream;
-        stream << "/tmp/" << program_name << ".so";
-        return stream.str();
-    }
+/// Generate the path for the so.
+std::string so_path(std::string_view program_name) {
+   std::stringstream stream;
+   stream << "/tmp/" << program_name << ".so";
+   return stream.str();
+}
+
 }
 
 void BackendProgramC::compileToMachinecode() {
@@ -41,7 +42,6 @@ void BackendProgramC::compileToMachinecode() {
       backend.generated.insert(program_name);
    }
    was_compiled = true;
-
 }
 
 BackendProgramC::~BackendProgramC() {
@@ -84,8 +84,8 @@ std::unique_ptr<IR::BackendProgram> BackendC::generate(const IR::Program& progra
    createPreamble(writer);
 
    // Step 2: Set up the includes.
-   for (const auto& include: program.getIncludes()) {
-       compileInclude(*include, writer);
+   for (const auto& include : program.getIncludes()) {
+      compileInclude(*include, writer);
    }
 
    // Step 3: Set up the structs used throughout the program.
@@ -102,18 +102,18 @@ std::unique_ptr<IR::BackendProgram> BackendC::generate(const IR::Program& progra
 }
 
 void BackendC::createPreamble(ScopedWriter& writer) {
-    // Include the integer types needed.
-    writer.stmt(false).stream() << "#include <stdint.h>";
-    writer.stmt(false).stream() << "#include <stdbool.h>\n";
+   // Include the integer types needed.
+   writer.stmt(false).stream() << "#include <stdint.h>";
+   writer.stmt(false).stream() << "#include <stdbool.h>\n";
 }
 
 void BackendC::compileInclude(const IR::Program& include, ScopedWriter& writer) {
-    if (!dumped.count(include.program_name)) {
-        // Include was not dumped yet - generate it.
-        generate(include)->dump();
-    }
-    // Now we can just include the respective program.
-    writer.stmt(false).stream() << "#include \""<< path(include.program_name) << "\"\n";
+   if (!dumped.count(include.program_name)) {
+      // Include was not dumped yet - generate it.
+      generate(include)->dump();
+   }
+   // Now we can just include the respective program.
+   writer.stmt(false).stream() << "#include \"" << path(include.program_name) << "\"\n";
 }
 
 void BackendC::typeDescription(const IR::Type& type, ScopedWriter::Statement& str) {
@@ -127,21 +127,33 @@ void BackendC::typeDescription(const IR::Type& type, ScopedWriter::Statement& st
          arg.stream() << "uint" << 8 * type.numBytes() << "_t";
       }
 
+      void visitFloat(const IR::Float& type, ScopedWriter::Statement& arg) override {
+         if (type.numBytes() == 4) {
+            arg.stream() << "float";
+         } else {
+            arg.stream() << "double";
+         }
+      }
+
+      void visitChar(const IR::Char& type, ScopedWriter::Statement& arg) override {
+         arg.stream() << "char";
+      }
+
       void visitBool(const IR::Bool& type, ScopedWriter::Statement& arg) override {
          arg.stream() << "bool";
       }
 
       void visitVoid(const IR::Void& /*type*/, ScopedWriter::Statement& arg) override {
-          arg.stream() << "void";
+         arg.stream() << "void";
       }
 
       void visitStruct(const IR::Struct& type, ScopedWriter::Statement& arg) override {
-          arg.stream() << "struct " << type.name;
+         arg.stream() << "struct " << type.name;
       }
 
       void visitPointer(const IR::Pointer& type, ScopedWriter::Statement& arg) override {
-          typeDescription(*type.pointed_to, arg);
-          arg.stream() << "*";
+         typeDescription(*type.pointed_to, arg);
+         arg.stream() << "*";
       }
    };
 
@@ -150,20 +162,20 @@ void BackendC::typeDescription(const IR::Type& type, ScopedWriter::Statement& st
 }
 
 void BackendC::compileStruct(const IR::Struct& structure, ScopedWriter& writer) {
-    {
-        auto struct_def = writer.stmt(false);
-        struct_def.stream() << "struct " << structure.name;
-    }
-    {
-        // Struct body.
-        auto block = writer.block();
-        for (const auto& field: structure.fields) {
-            auto field_def = writer.stmt();
-            typeDescription(*field.type, field_def);
-            field_def.stream() << " " << field.name;
-        }
-    }
-    writer.stmt(true);
+   {
+      auto struct_def = writer.stmt(false);
+      struct_def.stream() << "struct " << structure.name;
+   }
+   {
+      // Struct body.
+      auto block = writer.block();
+      for (const auto& field : structure.fields) {
+         auto field_def = writer.stmt();
+         typeDescription(*field.type, field_def);
+         field_def.stream() << " " << field.name;
+      }
+   }
+   writer.stmt(true);
 }
 
 void BackendC::compileFunction(const IR::Function& fct, ScopedWriter& writer) {
@@ -171,8 +183,8 @@ void BackendC::compileFunction(const IR::Function& fct, ScopedWriter& writer) {
       // Set up the function definition.
       auto fct_decl = writer.stmt(!fct.getBody());
       if (!fct.getBody()) {
-          // Extern function, will be linked later.
-          fct_decl.stream() << "extern ";
+         // Extern function, will be linked later.
+         fct_decl.stream() << "extern ";
       }
       typeDescription(*fct.return_type, fct_decl);
       fct_decl.stream() << " " << fct.name << "(";
@@ -203,12 +215,9 @@ void BackendC::compileBlock(const IR::Block& block, ScopedWriter& writer) {
 }
 
 void BackendC::compileStatement(const IR::Stmt& statement, ScopedWriter& writer) {
-
    // Control flow statements open more than one statement.
    struct ControlFlowVisitor final : public IR::StmtVisitor<ScopedWriter&> {
-
-      bool visitIf(const IR::IfStmt& stmt, ScopedWriter& writer)
-      {
+      bool visitIf(const IR::IfStmt& stmt, ScopedWriter& writer) {
          {
             // Set up actual if statement.
             auto if_head = writer.stmt(false);
@@ -230,8 +239,7 @@ void BackendC::compileStatement(const IR::Stmt& statement, ScopedWriter& writer)
          return true;
       }
 
-      bool visitWhile(const IR::WhileStmt& stmt, ScopedWriter& writer)
-      {
+      bool visitWhile(const IR::WhileStmt& stmt, ScopedWriter& writer) {
          {
             // Set up actual while statement.
             auto while_head = writer.stmt(false);
@@ -244,7 +252,6 @@ void BackendC::compileStatement(const IR::Stmt& statement, ScopedWriter& writer)
          compileBlock(*stmt.while_block, writer);
          return true;
       }
-
    };
 
    // Regular statements can meanwhile directly take a statement to write into.
@@ -278,90 +285,58 @@ void BackendC::compileStatement(const IR::Stmt& statement, ScopedWriter& writer)
 }
 
 void BackendC::compileExpression(const IR::Expr& expr, ScopedWriter::Statement& str) {
+   // Visitor for the different expressions which have to be handled.
+   struct ExpressionVisitor final : public IR::ExprVisitor<ScopedWriter::Statement&> {
+      void visitVarRef(const IR::VarRefExpr& type, ScopedWriter::Statement& stmt) override {
+         stmt.stream() << type.declaration.name;
+      }
 
-    // Visitor for the different expressions which have to be handled.
-    struct ExpressionVisitor final : public IR::ExprVisitor<ScopedWriter::Statement&> {
+      void visitConst(const IR::ConstExpr& type, ScopedWriter::Statement& stmt) override {
+         compileValue(*type.value, stmt);
+      }
 
-        void visitVarRef(const IR::VarRefExpr& type, ScopedWriter::Statement& stmt) override
-        {
-            stmt.stream() << type.declaration.name;
-        }
+      void visitArithmetic(const IR::ArithmeticExpr& type, ScopedWriter::Statement& stmt) override {
+         static const std::unordered_map<IR::ArithmeticExpr::Opcode, std::string> opcode_map{
+            {IR::ArithmeticExpr::Opcode::Add, "+"},
+            {IR::ArithmeticExpr::Opcode::Subtract, "-"},
+            {IR::ArithmeticExpr::Opcode::Multiply, "*"},
+            {IR::ArithmeticExpr::Opcode::Divide, "/"},
+            {IR::ArithmeticExpr::Opcode::Less, "<"},
+            {IR::ArithmeticExpr::Opcode::LessEqual, "<="},
+            {IR::ArithmeticExpr::Opcode::Greater, ">"},
+            {IR::ArithmeticExpr::Opcode::GreaterEqual, ">"},
+            {IR::ArithmeticExpr::Opcode::Eq, "="},
+         };
+         compileExpression(*type.children[0], stmt);
+         assert(opcode_map.count(type.code));
+         stmt.stream() << " " << opcode_map.at(type.code) << " ";
+         compileExpression(*type.children[1], stmt);
+      }
 
-        void visitConst(const IR::ConstExpr& type, ScopedWriter::Statement& stmt) override
-        {
-            compileValue(*type.value, stmt);
-        }
+      void visitDeref(const IR::DerefExpr& type, ScopedWriter::Statement& stmt) override {
+         stmt.stream() << "(*(";
+         compileExpression(*type.children[0], stmt);
+         stmt.stream() << "))";
+      }
 
-        void visitArithmetic(const IR::ArithmeticExpr& type, ScopedWriter::Statement& stmt) override
-        {
-            compileExpression(*type.children[0], stmt);
-            switch (type.code) {
-                case IR::ArithmeticExpr::Opcode::Add: {
-                    stmt.stream() << " + ";
-                    break;
-                }
-                case IR::ArithmeticExpr::Opcode::Subtract: {
-                    stmt.stream() << " - ";
-                    break;
-                }
-               case IR::ArithmeticExpr::Opcode::Multiply: {
-                  stmt.stream() << " * ";
-                  break;
-               }
-               case IR::ArithmeticExpr::Opcode::Divide: {
-                  stmt.stream() << " / ";
-                  break;
-               }
-               case IR::ArithmeticExpr::Opcode::Less: {
-                    stmt.stream() << " < ";
-                    break;
-                }
-                case IR::ArithmeticExpr::Opcode::LessEqual: {
-                    stmt.stream() << " <= ";
-                    break;
-                }
-                case IR::ArithmeticExpr::Opcode::Greater: {
-                    stmt.stream() << " > ";
-                    break;
-                }
-                case IR::ArithmeticExpr::Opcode::GreaterEqual: {
-                    stmt.stream() << " >= ";
-                    break;
-                }
-                default:
-                    throw std::runtime_error("arithmetic op in c backend not implemented");
-            }
-            compileExpression(*type.children[1], stmt);
-        }
+      void visitStructAccess(const IR::StructAccesExpr& type, ScopedWriter::Statement& stmt) override {
+         compileExpression(*type.children[0], stmt);
+         stmt.stream() << "." << type.field;
+      }
 
-        void visitDeref(const IR::DerefExpr& type, ScopedWriter::Statement& stmt) override
-        {
-            stmt.stream() << "(*(";
-            compileExpression(*type.children[0], stmt);
-            stmt.stream() << "))";
-        }
+      void visitCast(const IR::CastExpr& type, ScopedWriter::Statement& stmt) override {
+         // Set up cast into target type.
+         stmt.stream() << "((";
+         typeDescription(*type.type, stmt);
+         stmt.stream() << ") ";
+         // Set up what should be casted.
+         compileExpression(*type.children[0], stmt);
+         stmt.stream() << ")";
+      }
+   };
 
-        void visitStructAccess(const IR::StructAccesExpr& type, ScopedWriter::Statement& stmt) override
-        {
-            compileExpression(*type.children[0], stmt);
-            stmt.stream() << "." << type.field;
-        }
-
-        void visitCast(const IR::CastExpr& type, ScopedWriter::Statement& stmt) override
-        {
-            // Set up cast into target type.
-            stmt.stream() << "((";
-            typeDescription(*type.type, stmt);
-            stmt.stream() << ") ";
-            // Set up what should be casted.
-            compileExpression(*type.children[0], stmt);
-            stmt.stream() << ")";
-        }
-
-    };
-
-    ExpressionVisitor visitor;
-    visitor.visit(expr, str);
+   ExpressionVisitor visitor;
+   visitor.visit(expr, str);
 }
 
 void BackendC::compileValue(const IR::Value& value, ScopedWriter::Statement& str) {

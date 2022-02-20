@@ -14,7 +14,7 @@ TEST(test_fragmentizors, fragment_generation) {
    EXPECT_EQ(fragments->getStructs().size(), 0);
    EXPECT_GE(fragments->getFunctions().size(), 5);
 
-   // Generated code should be compilable.
+   // Generated code should be compileable.
    BackendC backend;
    auto program = backend.generate(*fragments);
    EXPECT_NO_THROW(program->dump());

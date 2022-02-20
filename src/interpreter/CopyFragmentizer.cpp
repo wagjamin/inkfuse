@@ -6,7 +6,7 @@ namespace inkfuse {
 namespace {
 const std::vector<IR::TypeArc> types =
    TypeDecorator()
-      .attachIntegers()
+      .attachTypes()
       .produce();
 }
 
@@ -19,10 +19,6 @@ CopyFragmentizer::CopyFragmentizer() {
       name = op->id();
       pipe.attachSuboperator(std::move(op));
    }
-}
-
-const std::list<std::pair<std::string, Pipeline>>& CopyFragmentizer::getFragments() const {
-   return pipes;
 }
 
 }

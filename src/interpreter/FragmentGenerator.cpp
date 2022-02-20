@@ -1,6 +1,7 @@
 #include "algebra/CompilationContext.h"
 #include "interpreter/FragmentGenerator.h"
 #include "interpreter/TScanFragmentizer.h"
+#include "interpreter/ExpressionFragmentizer.h"
 #include "interpreter/CopyFragmentizer.h"
 
 namespace inkfuse {
@@ -17,7 +18,8 @@ std::vector<IR::TypeArc> TypeDecorator::produce() {
 TypeDecorator& TypeDecorator::attachIntegers()
 {
    attachUnsignedIntegers();
-   return attachSignedIntegers();
+   attachSignedIntegers();
+   return *this;
 }
 
 TypeDecorator& TypeDecorator::attachUnsignedIntegers()
@@ -38,12 +40,40 @@ TypeDecorator& TypeDecorator::attachSignedIntegers()
    return *this;
 }
 
+TypeDecorator& TypeDecorator::attachFloatingPoints()
+{
+   types.push_back(IR::Float::build(4));
+   types.push_back(IR::Float::build(8));
+   return *this;
+}
+
+TypeDecorator& TypeDecorator::attachNumeric()
+{
+   attachIntegers();
+   attachFloatingPoints();
+   return *this;
+}
+
+TypeDecorator& TypeDecorator::attachTypes()
+{
+   attachNumeric();
+   types.push_back(IR::Char::build());
+   types.push_back(IR::Bool::build());
+   return *this;
+}
+
+const std::list<std::pair<std::string, Pipeline>>& Fragmentizer::getFragments() const
+{
+   return pipes;
+}
+
 IR::ProgramArc FragmentGenerator::build()
 {
    // Set up the suboperator fragmentizers.
    std::vector<std::unique_ptr<Fragmentizer>> fragmentizers;
-   // fragmentizers.push_back(std::make_unique<TScanFragmetizer>());
+   fragmentizers.push_back(std::make_unique<TScanFragmetizer>());
    fragmentizers.push_back(std::make_unique<CopyFragmentizer>());
+   fragmentizers.push_back(std::make_unique<ExpressionFragmentizer>());
 
    // Create the IR program.
    auto program = std::make_shared<IR::Program>("fragments", false);

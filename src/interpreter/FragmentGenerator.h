@@ -26,6 +26,12 @@ struct TypeDecorator {
    TypeDecorator& attachUnsignedIntegers();
    /// Add all signed integer types.
    TypeDecorator& attachSignedIntegers();
+   /// Add all floating point types.
+   TypeDecorator& attachFloatingPoints();
+   /// Add all numeric types.
+   TypeDecorator& attachNumeric();
+   /// Add all types.
+   TypeDecorator& attachTypes();
 
    private:
    std::vector<IR::TypeArc> types;
@@ -38,7 +44,13 @@ struct Fragmentizer {
 
    /// Get all fragments of this specific fragmentizer.
    /// A fragment is identified by a unique name and a pipeline of sub-operators.
-   virtual const std::list<std::pair<std::string, Pipeline>>& getFragments() const = 0;
+   const std::list<std::pair<std::string, Pipeline>>& getFragments() const;
+
+   protected:
+   /// The pipelines, one for every tscan type.
+   std::list<std::pair<std::string, Pipeline>> pipes;
+   /// IUs which were generated for the pipelines.
+   std::list<IU> generated_ius;
 
 };
 

@@ -4,9 +4,11 @@
 namespace inkfuse {
 
 namespace {
+
+// Tscans go over all types.
 const std::vector<IR::TypeArc> types =
    TypeDecorator()
-      .attachIntegers()
+      .attachTypes()
       .produce();
 }
 
@@ -21,10 +23,6 @@ TScanFragmetizer::TScanFragmetizer() {
       // The table scan is uniquely identified by the id of the provider.
       name = iu_op.id();
    }
-}
-
-const std::list<std::pair<std::string, Pipeline>>& TScanFragmetizer::getFragments() const {
-   return pipes;
 }
 
 }

@@ -37,6 +37,12 @@ const std::unordered_map<Type, IR::ArithmeticExpr::Opcode> code_map{
 
 }
 
+// static
+SuboperatorArc ExpressionSubop::build(const RelAlgOp* source_, std::vector<const IU*> provided_ius_, std::vector<const IU*> source_ius_, ExpressionOp::ComputeNode::Type type_)
+{
+   return std::make_shared<ExpressionSubop>(source_, std::move(provided_ius_), std::move(source_ius_), type_);
+}
+
 ExpressionSubop::ExpressionSubop(const RelAlgOp* source_, std::vector<const IU*> provided_ius_, std::vector<const IU*> source_ius_, ExpressionOp::ComputeNode::Type type_)
    : TemplatedSuboperator<EmptyState, EmptyState>(source_, std::move(provided_ius_), std::move(source_ius_)), type(type_) {
 }

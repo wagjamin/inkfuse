@@ -84,6 +84,28 @@ struct UnsignedInt : public SQLType {
    uint64_t size;
 };
 
+struct Float : public SQLType {
+   Float(size_t size_): size(size_)
+   {
+      assert(size == 4 || size == 8);
+   }
+
+   static TypeArc build(size_t size) {
+      return std::make_unique<Float>(size);
+   };
+
+   size_t numBytes() const override {
+      return size;
+   };
+
+   std::string id() const override {
+      return "F" + std::to_string(size);
+   }
+
+   private:
+   uint64_t size;
+};
+
 /// Boolean type.
 struct Bool : public SQLType {
    static TypeArc build() {
@@ -203,6 +225,8 @@ struct TypeVisitor {
          visitSignedInt(*elem, arg);
       } else if (auto elem = dynamic_cast<const IR::UnsignedInt*>(&type)) {
          visitUnsignedInt(*elem, arg);
+      } else if (auto elem = dynamic_cast<const IR::Float*>(&type)) {
+         visitFloat(*elem, arg);
       } else if (auto elem = dynamic_cast<const IR::Bool*>(&type)) {
          visitBool(*elem, arg);
       } else if (auto elem = dynamic_cast<const IR::Char*>(&type)) {
@@ -222,6 +246,8 @@ struct TypeVisitor {
    virtual void visitSignedInt(const SignedInt& type, Arg arg) {}
 
    virtual void visitUnsignedInt(const UnsignedInt& type, Arg arg) {}
+
+   virtual void visitFloat(const Float& type, Arg arg) {}
 
    virtual void visitBool(const Bool& type, Arg arg) {}
 

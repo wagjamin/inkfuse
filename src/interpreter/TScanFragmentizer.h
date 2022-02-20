@@ -12,13 +12,6 @@ struct TScanFragmetizer : public Fragmentizer {
 
    TScanFragmetizer();
 
-   const std::list<std::pair<std::string, Pipeline>>& getFragments() const override;
-
-   private:
-   /// The pipelines, one for every tscan type.
-   std::list<std::pair<std::string, Pipeline>> pipes;
-   /// IUs which were generated for the pipelines.
-   std::list<IU> generated_ius;
 };
 
 }

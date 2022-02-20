@@ -76,6 +76,7 @@ set(INCLUDE_H
         "${CMAKE_SOURCE_DIR}/src/exec/PipelineExecutor.h"
         "${CMAKE_SOURCE_DIR}/src/interpreter/FragmentCache.h"
         "${CMAKE_SOURCE_DIR}/src/interpreter/FragmentGenerator.h"
+        "${CMAKE_SOURCE_DIR}/src/interpreter/ExpressionFragmentizer.h"
         "${CMAKE_SOURCE_DIR}/src/interpreter/TScanFragmentizer.h"
         "${CMAKE_SOURCE_DIR}/src/interpreter/CopyFragmentizer.h"
         "${CMAKE_SOURCE_DIR}/src/runtime/Runtime.h"
@@ -111,6 +112,7 @@ set(SRC_CC
         "${CMAKE_SOURCE_DIR}/src/exec/FuseChunk.cpp"
         "${CMAKE_SOURCE_DIR}/src/interpreter/FragmentCache.cpp"
         "${CMAKE_SOURCE_DIR}/src/interpreter/FragmentGenerator.cpp"
+        "${CMAKE_SOURCE_DIR}/src/interpreter/ExpressionFragmentizer.cpp"
         "${CMAKE_SOURCE_DIR}/src/interpreter/TScanFragmentizer.cpp"
         "${CMAKE_SOURCE_DIR}/src/interpreter/CopyFragmentizer.cpp"
         )
