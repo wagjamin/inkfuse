@@ -2,7 +2,7 @@
 #define INKFUSE_RELALGOP_H
 
 #include "algebra/IU.h"
-#include <set>
+#include <vector>
 
 namespace inkfuse {
 
@@ -23,12 +23,12 @@ struct RelAlgOp {
    virtual ~RelAlgOp() = default;
 
    /// Transform the relational algebra operator into a DAG of suboperators.
-   virtual void decay(std::set<const IU*> required, PipelineDAG& dag) const = 0;
+   virtual void decay(std::vector<const IU*> required, PipelineDAG& dag) const = 0;
 
    /// Get the IUs produced by this operator.
-   std::set<const IU*> getIUs() const;
+   std::vector<const IU*> getIUs() const;
    /// Get the IUs produced by the tree rooted in this operator.
-   std::set<const IU*> getIUsRecursive() const;
+   std::vector<const IU*> getIUsRecursive() const;
 
    /// Get the children of this operator.
    const std::vector<std::unique_ptr<RelAlgOp>>& getChildren() const;
@@ -36,9 +36,9 @@ struct RelAlgOp {
 
    protected:
    /// Add the IUs produced by this operator to the given set.
-   virtual void addIUs(std::set<const IU*>& set) const = 0;
+   virtual void addIUs(std::vector<const IU*>& vec) const = 0;
    /// Add the IUs produced by this oeprator and all children to the given set.
-   void addIUsRecursive(std::set<const IU*>& set) const;
+   void addIUsRecursive(std::vector<const IU*>& vec) const;
 
    /// Child operators.
    std::vector<std::unique_ptr<RelAlgOp>> children;

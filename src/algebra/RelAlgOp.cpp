@@ -2,21 +2,21 @@
 
 namespace inkfuse {
 
-std::set<const IU*> RelAlgOp::getIUs() const
+std::vector<const IU*> RelAlgOp::getIUs() const
 {
-   std::set<const IU*> set;
-   addIUs(set);
-   return set;
+   std::vector<const IU*> vec;
+   addIUs(vec);
+   return vec;
 }
 
-std::set<const IU*> RelAlgOp::getIUsRecursive() const
+std::vector<const IU*> RelAlgOp::getIUsRecursive() const
 {
-   std::set<const IU*> set;
-   addIUsRecursive(set);
-   return set;
+   std::vector<const IU*> vec;
+   addIUsRecursive(vec);
+   return vec;
 }
 
-void RelAlgOp::addIUsRecursive(std::set<const IU*>& set) const
+void RelAlgOp::addIUsRecursive(std::vector<const IU*>& set) const
 {
    addIUs(set);
    for (const auto& child: children) {

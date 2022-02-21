@@ -65,10 +65,10 @@ struct ExpressionOp : public RelAlgOp {
       std::vector<NodePtr>
          nodes_);
 
-   void decay(std::set<const IU*> required, PipelineDAG& dag) const override;
+   void decay(std::vector<const IU*> required, PipelineDAG& dag) const override;
 
    protected:
-   void addIUs(std::set<const IU*>& set) const override;
+   void addIUs(std::vector<const IU*>& set) const override;
 
    /// Helper for decaying the expression DAG without duplicate subops.
    void decayNode(

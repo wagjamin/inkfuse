@@ -31,7 +31,7 @@ ExpressionOp::ComputeNode::ComputeNode(Type code_, std::vector<Node*> children_)
    }
 }
 
-void ExpressionOp::decay(std::set<const IU*> required, PipelineDAG& dag) const {
+void ExpressionOp::decay(std::vector<const IU*> required, PipelineDAG& dag) const {
    // The set stores which expression suboperators were created already.
    std::unordered_map<Node*, const IU*> built;
    for (const auto root : out) {
@@ -67,11 +67,11 @@ void ExpressionOp::decayNode(Node* node, std::unordered_map<Node*, const IU*>& b
    }
 }
 
-void ExpressionOp::addIUs(std::set<const IU*>& set) const {
+void ExpressionOp::addIUs(std::vector<const IU*>& vec) const {
    // Only add those IUs which actually get produced.
    for (const auto& node : out) {
       auto compute_node = dynamic_cast<ComputeNode*>(node);
-      set.insert(&compute_node->out);
+      vec.push_back(&compute_node->out);
    }
 }
 
