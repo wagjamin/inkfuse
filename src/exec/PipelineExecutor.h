@@ -1,54 +1,74 @@
 #ifndef INKFUSE_PIPELINEEXECUTOR_H
 #define INKFUSE_PIPELINEEXECUTOR_H
 
-#include "exec/ExecutionContext.h"
-#include <string>
-#include <functional>
-#include <vector>
+#include "algebra/Pipeline.h"
+#include "exec/runners/PipelineRunner.h"
 #include <map>
+#include <utility>
+#include <future>
 
 namespace inkfuse {
 
-struct Pipeline;
-
-/// The pipeline executor receives a single pipeline and executes it.
+/// The pipeline executor takes a full pipeline and runs it.
+/// It uses the PipelineRunners in the background to execute a fraction of the overall pipeline.
 struct PipelineExecutor {
 
-   PipelineExecutor(const Pipeline& pipe_, std::string name = "");
+   /// Which execution mode should be chosen for this pipeline?
+   enum class ExecutionMode {
+      /// In fused mode, the complete pipeline gets compiled and then executed.
+      Fused,
+      /// In interpreted mode, we only use the pre-compiled fragments to run the query.
+      Interpreted,
+      /// In hybrid mode, we switch between fused and interpreted execution based on runtime statistics.
+      Hybrid
+   };
 
-   /// Run the full pipeline. The pipeline executor can choose whether
-   /// to interpret, fuse, or do adaptive execution.
-   void run();
-   /// Run the pipeline in fused mode.
-   void runFused(std::optional<size_t> morsels = {});
-   /// Run the pipeline in interpreted mode.
-   void runInterpreted();
-   /// Get the execution context of this executor.
-   /// Mainly needed for testing.
-   const ExecutionContext& getExecutionContext();
+   /// Create a new pipeline executor.
+   /// @param pipe_ the backing pipe to be executed
+   /// @param mode_ the execution mode to execute the pipeline in
+   /// @param full_name_ the name of the full compiled binary
+   PipelineExecutor(Pipeline& pipe_, ExecutionMode mode_ = ExecutionMode::Hybrid, std::string full_name_ = "");
 
-   /// Set up the state, i.e. the execution context.
-   void setUpState();
-   /// Tear down the state again.
-   void tearDownState();
+   ~PipelineExecutor();
+
+   const ExecutionContext& getExecutionContext() const;
+
+   /// Run the full pipeline to completion.
+   void runPipeline();
+
+   /// Run only a single morsel.
+   /// @return true if there are more morsels.
+   bool runMorsel();
 
    private:
-   /// Run a single morsel in fused mode.
+   /// Run a full morsel through the compiled path.
    bool runFusedMorsel();
-   /// Set up the state array for a subset of operators if it was not.
-   /// The slice is in the interval [start, end[. Returns the set up state.
-   void** setUpState(size_t start, size_t end);
+   /// Run a full morsel through the interpreted path.
+   bool runInterpretedMorsel();
 
-   /// The generated function.
-   std::function<uint8_t(void**, void**, void*)> fct;
-   /// The pipeline which has to be executed.
-   const Pipeline& pipe;
-   /// The execution context.
+   /// Set up fused state.
+   std::future<void> setUpFused();
+   /// Set up interpreted state.
+   void setUpInterpreted();
+   /// Clean up the fuse chunks in a given scope.
+   void cleanUpScope(size_t scope);
+
+   /// Backing pipeline.
+   Pipeline& pipe;
+   /// Execution context. Unified across all runners as fuse chunks have to be shared.
    ExecutionContext context;
-   /// Name of the pipeline/program to be generated.
-   std::string name;
-   /// The prepared states for different operator intervals.
-   std::map<std::pair<size_t, size_t>, std::vector<void*>> states;
+   /// Interpreters for the different sub-operators.
+   std::vector<PipelineRunnerPtr> interpreters;
+   /// Compiled fragments identified by [start, end[ index pairs.
+   std::map<std::pair<size_t, size_t>, PipelineRunnerPtr> compiled;
+   /// Backing execution mode.
+   ExecutionMode mode;
+   /// Potential full name of the generated program.
+   std::string full_name;
+   /// Was fused mode set up successfully?
+   bool fused_set_up = false;
+   /// Was interpreted mode set up succesfully?
+   bool interpreted_set_up = false;
 };
 
 }

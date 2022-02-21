@@ -1,97 +1,116 @@
 #include "exec/PipelineExecutor.h"
-#include "algebra/CompilationContext.h"
-#include "codegen/backend_c/BackendC.h"
+#include "exec/runners/CompiledRunner.h"
+#include "exec/runners/InterpretedRunner.h"
+#include "algebra/suboperators/sinks/FuseChunkSink.h"
+#include "algebra/suboperators/sources/FuseChunkSource.h"
 
 namespace inkfuse {
 
-uint64_t executor_id = 0;
-
-PipelineExecutor::PipelineExecutor(const Pipeline& pipe_, std::string name_) : pipe(pipe_), context(pipe), name(std::move(name_))
-{
-   assert(pipe.suboperators[0]->isSource());
-   assert(pipe.suboperators.back()->isSink());
-   if (name.empty()) {
-      name = "pipeline_" + std::to_string(executor_id++);
-   }
+PipelineExecutor::PipelineExecutor(Pipeline& pipe_, ExecutionMode mode, std::string full_name_)
+   : pipe(pipe_), context(pipe), mode(mode), full_name(std::move(full_name_)) {
+   assert(pipe.getSubops()[0]->isSource());
+   assert(pipe.getSubops().back()->isSink());
 }
 
-void PipelineExecutor::run()
+PipelineExecutor::~PipelineExecutor()
 {
-   setUpState();
-   runFused();
-   tearDownState();
-}
-
-void PipelineExecutor::setUpState()
-{
-   for (auto& op: pipe.suboperators) {
-      op->setUpState(context);
-   }
-}
-
-void PipelineExecutor::tearDownState()
-{
-   for (auto& op: pipe.suboperators) {
+   for (auto& op: pipe.getSubops()) {
       op->tearDownState();
    }
 }
 
-void PipelineExecutor::runFused(std::optional<size_t> morsels)
-{
-   // Create IR program for the pipeline.
-   CompilationContext comp(name, pipe);
-   comp.compile();
-
-   // Generate C code.
-   BackendC backend;
-   auto program = backend.generate(comp.getProgram());
-   program->compileToMachinecode();
-   fct = reinterpret_cast<uint8_t(*)(void**, void**, void*)>(program->getFunction("execute"));
-
-   if (!morsels) {
-      while (runFusedMorsel()) {};
-   } else {
-      size_t idx = 0;
-      while (idx < *morsels && runFusedMorsel()) {
-         idx++;
-      }
-   }
-}
-
-void PipelineExecutor::runInterpreted()
-{
-   // TODO
-   throw std::runtime_error("not implemented");
-}
-
-void** PipelineExecutor::setUpState(size_t start, size_t end)
-{
-   std::vector<void*> res;
-   res.reserve(pipe.suboperators.size());
-   for (const auto& op: pipe.suboperators) {
-      res.push_back(op->accessState());
-   }
-   auto& vec = states[{start, end}];
-   vec = std::move(res);
-   return vec.data();
-}
-
-bool PipelineExecutor::runFusedMorsel()
-{
-   if (!pipe.suboperators[0]->pickMorsel()) {
-      return false;
-   }
-   auto state = setUpState(0, pipe.suboperators.size());
-   for (size_t k = 0; k < pipe.scopes.size(); ++k) {
-      context.clear(k);
-   }
-   fct(state, nullptr, nullptr);
-   return true;
-}
-
-const ExecutionContext& PipelineExecutor::getExecutionContext()
+const ExecutionContext & PipelineExecutor::getExecutionContext() const
 {
    return context;
+}
+
+void PipelineExecutor::runPipeline() {
+   if (mode == ExecutionMode::Fused) {
+      while (runFusedMorsel()) {}
+   } else if (mode == ExecutionMode::Interpreted) {
+      while (runInterpretedMorsel()) {}
+   } else {
+      // Hybrid execution.
+      // TODO
+      throw std::runtime_error("Not implemented.");
+   }
+}
+
+bool PipelineExecutor::runMorsel() {
+   if (mode == ExecutionMode::Fused || (mode == ExecutionMode::Hybrid)) {
+      return runFusedMorsel();
+   } else {
+      return runInterpretedMorsel();
+   }
+}
+
+std::future<void> PipelineExecutor::setUpFused() {
+   return std::async([&]() {
+      // Set up runner.
+      auto repiped = pipe.repipe(0, pipe.getSubops().size());
+      auto runner = std::make_unique<CompiledRunner>(std::move(repiped), context);
+      // And Compile.
+      runner->prepare();
+      compiled[{0, pipe.getSubops().size()}] = std::move(runner);
+      fused_set_up = true;
+   });
+}
+
+void PipelineExecutor::setUpInterpreted() {
+   auto count = pipe.getSubops().size();
+   interpreters.reserve(count);
+
+   auto isFuseChunkOp = [](const Suboperator* op) {
+      if (dynamic_cast<const FuseChunkSink*>(op)) {
+         return true;
+      }
+      if (dynamic_cast<const FuseChunkSourceIUProvider*>(op)) {
+         return true;
+      }
+      return false;
+   };
+
+   for (size_t k = 0; k < count; ++k) {
+      const auto& op = *pipe.getSubops()[k];
+      if (isFuseChunkOp(&op)) {
+         throw std::runtime_error("Interpreted execution must not have fuse chunk sub-operators");
+      }
+      if (!op.isSource()) {
+         // Only non-sources have to be interpreted.
+         interpreters.push_back(std::make_unique<InterpretedRunner>(pipe, k, context));
+      }
+   }
+   interpreted_set_up = true;
+}
+
+void PipelineExecutor::cleanUpScope(size_t scope) {
+   context.clear(scope);
+}
+
+bool PipelineExecutor::runFusedMorsel() {
+   if (!fused_set_up) {
+      setUpFused().get();
+   }
+   // Run the whole compiled executor.
+   auto res = compiled.at({0, pipe.getSubops().size()})->runMorsel();
+   cleanUpScope(0);
+   return res;
+}
+
+bool PipelineExecutor::runInterpretedMorsel() {
+   if (!interpreted_set_up) {
+      setUpInterpreted();
+   }
+   // Run one interpreter after the other in topological order.
+   bool res = interpreters[0]->runMorsel();
+   if (!res) {
+      return false;
+   }
+   for (auto interpreter = interpreters.begin() + 1; interpreter < interpreters.end(); ++interpreter) {
+      (*interpreter)->runMorsel();
+   }
+   cleanUpScope(0);
+   return true;
 }
 
 }

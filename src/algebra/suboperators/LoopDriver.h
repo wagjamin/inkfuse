@@ -26,7 +26,7 @@ struct LoopDriver : public TemplatedSuboperator<LoopDriverState, RuntimeParams> 
    void rescopePipeline(Pipeline& pipe) override {
       // Loop drivers should always be at the beginning of a pipeline.
       assert(pipe.resolveOperatorScope(*this) == 0);
-      ScopePtr scope = std::make_unique<Scope>(0, nullptr);
+      ScopeArc scope = std::make_unique<Scope>(0, nullptr);
       pipe.rescope(std::move(scope));
    };
 

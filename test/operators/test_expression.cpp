@@ -79,18 +79,8 @@ TEST_F(ExpressionT, exec) {
    auto& ops = repiped->getSubops();
    EXPECT_EQ(ops.size(), 9);
 
-   // Now let's compile it.
-   CompilationContext context("ExpressionT_exec", *repiped);
-   context.compile();
-   BackendC backend;
-   auto compiled = backend.generate(context.getProgram());
-   EXPECT_NO_THROW(compiled->compileToMachinecode());
-   auto fct = compiled->getFunction("execute");
-   EXPECT_NE(fct, nullptr);
-
-   // Get ready for execution.
-   PipelineExecutor exec(*repiped);
-   exec.setUpState();
+   // Get ready for compiled execution.
+   PipelineExecutor exec(*repiped, PipelineExecutor::ExecutionMode::Fused, "ExpressionT_exec");
 
    // Prepare input chunk.
    auto& ctx = exec.getExecutionContext();
@@ -105,7 +95,7 @@ TEST_F(ExpressionT, exec) {
    }
 
    // And run a single morsel.
-   exec.runFused(1);
+   EXPECT_NO_THROW(exec.runMorsel());
 
    // Check results.
    auto iu_c_3 = pipe.getSubops()[0]->getIUs()[0];
@@ -118,9 +108,6 @@ TEST_F(ExpressionT, exec) {
       uint16_t c_3_expected = k + k + 1;
       uint16_t c_4_expected = k + 1;
       uint16_t c_5_expected = c_3_expected * c_4_expected;
-      EXPECT_EQ(c_iu_c_3.size, 10);
-      EXPECT_EQ(c_iu_c_4.size, 10);
-      EXPECT_EQ(c_iu_c_5.size, 10);
       EXPECT_EQ(reinterpret_cast<uint16_t*>(c_iu_c_3.raw_data)[k], c_3_expected);
       EXPECT_EQ(reinterpret_cast<uint16_t*>(c_iu_c_4.raw_data)[k], c_4_expected);
       EXPECT_EQ(reinterpret_cast<uint16_t*>(c_iu_c_5.raw_data)[k], c_5_expected);

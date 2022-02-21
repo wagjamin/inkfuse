@@ -69,13 +69,15 @@ struct Suboperator {
 
    /// Set up the state needed by this operator. In an IncrementalFusion engine it's easiest to actually
    /// make this interpreted.
+   /// This function has to be idempotent, i.e. multiple setUpStates should leave the operator
+   /// in the same state as a single invocation.
    virtual void setUpState(const ExecutionContext& context) {};
    /// Tear down the state needed by this operator.
    virtual void tearDownState() {};
    /// Get a raw pointer to the state of this operator.
    virtual void* accessState() const { return nullptr; };
    /// Pick a morsel of work. Only relevant for source operators.
-   virtual bool pickMorsel() { return false; }
+   virtual bool pickMorsel() { return true; }
 
    /// Build a unique identifier for this suboperator (unique given the parameter set).
    /// This is neded to effectively use the fragment cache during vectorized interpretation.
@@ -116,7 +118,9 @@ struct TemplatedSuboperator : public Suboperator
    };
 
    void setUpState(const ExecutionContext& context) override {
-      assert(!state);
+      if (state) {
+         return;
+      }
       if constexpr (!std::is_same<EmptyState, RuntimeParams>::value) {
          if (!params) {
             // Params have to be attached for every suboperator which does not operate on empty runtime state.

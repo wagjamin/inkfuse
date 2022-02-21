@@ -44,7 +44,7 @@ struct PipelineGraph {
    std::unordered_map<const Suboperator*, std::vector<Suboperator*>> outgoing_edges;
 };
 
-using ScopePtr = std::unique_ptr<Scope>;
+using ScopeArc = std::shared_ptr<Scope>;
 
 /// Execution pipeline containing all the different operators within one pipeline.
 /// This class is at the heart of inkfuse as it allows either vectorized interpretation
@@ -62,7 +62,7 @@ struct Pipeline {
    /// Get the current scope.
    const Scope& getScope(size_t id) const;
    /// Rescope the pipeline.
-   void rescope(ScopePtr new_scope);
+   void rescope(ScopeArc new_scope);
 
    /// Get the downstream consumers of IUs for a given sub-operator.
    const std::vector<Suboperator*>& getConsumers(Suboperator& subop) const;
@@ -86,8 +86,8 @@ struct Pipeline {
 
    private:
    friend class CompilationContext;
-   friend class PipelineExecutor;
    friend class ExecutionContext;
+   friend class PipelineRunner;
 
    /// The sub-operators within this pipeline. These are arranged in a topological order of the backing
    /// DAG structure.
@@ -100,7 +100,7 @@ struct Pipeline {
    std::vector<size_t> rescope_offsets;
 
    /// The scopes of this pipeline.
-   std::vector<ScopePtr> scopes;
+   std::vector<ScopeArc> scopes;
 };
 
 using PipelinePtr = std::unique_ptr<Pipeline>;

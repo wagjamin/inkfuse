@@ -113,7 +113,7 @@ const Scope& Pipeline::getScope(size_t id) const {
    return *scopes[id];
 }
 
-void Pipeline::rescope(ScopePtr new_scope) {
+void Pipeline::rescope(ScopeArc new_scope) {
    scopes.push_back(std::move(new_scope));
    rescope_offsets.push_back(scopes.size() - 1);
 }
