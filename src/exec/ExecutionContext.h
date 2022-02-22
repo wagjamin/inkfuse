@@ -27,6 +27,9 @@ struct ExecutionContext {
    /// Create the execution context for a given base pipeline.
    ExecutionContext(const Pipeline& pipe_);
 
+   /// Recontextualize based on another pipeline with the same underlying fuse chunks.
+   ExecutionContext recontextualize(const Pipeline& new_pipe_) const;
+
    /// Get the raw data column for the given IU.
    Column& getColumn(IUScoped iu) const;
 
@@ -39,8 +42,10 @@ struct ExecutionContext {
    const Pipeline& getPipe() const;
 
    private:
+   ExecutionContext(std::shared_ptr<std::vector<FuseChunkPtr>> chunks_, const Pipeline& pipe_);
+
    /// The backing fuse chunks.
-   std::vector<std::unique_ptr<FuseChunk>> chunks;
+   std::shared_ptr<std::vector<FuseChunkPtr>> chunks;
    /// The pipeline.
    const Pipeline& pipe;
 };

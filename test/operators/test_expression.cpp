@@ -17,7 +17,7 @@ struct ExpressionT : ::testing::Test {
       in1(IR::UnsignedInt::build(2), "in_1"),
       in2(IR::UnsignedInt::build(2), "in_2")
    {
-      nodes.resize(5);
+      nodes.reserve(5);
       auto c1 = nodes.emplace_back(std::make_unique<ExpressionOp::IURefNode>(&in1)).get();
       auto c2 = nodes.emplace_back(std::make_unique<ExpressionOp::IURefNode>(&in2)).get();
       auto c3 = nodes.emplace_back(

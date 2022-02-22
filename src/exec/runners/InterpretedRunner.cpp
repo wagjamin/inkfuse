@@ -3,8 +3,8 @@
 
 namespace inkfuse {
 
-InterpretedRunner::InterpretedRunner(const Pipeline& backing_pipeline, size_t idx, ExecutionContext& context_)
-   : PipelineRunner(getRepiped(backing_pipeline, idx), context_) {
+InterpretedRunner::InterpretedRunner(const Pipeline& backing_pipeline, size_t idx, ExecutionContext& original_context)
+   : PipelineRunner(getRepiped(backing_pipeline, idx), original_context) {
    // Get the unique identifier of the operation which has to be interpreted.
    auto& op = backing_pipeline.getSubops()[idx];
    auto id = op->id();
@@ -19,7 +19,8 @@ InterpretedRunner::InterpretedRunner(const Pipeline& backing_pipeline, size_t id
 // static
 PipelinePtr InterpretedRunner::getRepiped(const Pipeline& backing_pipeline, size_t idx)
 {
-   return backing_pipeline.repipe(idx, idx+1);
+   auto res = backing_pipeline.repipe(idx, idx+1);
+   return res;
 }
 
 }

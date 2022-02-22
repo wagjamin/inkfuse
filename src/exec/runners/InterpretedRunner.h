@@ -13,7 +13,7 @@ namespace inkfuse {
 struct InterpretedRunner final : public PipelineRunner {
 
    /// Create a pipeline interpreter which will interpret the sub-operator at the given index.
-   InterpretedRunner(const Pipeline& backing_pipeline, size_t idx, ExecutionContext& context_);
+   InterpretedRunner(const Pipeline& backing_pipeline, size_t idx, ExecutionContext& original_context);
 
    private:
    /// Get the properly repiped pipeline for the actual execution.

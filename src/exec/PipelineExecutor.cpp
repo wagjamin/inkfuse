@@ -1,8 +1,8 @@
 #include "exec/PipelineExecutor.h"
-#include "exec/runners/CompiledRunner.h"
-#include "exec/runners/InterpretedRunner.h"
 #include "algebra/suboperators/sinks/FuseChunkSink.h"
 #include "algebra/suboperators/sources/FuseChunkSource.h"
+#include "exec/runners/CompiledRunner.h"
+#include "exec/runners/InterpretedRunner.h"
 
 namespace inkfuse {
 
@@ -10,17 +10,18 @@ PipelineExecutor::PipelineExecutor(Pipeline& pipe_, ExecutionMode mode, std::str
    : pipe(pipe_), context(pipe), mode(mode), full_name(std::move(full_name_)) {
    assert(pipe.getSubops()[0]->isSource());
    assert(pipe.getSubops().back()->isSink());
+   for (const auto& op: pipe.getSubops()) {
+      op->setUpState(context);
+   }
 }
 
-PipelineExecutor::~PipelineExecutor()
-{
-   for (auto& op: pipe.getSubops()) {
+PipelineExecutor::~PipelineExecutor() {
+   for (auto& op : pipe.getSubops()) {
       op->tearDownState();
    }
 }
 
-const ExecutionContext & PipelineExecutor::getExecutionContext() const
-{
+const ExecutionContext& PipelineExecutor::getExecutionContext() const {
    return context;
 }
 
@@ -48,7 +49,7 @@ std::future<void> PipelineExecutor::setUpFused() {
    return std::async([&]() {
       // Set up runner.
       auto repiped = pipe.repipe(0, pipe.getSubops().size());
-      auto runner = std::make_unique<CompiledRunner>(std::move(repiped), context);
+      auto runner = std::make_unique<CompiledRunner>(std::move(repiped), context, std::move(full_name));
       // And Compile.
       runner->prepare();
       compiled[{0, pipe.getSubops().size()}] = std::move(runner);
@@ -78,6 +79,7 @@ void PipelineExecutor::setUpInterpreted() {
       if (!op.isSource()) {
          // Only non-sources have to be interpreted.
          interpreters.push_back(std::make_unique<InterpretedRunner>(pipe, k, context));
+         interpreters.back()->prepare();
       }
    }
    interpreted_set_up = true;
@@ -92,25 +94,23 @@ bool PipelineExecutor::runFusedMorsel() {
       setUpFused().get();
    }
    // Run the whole compiled executor.
-   auto res = compiled.at({0, pipe.getSubops().size()})->runMorsel();
-   cleanUpScope(0);
-   return res;
+   if (compiled.at({0, pipe.getSubops().size()})->runMorsel(true)) {
+      cleanUpScope(0);
+      return true;
+   }
+   return false;
 }
 
 bool PipelineExecutor::runInterpretedMorsel() {
    if (!interpreted_set_up) {
       setUpInterpreted();
    }
-   // Run one interpreter after the other in topological order.
-   bool res = interpreters[0]->runMorsel();
-   if (!res) {
-      return false;
-   }
+   bool pickResult = interpreters[0]->runMorsel(true);
    for (auto interpreter = interpreters.begin() + 1; interpreter < interpreters.end(); ++interpreter) {
-      (*interpreter)->runMorsel();
+      (*interpreter)->runMorsel(false);
    }
    cleanUpScope(0);
-   return true;
+   return pickResult;
 }
 
 }

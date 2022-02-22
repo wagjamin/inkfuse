@@ -18,13 +18,16 @@ namespace inkfuse {
 struct PipelineRunner {
 
    /// Constructor, also sets up the necessary execution state.
-   PipelineRunner(PipelinePtr pipe_, ExecutionContext& context_);
+   /// @param pipe_ the pipeline to run
+   /// @param old_context the execution context of the original pipeline that created this runner
+   PipelineRunner(PipelinePtr pipe_, ExecutionContext& old_context);
 
    virtual ~PipelineRunner() = default;
 
    /// Run a single morsel of the backing pipeline.
+   /// @param force_pick should we always pick, even if we are not a fuse chunk source?
    /// @return whether there are more morsels to execute.
-   bool runMorsel();
+   bool runMorsel(bool force_pick);
 
    /// Prepare the runner, this can include steps like code generation.
    virtual void prepare() { prepared = true; };
@@ -40,8 +43,10 @@ struct PipelineRunner {
    std::vector<void*> states;
    /// The backing pipeline.
    PipelinePtr pipe;
-   /// The backing execution context.
-   ExecutionContext& context;
+   /// The recontextualized execution context.
+   ExecutionContext context;
+   /// Is this pipeline driven by a fuse chunk source?
+   bool fuseChunkSource;
    /// Was this runner prepared already?
    bool prepared = false;
 };

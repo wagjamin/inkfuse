@@ -48,6 +48,7 @@ struct ExpressionOp : public RelAlgOp {
       };
 
       ComputeNode(Type code, std::vector<Node*> children);
+      ComputeNode(IR::TypeArc casted, Node* child);
 
       // Which expression?
       Type code;

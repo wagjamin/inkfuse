@@ -14,8 +14,7 @@ Suboperator& Scope::getProducer(const IU& iu) const {
    return *iu_producers.at(&iu);
 }
 
-Suboperator* Scope::tryGetProducer(const IU& iu) const
-{
+Suboperator* Scope::tryGetProducer(const IU& iu) const {
    auto it = iu_producers.find(&iu);
    if (it == iu_producers.end()) {
       return nullptr;
@@ -33,6 +32,7 @@ std::unique_ptr<Pipeline> Pipeline::repipe(size_t start, size_t end, bool materi
    auto in_scope = resolveOperatorScope(*suboperators[start]);
    auto out_scope = resolveOperatorScope(*suboperators[end - 1], false);
    size_t in_scope_end = in_scope + 1 == scopes.size() ? suboperators.size() : rescope_offsets[in_scope + 1];
+   size_t out_scope_start = rescope_offsets[out_scope];
    size_t out_scope_end = out_scope + 1 == scopes.size() ? suboperators.size() : rescope_offsets[out_scope + 1];
 
    // Find out which IUs we will need in the first in_scope that are not in_provided.
@@ -40,7 +40,7 @@ std::unique_ptr<Pipeline> Pipeline::repipe(size_t start, size_t end, bool materi
    std::set<const IU*> in_required;
    std::for_each(
       suboperators.begin() + start,
-      suboperators.begin() + in_scope_end,
+      suboperators.begin() + std::min(in_scope_end, end),
       [&](const SuboperatorArc& subop) {
          for (auto iu : subop->getIUs()) {
             in_provided.insert(iu);
@@ -52,14 +52,21 @@ std::unique_ptr<Pipeline> Pipeline::repipe(size_t start, size_t end, bool materi
          }
       });
 
-   // Build a FuseChunkSource for those.
    if (!in_required.empty()) {
-      // Build the loop driver.
-      auto& driver = new_pipe->attachSuboperator(FuseChunkSourceDriver::build());
-      auto& driver_iu = **driver.getIUs().begin();
-      // And the IU providers.
-      for (auto iu: in_required) {
-         new_pipe->attachSuboperator(FuseChunkSourceIUProvider::build(driver_iu, *iu));
+      // Attach the IU proving operators.
+      auto try_provider = tryGetProvider({**in_required.begin(), 0});
+      if (try_provider && try_provider->isSource()) {
+         // If the provider was actually a source, it has to be at index zero. Retain it.
+         new_pipe->attachSuboperator(suboperators[0]);
+      } else {
+         // Otherwise, build a FuseChunkSource for those that are not driven by an existing provider.
+         // First we build the driver.
+         auto& driver = new_pipe->attachSuboperator(FuseChunkSourceDriver::build());
+         auto& driver_iu = **driver.getIUs().begin();
+         // And the IU providers.
+         for (auto iu : in_required) {
+            new_pipe->attachSuboperator(FuseChunkSourceIUProvider::build(driver_iu, *iu));
+         }
       }
    }
 
@@ -86,13 +93,22 @@ std::unique_ptr<Pipeline> Pipeline::repipe(size_t start, size_t end, bool materi
             }
          });
    } else {
+      std::set<const IU*> out_provided;
+      std::for_each(
+         suboperators.begin() + std::max(start, out_scope_start),
+         suboperators.begin() + end,
+         [&](const SuboperatorArc& subop) {
+            for (auto iu : subop->getIUs()) {
+               out_provided.insert(iu);
+            }
+         });
       // Find out which IUs we will need after this interval.
       std::for_each(
          suboperators.begin() + end,
          suboperators.begin() + out_scope_end,
          [&](const SuboperatorArc& subop) {
             for (auto iu : subop->getSourceIUs()) {
-               if (!subop->isSource()) {
+               if (!subop->isSource() && out_provided.count(iu)) {
                   out_required.insert(iu);
                }
             }
@@ -119,10 +135,12 @@ void Pipeline::rescope(ScopeArc new_scope) {
 }
 
 const std::vector<Suboperator*>& Pipeline::getConsumers(Suboperator& subop) const {
+   assert(graph.outgoing_edges.count(&subop));
    return graph.outgoing_edges.at(&subop);
 }
 
 const std::vector<Suboperator*>& Pipeline::getProducers(Suboperator& subop) const {
+   assert(graph.incoming_edges.count(&subop));
    return graph.incoming_edges.at(&subop);
 }
 
@@ -130,8 +148,7 @@ Suboperator& Pipeline::getProvider(IUScoped iu) const {
    return scopes.at(iu.scope_id)->getProducer(iu.iu);
 }
 
-Suboperator* Pipeline::tryGetProvider(IUScoped iu) const
-{
+Suboperator* Pipeline::tryGetProvider(IUScoped iu) const {
    return scopes.at(iu.scope_id)->tryGetProducer(iu.iu);
 }
 

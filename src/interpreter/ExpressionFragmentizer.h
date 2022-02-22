@@ -10,7 +10,6 @@ struct ExpressionFragmentizer: public Fragmentizer {
    ExpressionFragmentizer();
 
    private:
-
    /// Fragmentize all cast expressions.
    void fragmentizeCasts();
    /// Fragmentize all binary expressions.

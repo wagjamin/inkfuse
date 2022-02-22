@@ -3,6 +3,7 @@
 #include "interpreter/TScanFragmentizer.h"
 #include "interpreter/ExpressionFragmentizer.h"
 #include "interpreter/CopyFragmentizer.h"
+#include "interpreter/CountingSinkFragmentizer.h"
 
 namespace inkfuse {
 
@@ -74,6 +75,7 @@ IR::ProgramArc FragmentGenerator::build()
    fragmentizers.push_back(std::make_unique<TScanFragmetizer>());
    fragmentizers.push_back(std::make_unique<CopyFragmentizer>());
    fragmentizers.push_back(std::make_unique<ExpressionFragmentizer>());
+   fragmentizers.push_back(std::make_unique<CountingSinkFragmentizer>());
 
    // Create the IR program.
    auto program = std::make_shared<IR::Program>("fragments", false);

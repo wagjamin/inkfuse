@@ -2,8 +2,12 @@
 #include "exec/ExecutionContext.h"
 #include "exec/PipelineExecutor.h"
 #include "algebra/ExpressionOp.h"
+#include "algebra/suboperators/sinks/CountingSink.h"
 #include "algebra/TableScan.h"
 #include "storage/Relation.h"
+#include "interpreter/FragmentCache.h"
+#include <vector>
+#include <chrono>
 #include <iostream>
 #include <random>
 #include <deque>
@@ -15,7 +19,7 @@ namespace {
 using namespace inkfuse;
 
 DEFINE_uint64(depth, 10, "Size of the expression tree");
-DEFINE_uint64(sf, 1, "Data in the underlying three columns - in GB");
+DEFINE_double(sf, 1, "Data in the underlying three columns - in GB");
 
 // InkFuse main binary to run queries.
 // We are running on table T[a: int64_t, b: int64_t, c: uint32_t]
@@ -25,7 +29,10 @@ int main(int argc, char* argv[]) {
    gflags::ParseCommandLineFlags(&argc, &argv, true);
 
    uint64_t depth = FLAGS_depth;
-   uint64_t sf = FLAGS_sf;
+   double sf = FLAGS_sf;
+
+   // Populate the fragment cache.
+   FragmentCache::instance();
 
    // Rows to get the required data size.
    uint64_t rows = sf * (1ull<<30) / 20;
@@ -33,11 +40,11 @@ int main(int argc, char* argv[]) {
 
    // Set up backing storage.
    StoredRelation rel;
-   std::vector<uint64_t> max{100, 1400, 43334};
+   std::vector<uint64_t> max{20000, 4000, 10};
    std::vector<std::string> colnames{"a", "b", "c"};
    for (size_t col_id = 0; col_id < colnames.size(); ++col_id) {
       // Create column.
-      auto& col = rel.attachTypedColumn<uint64_t>(colnames[col_id]);
+      auto& col = rel.attachTypedColumn<int64_t>(colnames[col_id]);
       col.getStorage().reserve(rows);
 
       // And fill it up.
@@ -50,22 +57,78 @@ int main(int argc, char* argv[]) {
       }
    }
 
-
    // Set up the expression tree.
    std::deque<IU> in_ius;
 
    // Set up the table scan.
-   TableScan scan(rel, {"a", "b", "c"}, "tscan");
-   auto ius = scan.getIUs();
+   std::unique_ptr<RelAlgOp> scan = std::make_unique<TableScan>(rel, std::vector<std::string>{"a", "b", "c"}, "tscan");
+   auto ius = scan->getIUs();
    auto& in_0 = ius[0];
    auto& in_1 = ius[1];
    auto& in_2 = ius[2];
 
    // Set up the expression tree.
    std::vector<ExpressionOp::NodePtr> nodes;
-   for (uint64_t k = 0; k < depth; ++k) {
-      
-   }
+   nodes.reserve(5);
+   auto c1 = nodes.emplace_back(std::make_unique<ExpressionOp::IURefNode>(in_0)).get();
+   auto c2 = nodes.emplace_back(std::make_unique<ExpressionOp::IURefNode>(in_1)).get();
+   auto c3 = nodes.emplace_back(std::make_unique<ExpressionOp::IURefNode>(in_2)).get();
+   auto c4 = nodes.emplace_back(
+         std::make_unique<ExpressionOp::ComputeNode>(
+            ExpressionOp::ComputeNode::Type::Add,
+            std::vector<ExpressionOp::Node*>{c1, c2}))
+      .get();
+   auto c5 = nodes.emplace_back(
+         std::make_unique<ExpressionOp::ComputeNode>(
+            IR::SignedInt::build(8),
+            c3))
+                .get();
+   auto c6 = nodes.emplace_back(std::make_unique<ExpressionOp::ComputeNode>(
+         ExpressionOp::ComputeNode::Type::Subtract,
+         std::vector<ExpressionOp::Node*>{c4, c5}))
+      .get();
+   auto c7 = nodes.emplace_back(std::make_unique<ExpressionOp::ComputeNode>(
+         ExpressionOp::ComputeNode::Type::Multiply,
+         std::vector<ExpressionOp::Node*>{c5, c6}))
+      .get();
+
+   std::vector<std::unique_ptr<RelAlgOp>> children;
+   children.push_back(std::move(scan));
+
+   ExpressionOp op(
+      std::move(children),
+      "expression_1",
+      std::vector<ExpressionOp::Node*>{c7},
+      std::move(nodes));
+
+   /// Set up the actual pipelines.
+   PipelineDAG dag;
+   dag.buildNewPipeline();
+   op.decay({}, dag);
+
+   auto& pipe = dag.getCurrentPipeline();
+   auto expression_result_iu = op.getIUs().back();
+   auto& sink = pipe.attachSuboperator(CountingSink::build(*expression_result_iu));
+
+   auto runInMode = [&](PipelineExecutor::ExecutionMode mode, std::string readable) {
+     // Get ready for compiled execution.
+     PipelineExecutor exec(pipe, mode, "ExpressionT_exec");
+
+     auto start = std::chrono::steady_clock::now();
+     exec.runPipeline();
+     auto stop = std::chrono::steady_clock::now();
+     auto dur = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count();
+
+     auto state = reinterpret_cast<CountingState*>(sink.accessState());
+     if (state->count != rows) {
+        throw std::runtime_error("Did not calculate expression on all rows.");
+     }
+
+     std::cout << readable << " duration: " << dur << " ms\n";
+   };
+
+   runInMode(PipelineExecutor::ExecutionMode::Fused, "Fused");
+   runInMode(PipelineExecutor::ExecutionMode::Interpreted, "Interpreted");
 
 
    return 0;

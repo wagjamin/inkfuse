@@ -31,7 +31,16 @@ ExpressionOp::ComputeNode::ComputeNode(Type code_, std::vector<Node*> children_)
    }
 }
 
+ExpressionOp::ComputeNode::ComputeNode(IR::TypeArc casted, Node* child)
+   : code(Type::Cast), out(std::move(casted)), children({child})
+{
+}
+
 void ExpressionOp::decay(std::vector<const IU*> required, PipelineDAG& dag) const {
+   // First decay the children.
+   for (const auto& child: children) {
+      child->decay(required, dag);
+   }
    // The set stores which expression suboperators were created already.
    std::unordered_map<Node*, const IU*> built;
    for (const auto root : out) {
