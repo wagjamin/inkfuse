@@ -47,7 +47,7 @@ struct PipelineExecutor {
    bool runInterpretedMorsel();
 
    /// Set up fused state.
-   std::future<void> setUpFused();
+   void setUpFused();
    /// Set up interpreted state.
    void setUpInterpreted();
    /// Clean up the fuse chunks in a given scope.
@@ -65,10 +65,10 @@ struct PipelineExecutor {
    ExecutionMode mode;
    /// Potential full name of the generated program.
    std::string full_name;
-   /// Was fused mode set up successfully?
-   bool fused_set_up = false;
    /// Was interpreted mode set up succesfully?
    bool interpreted_set_up = false;
+   /// Was fused mode set up successfully? Atomic since this is done asynchronously.
+   std::atomic<bool> fused_set_up = false;
 };
 
 }

@@ -26,14 +26,26 @@ const ExecutionContext& PipelineExecutor::getExecutionContext() const {
 }
 
 void PipelineExecutor::runPipeline() {
+   auto start = std::chrono::steady_clock::now();
    if (mode == ExecutionMode::Fused) {
       while (runFusedMorsel()) {}
    } else if (mode == ExecutionMode::Interpreted) {
       while (runInterpretedMorsel()) {}
    } else {
-      // Hybrid execution.
-      // TODO
-      throw std::runtime_error("Not implemented.");
+      // Set up interpreted first to avoid races in parallel setup.
+      setUpInterpreted();
+      // Now we can happily compile in the backgruond.
+      setUpFused();
+      bool fused_ready = false;
+      bool terminate = false;
+      while (!fused_ready && !terminate) {
+         terminate = !runInterpretedMorsel();
+         fused_ready = fused_set_up.load();
+      }
+      // Code is ready - switch over.
+      while (!terminate) {
+         terminate = !runFusedMorsel();
+      }
    }
 }
 
@@ -45,16 +57,18 @@ bool PipelineExecutor::runMorsel() {
    }
 }
 
-std::future<void> PipelineExecutor::setUpFused() {
-   return std::async([&]() {
+void PipelineExecutor::setUpFused() {
+   // TODO Terrible solution, the caught stuff can go out of scope in the meantime.
+   auto thread = std::thread([&]() {
       // Set up runner.
       auto repiped = pipe.repipe(0, pipe.getSubops().size());
       auto runner = std::make_unique<CompiledRunner>(std::move(repiped), context, std::move(full_name));
       // And Compile.
       runner->prepare();
       compiled[{0, pipe.getSubops().size()}] = std::move(runner);
-      fused_set_up = true;
+      fused_set_up.store(true);
    });
+   thread.detach();
 }
 
 void PipelineExecutor::setUpInterpreted() {
@@ -91,7 +105,8 @@ void PipelineExecutor::cleanUpScope(size_t scope) {
 
 bool PipelineExecutor::runFusedMorsel() {
    if (!fused_set_up) {
-      setUpFused().get();
+      setUpFused();
+      while(!fused_set_up.load()) {}
    }
    // Run the whole compiled executor.
    if (compiled.at({0, pipe.getSubops().size()})->runMorsel(true)) {

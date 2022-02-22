@@ -129,7 +129,7 @@ int main(int argc, char* argv[]) {
 
    runInMode(PipelineExecutor::ExecutionMode::Fused, "Fused");
    runInMode(PipelineExecutor::ExecutionMode::Interpreted, "Interpreted");
-
+   runInMode(PipelineExecutor::ExecutionMode::Hybrid, "Hybrid");
 
    return 0;
 }
