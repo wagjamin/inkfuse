@@ -4,7 +4,7 @@
 
 namespace inkfuse {
 
-const std::string CountingState::name = "CountingState";
+const char* CountingState::name = "CountingState";
 
 // static
 SuboperatorArc CountingSink::build(const IU& iu)

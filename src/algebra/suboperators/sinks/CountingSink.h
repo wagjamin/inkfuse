@@ -6,7 +6,7 @@
 namespace inkfuse {
 
 struct CountingState {
-   static const std::string name;
+   static const char* name;
 
    uint64_t count = 0;
 };

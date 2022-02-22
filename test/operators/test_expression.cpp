@@ -62,8 +62,6 @@ TEST_F(ExpressionT, decay) {
    EXPECT_EQ(ops[0]->getSourceIUs()[1], &in2);
    EXPECT_EQ(pipe.getConsumers(*ops[0]).size(), 2);
    EXPECT_EQ(pipe.getConsumers(*ops[1]).size(), 1);
-   // No output on the final expression op.
-   EXPECT_ANY_THROW(pipe.getConsumers(*ops[2]));
 }
 
 TEST_F(ExpressionT, exec) {
