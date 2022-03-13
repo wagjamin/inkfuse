@@ -33,6 +33,10 @@ if (WITH_COVERAGE)
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} --coverage")
 endif()
 
+option(JIT_CLANG_11 "Use clang-11 as the default compiler. If off, compiler that should be used is read from CUSTOM_JIT env variable" OFF)
+if (JIT_CLANG_11)
+    add_compile_definitions(JIT_CLANG_11=${JIT_CLANG_11})
+endif()
 
 # ---------------------------------------------------------------------------
 # Includes
@@ -186,13 +190,15 @@ add_dependencies(lint ${lint_targets})
 # Configuration
 # ---------------------------------------------------------------------------
 
-message(STATUS "[IMLAB] settings")
+message(STATUS "[INKFUSE] settings")
 message(STATUS "    GFLAGS_INCLUDE_DIR          = ${GFLAGS_INCLUDE_DIR}")
 message(STATUS "    GFLAGS_LIBRARY_PATH         = ${GFLAGS_LIBRARY_PATH}")
 message(STATUS "    CMAKE_CXX_FLAGS             = ${CMAKE_CXX_FLAGS}")
 message(STATUS "    CMAKE_CXX_FLAGS_DEBUG       = ${CMAKE_CXX_FLAGS_DEBUG}")
 message(STATUS "    CMAKE_CXX_FLAGS_RELEASE     = ${CMAKE_CXX_FLAGS_RELEASE}")
 message(STATUS "    CMAKE_CXX_FLAGS_RELWITHDEB  = ${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
+message(STATUS "    WITH_COVERAGE               = ${WITH_COVERAGE}")
+message(STATUS "    JIT_CLANG_11                = ${JIT_CLANG_11}")
 message(STATUS "[TEST] settings")
 message(STATUS "    GTEST_INCLUDE_DIR           = ${GTEST_INCLUDE_DIR}")
 message(STATUS "    GTEST_LIBRARY_PATH          = ${GTEST_LIBRARY_PATH}")

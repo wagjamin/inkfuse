@@ -30,7 +30,15 @@ void BackendProgramC::compileToMachinecode() {
       dump();
       // Invoke the compiler.
       std::stringstream command;
-      command << "clang-11 ";
+      #ifdef JIT_CLANG_11
+         command << "clang-11 ";
+      #else
+         const char* env = std::getenv("CUSTOM_JIT");
+         if (!env) {
+            throw std::runtime_error("Custom compiler has to be set through CUSTOM_JIT env variable.");
+         }
+         command << env << " ";
+      #endif
       command << path(program_name);
       command << " -g -O3 -fPIC";
       command << " -shared";
