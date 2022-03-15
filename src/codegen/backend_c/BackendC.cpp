@@ -30,7 +30,7 @@ void BackendProgramC::compileToMachinecode() {
       dump();
       // Invoke the compiler.
       std::stringstream command;
-      #ifdef JIT_CLANG_11
+      #ifdef WITH_JIT_CLANG_11
          command << "clang-11 ";
       #else
          const char* env = std::getenv("CUSTOM_JIT");

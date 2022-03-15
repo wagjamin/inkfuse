@@ -3,7 +3,7 @@
 # ---------------------------------------------------------------------------
 
 project(inkfuse)
-cmake_minimum_required(VERSION 3.7)
+cmake_minimum_required(VERSION 3.12)
 # ---------------------------------------------------------------------------
 # Environment
 # ---------------------------------------------------------------------------
@@ -35,7 +35,7 @@ endif()
 
 option(JIT_CLANG_11 "Use clang-11 as the default compiler. If off, compiler that should be used is read from CUSTOM_JIT env variable" OFF)
 if (JIT_CLANG_11)
-    add_compile_definitions(JIT_CLANG_11=${JIT_CLANG_11})
+    add_compile_definitions(WITH_JIT_CLANG_11)
 endif()
 
 # ---------------------------------------------------------------------------
