@@ -12,7 +12,7 @@ jobs:
       run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=Debug -DWITH_COVERAGE=ON
 
     - name: Build
-      run: cmake --build ${{github.workspace}}/build tester
+      run: cmake --build ${{github.workspace}}/build --target tester
 
     - name: Test
       working-directory: ${{github.workspace}}/build
