@@ -23,7 +23,6 @@ find_package(Threads REQUIRED)
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 
-include("${CMAKE_SOURCE_DIR}/cmake/clang-tidy.cmake")
 include("${CMAKE_SOURCE_DIR}/vendor/googletest.cmake")
 include("${CMAKE_SOURCE_DIR}/vendor/gflags.cmake")
 
@@ -33,7 +32,7 @@ if (WITH_COVERAGE)
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} --coverage")
 endif()
 
-option(JIT_CLANG_11 "Use clang-11 as the default compiler. If off, compiler that should be used is read from CUSTOM_JIT env variable" OFF)
+option(JIT_CLANG_11 "Use clang-11 as the default compiler. If off, compiler that should be used is read from CUSTOM_JIT env variable" ON)
 if (JIT_CLANG_11)
     add_compile_definitions(JIT_CLANG_11=${JIT_CLANG_11})
 endif()
@@ -177,14 +176,18 @@ add_test(inkfuse tester)
 # Linting
 # ---------------------------------------------------------------------------
 
-add_clang_tidy_target(src_linting "${SRC_CC}")
-add_clang_tidy_target(include_linting "${INCLUDE_H}")
-add_clang_tidy_target(tools_linting "${TOOLS_SRC}")
-add_clang_tidy_target(test_linting "${TEST_CC}")
+option(WITH_LINTING "Enable clang-tidy linting as a taget" OFF)
+if (WITH_LINTING)
+    include("${CMAKE_SOURCE_DIR}/cmake/clang-tidy.cmake")
+    add_clang_tidy_target(src_linting "${SRC_CC}")
+    add_clang_tidy_target(include_linting "${INCLUDE_H}")
+    add_clang_tidy_target(tools_linting "${TOOLS_SRC}")
+    add_clang_tidy_target(test_linting "${TEST_CC}")
 
-add_custom_target(lint)
-list(APPEND lint_targets include_linting src_linting tools_linting test_linting)
-add_dependencies(lint ${lint_targets})
+    add_custom_target(lint)
+    list(APPEND lint_targets include_linting src_linting tools_linting test_linting)
+    add_dependencies(lint ${lint_targets})
+endif()
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -198,6 +201,7 @@ message(STATUS "    CMAKE_CXX_FLAGS_DEBUG       = ${CMAKE_CXX_FLAGS_DEBUG}")
 message(STATUS "    CMAKE_CXX_FLAGS_RELEASE     = ${CMAKE_CXX_FLAGS_RELEASE}")
 message(STATUS "    CMAKE_CXX_FLAGS_RELWITHDEB  = ${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
 message(STATUS "    WITH_COVERAGE               = ${WITH_COVERAGE}")
+message(STATUS "    WITH_LINTING                = ${WITH_LINTING}")
 message(STATUS "    JIT_CLANG_11                = ${JIT_CLANG_11}")
 message(STATUS "[TEST] settings")
 message(STATUS "    GTEST_INCLUDE_DIR           = ${GTEST_INCLUDE_DIR}")
