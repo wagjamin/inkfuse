@@ -14,7 +14,15 @@ jobs:
     - name: Build
       run: cmake --build ${{github.workspace}}/build 
 
+    - name: Test
+      working-directory: ${{github.workspace}}/build
+      run: ./tester
+
+    - name: List
+      working-directory: ${{github.workspace}}
+      run: ls
+
     - name: Coverage 
       working-directory: ${{github.workspace}}
-      run: gcovr build/CMakeFiles/inkfuse.dir/src -r src
+      run: gcov build/CMakeFiles/inkfuse.dir/src -r src
       
