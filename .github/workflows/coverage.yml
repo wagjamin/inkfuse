@@ -3,7 +3,7 @@ name: Coverage
 on: workflow_dispatch
 
 jobs:
-  find-coverage:
+  build-report:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -12,17 +12,16 @@ jobs:
       run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=Debug -DWITH_COVERAGE=ON
 
     - name: Build
-      run: cmake --build ${{github.workspace}}/build 
+      run: cmake --build ${{github.workspace}}/build tester
 
     - name: Test
       working-directory: ${{github.workspace}}/build
       run: ./tester
 
-    - name: List
-      working-directory: ${{github.workspace}}
-      run: ls
+    - name: Install gcovr
+      run: sudo apt install -y gcovr
 
-    - name: Coverage 
+    - name: Report
       working-directory: ${{github.workspace}}
-      run: gcov build/CMakeFiles/inkfuse.dir/src -r src
+      run: gcovr build/CMakeFiles/inkfuse.dir/src -r src
       
