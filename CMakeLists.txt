@@ -32,7 +32,7 @@ if (WITH_COVERAGE)
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} --coverage")
 endif()
 
-option(JIT_CLANG_11 "Use clang-11 as the default compiler. If off, compiler that should be used is read from CUSTOM_JIT env variable" OFF)
+option(JIT_CLANG_11 "Use clang-11 as the default compiler. If off, compiler that should be used is read from CUSTOM_JIT env variable" ON)
 if (JIT_CLANG_11)
     add_compile_definitions(JIT_CLANG_11=${JIT_CLANG_11})
 endif()
