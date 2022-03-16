@@ -6,25 +6,19 @@ on:
   pull_request:
     branches: [ main ]
 
-env:
-  BUILD_TYPE: Release
-
 jobs:
   build:
     runs-on: ubuntu-latest
     # Run builds and tests both in Debug and RelWithDebInfo
     strategy:
         matrix:
-            build_type: [Debug, RelWithDebInfo]
+            build-type: [Debug, RelWithDebInfo]
     steps:
     - uses: actions/checkout@v2
-
-    - name: Configure CMake
-      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-
     - name: Build
-      run: cmake --build ${{github.workspace}}/build --config ${{ matrix.build_type }}
-
+      uses: ./.github/actions/build
+      with:
+          build-type: ${{ matrix.build-type }}
     - name: Test
       working-directory: ${{github.workspace}}/build
       run: ./tester
