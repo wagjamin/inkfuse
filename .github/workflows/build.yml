@@ -14,7 +14,7 @@ on:
                 required: false 
                 description: "Build with Coverage"
                 default: false
-                type: bool
+                type: boolean
 
 jobs:
     build:
