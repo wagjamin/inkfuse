@@ -10,7 +10,7 @@ jobs:
     - name: Build With Coverage
       uses: ./.github/actions/build
       with:
-          build-type: ${{ matrix.build-type }}
+          build-type: Debug
           with-coverage: true
     - name: Test
       working-directory: ${{github.workspace}}/build
