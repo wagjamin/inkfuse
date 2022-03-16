@@ -1,0 +1,20 @@
+# Composite action to build certain inkfuse targets.
+# Target gets built in ${{ github.workspace }}/build.
+name: "Build inkfuse"
+description: "Build inkfuse using some customization options"
+inputs:
+    build-type:
+        required: true
+        description: "Build type - one of {Debug, RelWithDebInfo, Release}"
+    with-coverage:
+        required: false 
+        description: "Build with Coverage"
+        default: OFF
+runs:
+    using: "composite"
+    steps:
+        - name: Configure CMake
+          run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{ inputs.build_type }}
+        - name: Build
+          run: cmake --build ${{github.workspace}}/build --config ${{ inputs.build_type }}
+      
