@@ -14,7 +14,7 @@ runs:
     using: "composite"
     steps:
         - name: Configure Coverage
-          if: ${{ inputs.with_coverage == "true" }}
+          if: ${{ inputs.with_coverage == 'true' }}
           run: echo "cmake_args=${{ env.cmake_args}} -DWITH_COVERAGE=ON" >> $GITHUB_ENV
           shell: bash
         - name: Configure CMake
