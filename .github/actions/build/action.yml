@@ -9,12 +9,16 @@ inputs:
     with-coverage:
         required: false 
         description: "Build with Coverage"
-        default: OFF
+        default: false
 runs:
     using: "composite"
     steps:
+        - name: Configure Coverage
+          if: ${{ with_coverage }}
+          run: echo "cmake_args=${{ env.cmake_args}} -DWITH_COVERAGE=ON" >> $GITHUB_ENV
+          shell: bash
         - name: Configure CMake
-          run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{ inputs.build-type }}
+          run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{ inputs.build-type }} ${{ env.cmake_args }}
           shell: bash
         - name: Build
           run: cmake --build ${{github.workspace}}/build --config ${{ inputs.build-type }}
