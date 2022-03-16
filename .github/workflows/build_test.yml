@@ -18,7 +18,7 @@ jobs:
     - name: Build
       uses: ./.github/actions/build
       with:
-          - build-type: "${{ matrix.build-type }}"
+          build-type: ${{ matrix.build-type }}
     - name: Test
       working-directory: ${{github.workspace}}/build
       run: ./tester
