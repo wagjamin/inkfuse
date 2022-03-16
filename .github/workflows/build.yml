@@ -22,8 +22,9 @@ jobs:
         - name: Configure Coverage
           if: inputs.with_coverage == true
           run: echo "cmake_args=${{ env.cmake_args }} -DWITH_COVERAGE=ON" >> $GITHUB_ENV
-        - name: Configure CMake
+        - name: Show Environment
           run: echo "CMake Arguments: ${{ env.cmake_args }}"
+        - name: Configure CMake
           run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{ inputs.build-type }} ${{ env.cmake_args }}
         - name: Build
           run: cmake --build ${{github.workspace}}/build --config ${{ inputs.build-type }}
