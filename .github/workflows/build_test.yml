@@ -7,7 +7,7 @@ on:
     branches: [ main ]
 
 jobs:
-  build:
+  build-test:
     runs-on: ubuntu-latest
     # Run builds and tests both in Debug and RelWithDebInfo
     strategy:
