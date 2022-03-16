@@ -15,8 +15,7 @@ jobs:
             build-type: [Debug, RelWithDebInfo]
     steps:
     - uses: actions/checkout@v2
-    - name: Build
-      uses: ./.github/actions/build
+    - uses: ./.github/workflows/build.yml
       with:
           build-type: ${{ matrix.build-type }}
     - name: Test
