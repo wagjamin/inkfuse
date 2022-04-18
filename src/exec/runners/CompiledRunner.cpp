@@ -1,6 +1,7 @@
 #include "CompiledRunner.h"
 #include "algebra/CompilationContext.h"
 #include "codegen/backend_c/BackendC.h"
+#include "exec/InterruptableJob.h"
 #include <atomic>
 
 namespace inkfuse {
@@ -19,7 +20,7 @@ CompiledRunner::CompiledRunner(PipelinePtr pipe_, ExecutionContext& context_, st
    }
 }
 
-void CompiledRunner::prepare()
+bool CompiledRunner::prepare(InterruptableJob& interrupt)
 {
    // Create IR program for the pipeline.
    CompilationContext comp(name, *pipe);
@@ -28,10 +29,14 @@ void CompiledRunner::prepare()
    // Generate C code.
    BackendC backend;
    auto program = backend.generate(comp.getProgram());
-   program->compileToMachinecode();
-   fct = reinterpret_cast<uint8_t(*)(void**, void**, void*)>(program->getFunction("execute"));
-   assert(fct);
-   prepared = true;
+   program->compileToMachinecode(interrupt);
+   if (interrupt.getResult() == InterruptableJob::Change::JobDone) {
+      // If we finished successfully without interrupt we can fetch the generated function.
+      fct = reinterpret_cast<uint8_t(*)(void**, void**, void*)>(program->getFunction("execute"));
+      assert(fct);
+      prepared = true;
+   }
+   return prepared;
 }
 
 }

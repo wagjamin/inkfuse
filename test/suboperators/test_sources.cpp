@@ -4,6 +4,7 @@
 #include "algebra/suboperators/sources/TableScanSource.h"
 #include "algebra/suboperators/sinks/FuseChunkSink.h"
 #include "codegen/backend_c/BackendC.h"
+#include "exec/InterruptableJob.h"
 
 namespace inkfuse {
 
@@ -38,7 +39,8 @@ TEST(test_sources, table_scan) {
    BackendC backend;
    auto program = backend.generate(codegen.getProgram());
    program->dump();
-   program->compileToMachinecode();
+   InterruptableJob interrupt;
+   program->compileToMachinecode(interrupt);
 }
 
 /// Test execution of a fuse chunk source.

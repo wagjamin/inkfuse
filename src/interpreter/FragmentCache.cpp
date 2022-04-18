@@ -1,6 +1,7 @@
 #include "interpreter/FragmentCache.h"
 #include "interpreter/FragmentGenerator.h"
 #include "codegen/backend_c/BackendC.h"
+#include "exec/InterruptableJob.h"
 
 namespace inkfuse {
 
@@ -10,7 +11,8 @@ FragmentCache::FragmentCache()
    auto fragments = FragmentGenerator::build();
    BackendC backend;
    program = backend.generate(*fragments);
-   program->compileToMachinecode();
+   InterruptableJob interrupt;
+   program->compileToMachinecode(interrupt);
    // And link directly to now slow down the first queries.
    program->link();
 }

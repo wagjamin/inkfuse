@@ -121,17 +121,12 @@ int main(int argc, char* argv[]) {
          auto stop = std::chrono::steady_clock::now();
          auto dur = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count();
 
-         /*
          auto state = reinterpret_cast<CountingState*>(sink.accessState());
          if (state->count != rows) {
             // throw std::runtime_error("Did not calculate expression on all rows.");
-         }*/
-
-         std::cout << ind << "," << rows << "," << readable << "," << dur << "\n";
-         if (mode == PipelineExecutor::ExecutionMode::Hybrid) {
-            // Wait fir background compilation to finish.
-            std::this_thread::sleep_for(std::chrono::milliseconds(600));
          }
+
+         std::cout << ind << "," << rows << "," << readable << "," << dur << std::endl;
       };
 
       runInMode(PipelineExecutor::ExecutionMode::Fused, "Fused");

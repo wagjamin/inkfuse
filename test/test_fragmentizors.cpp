@@ -2,6 +2,7 @@
 #include "interpreter/FragmentGenerator.h"
 #include "interpreter/FragmentCache.h"
 #include "codegen/backend_c/BackendC.h"
+#include "exec/InterruptableJob.h"
 
 namespace inkfuse {
 
@@ -19,7 +20,8 @@ TEST(test_fragmentizors, fragment_generation) {
    BackendC backend;
    auto program = backend.generate(*fragments);
    EXPECT_NO_THROW(program->dump());
-   EXPECT_NO_THROW(program->compileToMachinecode());
+   InterruptableJob interrupt;
+   EXPECT_NO_THROW(program->compileToMachinecode(interrupt));
 }
 
 TEST(test_fragmentizors, fragment_cache) {

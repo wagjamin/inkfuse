@@ -1,4 +1,5 @@
 #include "codegen/backend_c/BackendC.h"
+#include "exec/InterruptableJob.h"
 #include <cstdlib>
 #include <fstream>
 #include <sstream>
@@ -24,27 +25,35 @@ std::string so_path(std::string_view program_name) {
 
 }
 
-void BackendProgramC::compileToMachinecode() {
+void BackendProgramC::compileToMachinecode(InterruptableJob& interrupt) {
    if (!was_compiled) {
       // Dump.
       dump();
       // Invoke the compiler.
       std::stringstream command;
-      #ifdef WITH_JIT_CLANG_11
-         command << "clang-11 ";
-      #else
-         const char* env = std::getenv("CUSTOM_JIT");
-         if (!env) {
-            throw std::runtime_error("Custom compiler has to be set through CUSTOM_JIT env variable.");
-         }
-         command << env << " ";
-      #endif
+#ifdef WITH_JIT_CLANG_11
+      command << "clang-11 ";
+#else
+      const char* env = std::getenv("CUSTOM_JIT");
+      if (!env) {
+         throw std::runtime_error("Custom compiler has to be set through CUSTOM_JIT env variable.");
+      }
+      command << env << " ";
+#endif
       command << path(program_name);
       command << " -g -O3 -fPIC";
       command << " -shared";
       command << " -o ";
       command << so_path(program_name);
-      std::system(command.str().c_str());
+      auto command_str = command.str();
+
+      auto exit_code = BashCommand::run(command_str, interrupt);
+      if (interrupt.getResult() == InterruptableJob::Change::Interrupted) {
+         return;
+      }
+      if (exit_code != 0) {
+         throw std::runtime_error("Compilation failed.");
+      }
 
       // Add to compiled programs.
       backend.generated.insert(program_name);
@@ -56,8 +65,7 @@ BackendProgramC::~BackendProgramC() {
    // TODO dlclose
 }
 
-void BackendProgramC::link()
-{
+void BackendProgramC::link() {
    if (!handle) {
       // Dlopen for the first time
       auto soname = so_path(program_name);

@@ -1,4 +1,5 @@
 #include "codegen/backend_c/BackendC.h"
+#include "exec/InterruptableJob.h"
 #include "sample_programs.h"
 #include <gtest/gtest.h>
 
@@ -17,7 +18,8 @@ TEST(test_c_backend, program_1) {
    auto c_program = backend.generate(program);
 
    // Compile it.
-   c_program->compileToMachinecode();
+   InterruptableJob interrupt;
+   c_program->compileToMachinecode(interrupt);
 
    // Get a handle to the function.
    ASSERT_FALSE(c_program->getFunction("doesntexist"));
@@ -36,7 +38,8 @@ TEST(test_c_backend, program_2) {
    auto c_program = backend.generate(program);
 
    // Compile it.
-   c_program->compileToMachinecode();
+   InterruptableJob interrupt;
+   c_program->compileToMachinecode(interrupt);
 
    // Get a handle to the function.
    ASSERT_FALSE(c_program->getFunction("doesntexist"));
@@ -58,7 +61,8 @@ TEST(test_c_backend, program_3) {
    auto c_program = backend.generate(program);
 
    // Compile it.
-   c_program->compileToMachinecode();
+   InterruptableJob interrupt;
+   c_program->compileToMachinecode(interrupt);
 
    // Get a handle to the function.
    ASSERT_FALSE(c_program->getFunction("doesntexist"));
