@@ -1,6 +1,7 @@
 #include "exec/PipelineExecutor.h"
-#include "algebra/suboperators/sinks/FuseChunkSink.h"
 #include "algebra/suboperators/sources/FuseChunkSource.h"
+#include "algebra/suboperators/sinks/FuseChunkSink.h"
+#include "exec/InterruptableJob.h"
 #include "exec/runners/CompiledRunner.h"
 #include "exec/runners/InterpretedRunner.h"
 
@@ -34,8 +35,10 @@ void PipelineExecutor::runPipeline() {
    } else {
       // Set up interpreted first to avoid races in parallel setup.
       setUpInterpreted();
-      // Now we can happily compile in the backgruond.
-      setUpFused();
+      // Now we can happily compile in the background. Note that we need to cancel compilation if
+      // interpretation finishes before compilation is done.
+      InterruptableJob compilation_interrupt;
+      auto compiled_job = setUpFusedAsync(compilation_interrupt);
       bool fused_ready = false;
       bool terminate = false;
       while (!fused_ready && !terminate) {
@@ -46,6 +49,9 @@ void PipelineExecutor::runPipeline() {
       while (!terminate) {
          terminate = !runFusedMorsel();
       }
+      // Stop the backing compilation job (if not finished) and clean up.
+      compilation_interrupt.interrupt();
+      compiled_job.join();
    }
 }
 
@@ -57,32 +63,18 @@ bool PipelineExecutor::runMorsel() {
    }
 }
 
-void PipelineExecutor::setUpFused() {
-   // TODO Terrible solution, the caught stuff can go out of scope in the meantime.
-   auto thread = std::thread([&]() {
-      // Set up runner.
-      auto repiped = pipe.repipe(0, pipe.getSubops().size());
-      auto runner = std::make_unique<CompiledRunner>(std::move(repiped), context, std::move(full_name));
-      // And Compile.
-      runner->prepare();
-      compiled[{0, pipe.getSubops().size()}] = std::move(runner);
-      fused_set_up.store(true);
-   });
-   thread.detach();
-}
-
 void PipelineExecutor::setUpInterpreted() {
    auto count = pipe.getSubops().size();
    interpreters.reserve(count);
 
    auto isFuseChunkOp = [](const Suboperator* op) {
-      if (dynamic_cast<const FuseChunkSink*>(op)) {
-         return true;
-      }
-      if (dynamic_cast<const FuseChunkSourceIUProvider*>(op)) {
-         return true;
-      }
-      return false;
+     if (dynamic_cast<const FuseChunkSink*>(op)) {
+        return true;
+     }
+     if (dynamic_cast<const FuseChunkSourceIUProvider*>(op)) {
+        return true;
+     }
+     return false;
    };
 
    for (size_t k = 0; k < count; ++k) {
@@ -98,6 +90,28 @@ void PipelineExecutor::setUpInterpreted() {
       }
    }
    interpreted_set_up = true;
+}
+
+std::thread PipelineExecutor::setUpFusedAsync(InterruptableJob& interrupt)
+{
+   return std::thread([&]() {
+     // Set up runner.
+     auto repiped = pipe.repipe(0, pipe.getSubops().size());
+     auto runner = std::make_unique<CompiledRunner>(std::move(repiped), context, std::move(full_name));
+     // And Compile.
+     bool done = runner->prepare(interrupt);
+     if (done) {
+        compiled[{0, pipe.getSubops().size()}] = std::move(runner);
+        fused_set_up.store(true);
+     }
+   });
+}
+
+void PipelineExecutor::setUpFused() {
+   // We go through the asynchronous interface but never cancel.
+   InterruptableJob compilation_interrupt;
+   auto thread = setUpFusedAsync(compilation_interrupt);
+   thread.join();
 }
 
 void PipelineExecutor::cleanUpScope(size_t scope) {

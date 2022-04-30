@@ -23,8 +23,8 @@ struct BackendProgramC : public IR::BackendProgram {
    /// Link the backend program. This way, it doesn't get linked lazily during the first lookup.
    void link() override;
 
-   /// Compile the backend program to actual machine code.
-   void compileToMachinecode() override;
+   /// Compile the backend program to actual machine code. The interrupt is used to stop compilation.
+   void compileToMachinecode(InterruptableJob& interrupt) override;
 
    /// Get a function with the specified name from the compiled program.
    void* getFunction(std::string_view name) override;

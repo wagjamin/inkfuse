@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include "algebra/suboperators/sources/TableScanSource.h"
+#include "exec/InterruptableJob.h"
 #include "codegen/backend_c/BackendC.h"
 #include "codegen/Expression.h"
 #include "codegen/IR.h"
@@ -63,7 +64,8 @@ namespace inkfuse {
         auto c_program = backend.generate(program);
 
         // Compile it.
-        c_program->compileToMachinecode();
+        InterruptableJob interrupt;
+        c_program->compileToMachinecode(interrupt);
 
         // Get a handle to the function.
         auto fct_compiled = reinterpret_cast<uint64_t (*)(LoopDriverState*)>(c_program->getFunction("test_fct"));

@@ -42,10 +42,11 @@ endif()
 # ---------------------------------------------------------------------------
 
 include_directories(
-    ${CMAKE_SOURCE_DIR}/src
-    ${GTEST_INCLUDE_DIR}
-    ${GMOCK_INCLUDE_DIR}
-    ${GFLAGS_INCLUDE_DIR}
+        ${CMAKE_SOURCE_DIR}/thirdparty
+        ${CMAKE_SOURCE_DIR}/src
+        ${GTEST_INCLUDE_DIR}
+        ${GMOCK_INCLUDE_DIR}
+        ${GFLAGS_INCLUDE_DIR}
 )
 
 # ---------------------------------------------------------------------------
@@ -82,6 +83,7 @@ set(INCLUDE_H
         "${CMAKE_SOURCE_DIR}/src/exec/runners/InterpretedRunner.h"
         "${CMAKE_SOURCE_DIR}/src/exec/ExecutionContext.h"
         "${CMAKE_SOURCE_DIR}/src/exec/InterpretationResult.h"
+        "${CMAKE_SOURCE_DIR}/src/exec/InterruptableJob.h"
         "${CMAKE_SOURCE_DIR}/src/interpreter/FragmentCache.h"
         "${CMAKE_SOURCE_DIR}/src/interpreter/FragmentGenerator.h"
         "${CMAKE_SOURCE_DIR}/src/interpreter/ExpressionFragmentizer.h"
@@ -111,6 +113,7 @@ set(SRC_CC
         "${CMAKE_SOURCE_DIR}/src/exec/runners/PipelineRunner.cpp"
         "${CMAKE_SOURCE_DIR}/src/exec/runners/CompiledRunner.cpp"
         "${CMAKE_SOURCE_DIR}/src/exec/runners/InterpretedRunner.cpp"
+        "${CMAKE_SOURCE_DIR}/src/exec/InterruptableJob.cpp"
         "${CMAKE_SOURCE_DIR}/src/storage/Relation.cc"
         "${CMAKE_SOURCE_DIR}/src/codegen/Expression.cpp"
         "${CMAKE_SOURCE_DIR}/src/codegen/IR.cpp"
@@ -135,6 +138,7 @@ set(TEST_CC
         "${CMAKE_SOURCE_DIR}/test/test_ir.cpp"
         "${CMAKE_SOURCE_DIR}/test/test_c_backend.cpp"
         "${CMAKE_SOURCE_DIR}/test/test_runtime.cpp"
+        "${CMAKE_SOURCE_DIR}/test/exec/test_interruptable_job.cpp"
         "${CMAKE_SOURCE_DIR}/test/operators/test_table_scan.cpp"
         "${CMAKE_SOURCE_DIR}/test/operators/test_expression.cpp"
         "${CMAKE_SOURCE_DIR}/test/suboperators/test_minimal_pipeline.cpp"

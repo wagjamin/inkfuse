@@ -9,6 +9,8 @@
 
 namespace inkfuse {
 
+struct InterruptableJob;
+
 /// The pipeline executor takes a full pipeline and runs it.
 /// It uses the PipelineRunners in the background to execute a fraction of the overall pipeline.
 struct PipelineExecutor {
@@ -46,10 +48,13 @@ struct PipelineExecutor {
    /// Run a full morsel through the interpreted path.
    bool runInterpretedMorsel();
 
-   /// Set up fused state.
-   void setUpFused();
-   /// Set up interpreted state.
+   /// Set up interpreted state in a synchronous way.
    void setUpInterpreted();
+   /// Set up fused state in a synchronous way.
+   void setUpFused();
+   /// Set up fused state in an asynchronous way.
+   /// Returns a handle to a thread performing asynchronous compilation.
+   std::thread setUpFusedAsync(InterruptableJob& interrupt);
    /// Clean up the fuse chunks in a given scope.
    void cleanUpScope(size_t scope);
 

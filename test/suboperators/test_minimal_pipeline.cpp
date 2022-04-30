@@ -1,9 +1,10 @@
-#include <gtest/gtest.h>
 #include "algebra/CompilationContext.h"
 #include "algebra/Pipeline.h"
-#include "algebra/suboperators/sources/TableScanSource.h"
 #include "algebra/suboperators/sinks/FuseChunkSink.h"
+#include "algebra/suboperators/sources/TableScanSource.h"
 #include "codegen/backend_c/BackendC.h"
+#include "exec/InterruptableJob.h"
+#include <gtest/gtest.h>
 
 namespace inkfuse {
 
@@ -53,7 +54,8 @@ TEST(test_minimal_pipeline, pipeline_2) {
    BackendC backend;
    auto program = backend.generate(codegen.getProgram());
    program->dump();
-   program->compileToMachinecode();
+   InterruptableJob interrupt;
+   program->compileToMachinecode(interrupt);
 }
 
 /// Table scan with implicit fuse chunk sink.
@@ -85,7 +87,8 @@ TEST(test_minimal_pipeline, pipeline_3) {
    BackendC backend;
    auto program = backend.generate(codegen.getProgram());
    program->dump();
-   program->compileToMachinecode();
+   InterruptableJob interrupt;
+   program->compileToMachinecode(interrupt);
 }
 
 }
