@@ -58,8 +58,8 @@ TEST_F(ExpressionT, decay) {
    auto& ops = pipe.getSubops();
    // Three actual computations are done.
    EXPECT_EQ(ops.size(), 3);
-   EXPECT_EQ(ops[0]->getSourceIUs()[0], &in1);
-   EXPECT_EQ(ops[0]->getSourceIUs()[1], &in2);
+   EXPECT_EQ(ops[0]->getSourceIUs().count(&in1), 1);
+   EXPECT_EQ(ops[0]->getSourceIUs().count(&in2), 1);
    EXPECT_EQ(pipe.getConsumers(*ops[0]).size(), 2);
    EXPECT_EQ(pipe.getConsumers(*ops[1]).size(), 1);
 }
@@ -96,9 +96,9 @@ TEST_F(ExpressionT, exec) {
    EXPECT_NO_THROW(exec.runMorsel());
 
    // Check results.
-   auto iu_c_3 = pipe.getSubops()[0]->getIUs()[0];
-   auto iu_c_4 = pipe.getSubops()[1]->getIUs()[0];
-   auto iu_c_5 = pipe.getSubops()[2]->getIUs()[0];
+   auto iu_c_3 = *pipe.getSubops()[0]->getIUs().begin();
+   auto iu_c_4 = *pipe.getSubops()[1]->getIUs().begin();
+   auto iu_c_5 = *pipe.getSubops()[2]->getIUs().begin();
    auto& c_iu_c_3 = ctx.getColumn({*iu_c_3, 0});
    auto& c_iu_c_4 = ctx.getColumn({*iu_c_4, 0});
    auto& c_iu_c_5 = ctx.getColumn({*iu_c_5, 0});

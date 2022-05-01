@@ -38,20 +38,23 @@ const std::unordered_map<Type, IR::ArithmeticExpr::Opcode> code_map{
 }
 
 // static
-SuboperatorArc ExpressionSubop::build(const RelAlgOp* source_, std::vector<const IU*> provided_ius_, std::vector<const IU*> source_ius_, ExpressionOp::ComputeNode::Type type_)
-{
-   return std::make_shared<ExpressionSubop>(source_, std::move(provided_ius_), std::move(source_ius_), type_);
+SuboperatorArc ExpressionSubop::build(const RelAlgOp* source_, std::unordered_set<const IU*> provided_ius_, std::vector<const IU*> operands_, ExpressionOp::ComputeNode::Type type_) {
+   return std::make_shared<ExpressionSubop>(source_, std::move(provided_ius_), std::move(operands_), type_);
 }
 
-ExpressionSubop::ExpressionSubop(const RelAlgOp* source_, std::vector<const IU*> provided_ius_, std::vector<const IU*> source_ius_, ExpressionOp::ComputeNode::Type type_)
-   : TemplatedSuboperator<EmptyState, EmptyState>(source_, std::move(provided_ius_), std::move(source_ius_)), type(type_) {
+ExpressionSubop::ExpressionSubop(const RelAlgOp* source_, std::unordered_set<const IU*> provided_ius_, std::vector<const IU*> operands_, ExpressionOp::ComputeNode::Type type_)
+   : TemplatedSuboperator<EmptyState, EmptyState>(source_, std::move(provided_ius_), std::unordered_set<const IU*>{}), type(type_), operands(std::move(operands_)) {
+   // We also need to update the source_ius - note that these are not ordered.
+   for (auto operand : operands) {
+      source_ius.emplace(operand);
+   }
 }
 
 void ExpressionSubop::consumeAllChildren(CompilationContext& context) {
    // All children were produced, we simply have to generate code for this specific expression.
    auto& builder = context.getFctBuilder();
    const auto& program = context.getProgram();
-   const auto out = provided_ius[0];
+   const auto out = *provided_ius.begin();
    auto scope = context.resolveScope(*this);
 
    // First, declare the output IU.
@@ -61,8 +64,8 @@ void ExpressionSubop::consumeAllChildren(CompilationContext& context) {
 
    // Then, compute it. First resolve the child IU statements.
    std::vector<const IR::Stmt*> children;
-   children.reserve(source_ius.size());
-   for (auto elem : source_ius) {
+   children.reserve(operands.size());
+   for (auto elem : operands) {
       const auto& decl = context.getIUDeclaration({*elem, scope});
       children.push_back(&decl);
    }
@@ -84,8 +87,7 @@ void ExpressionSubop::consumeAllChildren(CompilationContext& context) {
             IR::ArithmeticExpr::build(
                IR::VarRefExpr::build(*children[0]),
                IR::VarRefExpr::build(*children[1]),
-               code_map.at(type)
-            )));
+               code_map.at(type))));
    }
    context.notifyIUsReady(*this);
 }

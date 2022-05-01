@@ -2,11 +2,12 @@
 #define INKFUSE_SUBOPERATOR_H
 
 #include "algebra/IU.h"
-#include <sstream>
 #include <memory>
-#include <set>
-#include <vector>
 #include <optional>
+#include <set>
+#include <sstream>
+#include <unordered_set>
+#include <vector>
 
 namespace inkfuse {
 
@@ -43,14 +44,14 @@ struct Pipeline;
 /// parameter logic and codegen structure.
 struct Suboperator {
    /// Suboperator constructor. Parametrized as described above and also fitting a certain type.
-   Suboperator(const RelAlgOp* source_, std::vector<const IU*> provided_ius_, std::vector<const IU*> source_ius_)
+   Suboperator(const RelAlgOp* source_, std::unordered_set<const IU*> provided_ius_, std::unordered_set<const IU*> source_ius_)
 
       : source(source_), provided_ius(std::move(provided_ius_)), source_ius(std::move(source_ius_)) {}
 
    virtual ~Suboperator() = default;
 
    /// Rescope a pipeline based on this suboperator.
-   virtual void rescopePipeline(Pipeline& pipe) {};
+   virtual void rescopePipeline(Pipeline& pipe){};
 
    /// Generate initial code for this operator when IUs are requested the first time.
    /// Will usually call open on all children and make the target IUs available to the parent operator.
@@ -58,9 +59,9 @@ struct Suboperator {
    /// All downstream consumers have been closed - this operator can be closed as well.
    virtual void close(CompilationContext& context);
    /// Consume a specific IU from one of the children.
-   virtual void consume(const IU& iu, CompilationContext& context) {};
+   virtual void consume(const IU& iu, CompilationContext& context){};
    /// Consume once all IUs are ready.
-   virtual void consumeAllChildren(CompilationContext& context) {};
+   virtual void consumeAllChildren(CompilationContext& context){};
 
    /// Is this a sink sub-operator which has no further descendants?
    virtual bool isSink() const { return false; }
@@ -71,9 +72,9 @@ struct Suboperator {
    /// make this interpreted.
    /// This function has to be idempotent, i.e. multiple setUpStates should leave the operator
    /// in the same state as a single invocation.
-   virtual void setUpState(const ExecutionContext& context) {};
+   virtual void setUpState(const ExecutionContext& context){};
    /// Tear down the state needed by this operator.
-   virtual void tearDownState() {};
+   virtual void tearDownState(){};
    /// Get a raw pointer to the state of this operator.
    virtual void* accessState() const { return nullptr; };
    /// Pick a morsel of work. Only relevant for source operators.
@@ -89,18 +90,17 @@ struct Suboperator {
 
    /// How many ius does this suboperator depend on?
    size_t getNumSourceIUs() const { return source_ius.size(); }
-   const std::vector<const IU*>& getSourceIUs() const { return source_ius; }
-   const std::vector<const IU*>& getIUs() const { return provided_ius; }
+   const std::unordered_set<const IU*>& getSourceIUs() const { return source_ius; }
+   const std::unordered_set<const IU*>& getIUs() const { return provided_ius; }
 
    protected:
    /// The operator which decayed into this Suboperator.
    const RelAlgOp* source;
 
    /// IUs produced by this sub-operator.
-   std::vector<const IU*> provided_ius;
+   std::unordered_set<const IU*> provided_ius;
    /// Source IUs on which this sub-operator depends.
-   std::vector<const IU*> source_ius;
-
+   std::unordered_set<const IU*> source_ius;
 };
 
 /// Empty state which can be used in the templated suboperators.
@@ -110,8 +110,7 @@ struct EmptyState {};
 /// @tparam GlobalState execution state of the operator hooked up into the inkfuse runtime.
 /// @tparam RuntimeParams runtime parameters needed to construct the global state.
 template <class GlobalState, class RuntimeParams>
-struct TemplatedSuboperator : public Suboperator
-{
+struct TemplatedSuboperator : public Suboperator {
    /// Add runtime parameters to the given suboperator.
    void attachRuntimeParams(RuntimeParams params_) {
       params = params_;
@@ -140,18 +139,17 @@ struct TemplatedSuboperator : public Suboperator
    };
 
    protected:
-   TemplatedSuboperator(const RelAlgOp* source_, std::vector<const IU*> provided_ius_, std::vector<const IU*> source_ius_)
-      : Suboperator(source_, std::move(provided_ius_), std::move(source_ius_)) {};
+   TemplatedSuboperator(const RelAlgOp* source_, std::unordered_set<const IU*> provided_ius_, std::unordered_set<const IU*> source_ius_)
+      : Suboperator(source_, std::move(provided_ius_), std::move(source_ius_)){};
 
    /// Set up the state given that the precondition that both params and state
    /// are non-empty is satisfied.
-   virtual void setUpStateImpl(const ExecutionContext& context) {};
+   virtual void setUpStateImpl(const ExecutionContext& context){};
 
    /// Global state of the respective operator.
    std::unique_ptr<GlobalState> state;
    /// Runtime parameters not needed for code generation.
    std::optional<RuntimeParams> params;
-
 };
 
 using SuboperatorArc = std::shared_ptr<Suboperator>;
