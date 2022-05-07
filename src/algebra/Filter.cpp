@@ -5,12 +5,10 @@
 namespace inkfuse {
 
 Filter::Filter(std::vector<std::unique_ptr<RelAlgOp>> children_, std::string name, const IU& filter_iu_)
-   : RelAlgOp(std::move(children_), std::move(name)), filter_iu(filter_iu_)
-{
+   : RelAlgOp(std::move(children_), std::move(name)), filter_iu(filter_iu_) {
 }
 
-void Filter::decay(std::unordered_set<const IU*> required, PipelineDAG& dag) const
-{
+void Filter::decay(std::unordered_set<const IU*> required, PipelineDAG& dag) const {
    // Our children need to produce everything required upstream, plus the filter IU.
    auto downstream_required = required;
    downstream_required.insert(&filter_iu);
@@ -24,8 +22,7 @@ void Filter::decay(std::unordered_set<const IU*> required, PipelineDAG& dag) con
    pipe.attachSuboperator(std::move(subop));
 }
 
-void Filter::addIUs(std::unordered_set<const IU*>& set) const
-{
+void Filter::addIUs(std::unordered_set<const IU*>& set) const {
    // NOOP as the filter does not create new IUs.
 }
 

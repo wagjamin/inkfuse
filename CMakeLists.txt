@@ -145,6 +145,7 @@ set(TEST_CC
         "${CMAKE_SOURCE_DIR}/test/exec/test_interruptable_job.cpp"
         "${CMAKE_SOURCE_DIR}/test/operators/test_table_scan.cpp"
         "${CMAKE_SOURCE_DIR}/test/operators/test_expression.cpp"
+        "${CMAKE_SOURCE_DIR}/test/operators/test_filter.cpp"
         "${CMAKE_SOURCE_DIR}/test/suboperators/test_minimal_pipeline.cpp"
         "${CMAKE_SOURCE_DIR}/test/suboperators/test_sources.cpp"
         "${CMAKE_SOURCE_DIR}/test/test_fragmentizors.cpp"
