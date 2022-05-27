@@ -135,12 +135,10 @@ void Pipeline::rescope(ScopeArc new_scope) {
 }
 
 const std::vector<Suboperator*>& Pipeline::getConsumers(Suboperator& subop) const {
-   assert(graph.outgoing_edges.count(&subop));
    return graph.outgoing_edges.at(&subop);
 }
 
 const std::vector<Suboperator*>& Pipeline::getProducers(Suboperator& subop) const {
-   assert(graph.incoming_edges.count(&subop));
    return graph.incoming_edges.at(&subop);
 }
 

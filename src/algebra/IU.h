@@ -31,6 +31,9 @@ struct IU {
 };
 
 /// A scoped IU represents a specific instance of the IU within a larger pipeline.
+/// IUs get rescoped by every operator which does not create one output tuple from one
+/// input tuple. This matters, because the scope boundaries represent that a new FuseChunk
+/// has to be created in order to store the output tuples of a given operator.
 struct IUScoped {
    IUScoped(const IU& iu_, size_t scope_id): iu(iu_), scope_id(scope_id) {}
 

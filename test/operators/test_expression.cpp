@@ -54,6 +54,9 @@ TEST_F(ExpressionT, decay) {
    dag.buildNewPipeline();
    op->decay({}, dag);
 
+   // One pipeline.
+   EXPECT_EQ(dag.getPipelines().size(), 1);
+
    auto& pipe = dag.getCurrentPipeline();
    auto& ops = pipe.getSubops();
    // Three actual computations are done.

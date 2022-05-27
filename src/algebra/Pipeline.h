@@ -16,7 +16,7 @@ namespace inkfuse {
 /// an input and and output tuple generate a new scope.
 /// Note that this corresponds very closely to actual scopes in the generated code.
 struct Scope {
-   /// Create a new scope.
+   /// Create a new scope with an optional selection IU.
    Scope(size_t id_, const IU* sel_): id(id_), sel(sel_) { }
 
    /// Register an IU producer within the given scope.
@@ -29,7 +29,7 @@ struct Scope {
 
    /// Scope id.
    size_t id;
-   /// Selection IU for this scope.
+   /// Selection IU for this scope. If it is null, the scope is fully selected.
    const IU* sel;
    /// A map from IUs to the producing operators.
    std::unordered_map<const IU*, Suboperator*> iu_producers;
