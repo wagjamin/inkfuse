@@ -26,6 +26,7 @@ DEFINE_double(sf, 1, "Data in the underlying three columns - in GB");
 // We are running on table T[a: int64_t, b: int64_t, c: uint32_t]
 // Query: SELECT c:int64_t * (a + b) + c:int64_t * c:int64_t (a + b + c) + ...  FROM T
 int main(int argc, char* argv[]) {
+   /*
    gflags::SetUsageMessage("inkfuse_runner --depth <depth of expression tree> --sf <sf>");
    gflags::ParseCommandLineFlags(&argc, &argv, true);
 
@@ -139,6 +140,6 @@ int main(int argc, char* argv[]) {
       runInMode(PipelineExecutor::ExecutionMode::Hybrid, "Hybrid");
       runInMode(PipelineExecutor::ExecutionMode::Hybrid, "Hybrid");
    }
-
+   */
    return 0;
 }
