@@ -45,6 +45,7 @@ void FilterSubop::close(CompilationContext& context)
    // and reinstall the original block.
    opt_if->End();
    opt_if.reset();
+   context.notifyOpClosed(*this);
 }
 
 }

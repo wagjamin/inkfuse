@@ -22,12 +22,12 @@ ExpressionOp::ComputeNode::ComputeNode(Type code_, std::vector<Node*> children_)
    : code(code_), out(IR::Void::build()), children(std::move(children_)) {
    // Derive result type.
    if (auto c_node = dynamic_cast<ConstantNode*>(children[0])) {
-      out = IU(c_node->value->getType());
+      out.type = c_node->value->getType();
    } else if (auto r_node = dynamic_cast<IURefNode*>(children[0])) {
-      out = IU(r_node->child->type);
+      out.type = r_node->child->type;
    } else {
       auto compute_node = dynamic_cast<ComputeNode*>(children[0]);
-      out = IU(compute_node->out);
+      out.type = compute_node->out.type;
    }
 }
 

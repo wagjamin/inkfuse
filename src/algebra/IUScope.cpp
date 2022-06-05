@@ -1,5 +1,4 @@
 #include "algebra/IUScope.h"
-#include <atomic>
 #include <cassert>
 
 namespace inkfuse {
@@ -52,9 +51,10 @@ std::vector<IUScope::IUDescription> IUScope::getIUs() const {
    return result;
 }
 
-void IUScope::registerIU(const IU& iu, Suboperator& op, uint64_t id) {
+void IUScope::registerIU(const IU& iu, Suboperator& op, size_t root_scope)
+{
    assert(!iu_mapping.count(&iu));
-   iu_mapping[&iu] = id;
+   iu_mapping[&iu] = root_scope;
    iu_producers[&iu] = &op;
 }
 

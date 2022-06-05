@@ -63,6 +63,8 @@ void If::End()
    builder->curr_block = original_block;
    // Create the if statement.
    StmtPtr stmt = std::make_unique<IfStmt>(std::move(expr), std::move(if_block), std::move(else_block));
+   // Add it as the first one to the original builder.
+   builder->appendStmt(std::move(stmt));
    // Finished can only be entered once.
    finished = true;
 }

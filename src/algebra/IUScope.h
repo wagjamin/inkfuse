@@ -63,7 +63,7 @@ struct IUScope {
 
    protected:
    /// Register an IU with a given ID.
-   void registerIU(const IU& iu, Suboperator& op, uint64_t id);
+   void registerIU(const IU& iu, Suboperator& op, size_t root_scope);
 
    /// A mapping from IUs to the backing scope identifiers (the index of the root scope).
    std::unordered_map<const IU*, size_t> iu_mapping;

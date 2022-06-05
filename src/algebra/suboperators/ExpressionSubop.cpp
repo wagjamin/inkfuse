@@ -54,8 +54,7 @@ void ExpressionSubop::consumeAllChildren(CompilationContext& context) {
    // All children were produced, we simply have to generate code for this specific expression.
    auto& builder = context.getFctBuilder();
    const auto& program = context.getProgram();
-   const auto out = *provided_ius.begin();
-   auto scope = context.resolveScope(*this);
+   const IU* out = *provided_ius.begin();
 
    // First, declare the output IU.
    auto iu_name = context.buildIUIdentifier(*this, *out);

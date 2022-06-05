@@ -7,6 +7,9 @@
 namespace inkfuse {
 
 Pipeline::Pipeline() {
+   // Create a fake initial scope.
+   scopes.push_back(std::make_unique<IUScope>(nullptr, 0));
+   rescope_offsets.push_back(0);
 }
 
 std::unique_ptr<Pipeline> Pipeline::repipe(size_t start, size_t end, bool materialize_all) const {
@@ -157,11 +160,6 @@ size_t Pipeline::resolveOperatorScope(const Suboperator& op, bool incoming) cons
 }
 
 Suboperator& Pipeline::attachSuboperator(SuboperatorArc subop) {
-   if (suboperators.empty()) {
-      // Create a fake initial scope.
-      scopes.push_back(std::make_unique<IUScope>(nullptr, 0));
-      rescope_offsets.push_back(0);
-   }
    if (!subop->isSource()) {
       // Update the pipeline graph.
       auto scope = rescope_offsets.size() - 1;
