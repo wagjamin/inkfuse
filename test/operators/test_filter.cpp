@@ -87,7 +87,7 @@ TEST_F(FilterT, decay) {
 TEST_F(FilterT, exec) {
    PipelineDAG dag;
    dag.buildNewPipeline();
-   filter->decay({}, dag);
+   filter->decay({filter_iu}, dag);
 
    auto& pipe = dag.getCurrentPipeline();
    auto& ops = pipe.getSubops();
