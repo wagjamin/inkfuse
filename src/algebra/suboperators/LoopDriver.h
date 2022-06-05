@@ -23,12 +23,10 @@ struct LoopDriver : public TemplatedSuboperator<LoopDriverState, RuntimeParams> 
    /// The LoopDriver is a source operator which picks morsel ranges from the backing storage.
    bool isSource() const override { return true; }
 
-   void rescopePipeline(Pipeline& pipe) override {
-      // Loop drivers should always be at the beginning of a pipeline.
-      assert(pipe.resolveOperatorScope(*this) == 0);
-      ScopeArc scope = std::make_unique<Scope>(0, nullptr);
-      pipe.rescope(std::move(scope));
-   };
+   virtual std::pair<Suboperator::ScopingBehaviour, const IU*> scopingBehaviour() const override {
+      // NoRescope as Pipeline creates source scope anyways.
+      return {Suboperator::ScopingBehaviour::NoRescope, nullptr};
+   }
 
    /// Source - only open and close are relevant and create the respective loop driving execution.
    void open(CompilationContext& context) override {
@@ -47,7 +45,8 @@ struct LoopDriver : public TemplatedSuboperator<LoopDriverState, RuntimeParams> 
          // Build start and end variables. Start variable is also the index IU.
          auto end_var_name = this->getVarIdentifier();
          end_var_name << "_end";
-         auto decl_start = IR::DeclareStmt::build(loop_driver_iu.name, IR::UnsignedInt::build(8));
+         auto driver_iu_name = context.buildIUIdentifier(*this, loop_driver_iu);
+         auto decl_start = IR::DeclareStmt::build(driver_iu_name, IR::UnsignedInt::build(8));
          decl_start_ptr = decl_start.get();
          auto decl_end = IR::DeclareStmt::build(end_var_name.str(), IR::UnsignedInt::build(8));
          decl_end_ptr = decl_end.get();
@@ -64,15 +63,15 @@ struct LoopDriver : public TemplatedSuboperator<LoopDriverState, RuntimeParams> 
       }
 
       // Register provided IU with the compilation context.
-      context.declareIU({loop_driver_iu, 0}, *decl_start_ptr);
+      context.declareIU(*this, loop_driver_iu, *decl_start_ptr);
 
-      {
-         // Next up we create the driving for-loop.
-         this->opt_while = builder.buildWhile(
+      // Next up we create the driving for-loop.
+      this->opt_while = builder.buildWhile(
             IR::ArithmeticExpr::build(
                IR::VarRefExpr::build(*decl_start_ptr),
                IR::VarRefExpr::build(*decl_end_ptr),
                IR::ArithmeticExpr::Opcode::Less));
+      {
          // Generate code for downstream consumers.
          context.notifyIUsReady(*this);
       }
@@ -80,7 +79,7 @@ struct LoopDriver : public TemplatedSuboperator<LoopDriverState, RuntimeParams> 
 
    void close(CompilationContext& context) override {
       // And update the loop counter
-      auto& decl_start = context.getIUDeclaration(IUScoped{loop_driver_iu, 0});
+      auto& decl_start = context.getIUDeclaration(*this, loop_driver_iu);
       auto increment = IR::AssignmentStmt::build(
          decl_start,
          IR::ArithmeticExpr::build(
@@ -96,9 +95,11 @@ struct LoopDriver : public TemplatedSuboperator<LoopDriverState, RuntimeParams> 
    LoopDriver(const RelAlgOp* source_)
       : TemplatedSuboperator<LoopDriverState, RuntimeParams>(source_, {}, {}), loop_driver_iu(IR::UnsignedInt::build(8)) {
       if (this->source && loop_driver_iu.name.empty()) {
-         loop_driver_iu.name = "iu_" + this->source->getName() + "_idx";
+         loop_driver_iu.name = this->source->getName() + "_idx";
+      } else {
+         loop_driver_iu.name = "driver_idx";
       }
-      this->provided_ius.push_back(&loop_driver_iu);
+      this->provided_ius.insert(&loop_driver_iu);
    }
 
    /// Loop counter IU provided by the TScanDriver.

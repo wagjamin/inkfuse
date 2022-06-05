@@ -12,10 +12,10 @@ namespace inkfuse {
 struct TableScan : public RelAlgOp {
    TableScan(StoredRelation& rel_, std::vector<std::string> cols, std::string name);
 
-   void decay(std::vector<const IU*> required, PipelineDAG& dag) const override;
+   void decay(std::unordered_set<const IU*> required, PipelineDAG& dag) const override;
 
    protected:
-   void addIUs(std::vector<const IU*>& set) const override;
+   void addIUs(std::unordered_set<const IU*>& set) const override;
 
    private:
    // The relation which to read from.

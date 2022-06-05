@@ -27,14 +27,15 @@ TEST(test_table_scan, scan_1) {
    const auto& pipes = dag.getPipelines();
    ASSERT_EQ(pipes.size(), 1);
    auto& pipe = dag.getCurrentPipeline();
-   ASSERT_EQ(pipe.getSubops().size(), 2);
+   const auto& subops = pipe.getSubops();
+   ASSERT_EQ(subops.size(), 2);
 
    // Add fuse chunk sink.
    auto& sink = reinterpret_cast<FuseChunkSink&>(pipe.attachSuboperator(FuseChunkSink::build(nullptr, **ius.begin())));
 
    PipelineExecutor exec(pipe, PipelineExecutor::ExecutionMode::Fused, "test_table_scan_test_1");
    EXPECT_NO_THROW(exec.runPipeline());
-   auto& col = exec.getExecutionContext().getColumn({**ius.begin(), 0});
+   auto& col = exec.getExecutionContext().getColumn(*subops[0], **ius.begin());
 
    for (uint64_t k = 0; k < 1000; ++k)
    {

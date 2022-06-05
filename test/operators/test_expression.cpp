@@ -54,12 +54,15 @@ TEST_F(ExpressionT, decay) {
    dag.buildNewPipeline();
    op->decay({}, dag);
 
+   // One pipeline.
+   EXPECT_EQ(dag.getPipelines().size(), 1);
+
    auto& pipe = dag.getCurrentPipeline();
    auto& ops = pipe.getSubops();
    // Three actual computations are done.
    EXPECT_EQ(ops.size(), 3);
-   EXPECT_EQ(ops[0]->getSourceIUs()[0], &in1);
-   EXPECT_EQ(ops[0]->getSourceIUs()[1], &in2);
+   EXPECT_EQ(ops[0]->getSourceIUs().count(&in1), 1);
+   EXPECT_EQ(ops[0]->getSourceIUs().count(&in2), 1);
    EXPECT_EQ(pipe.getConsumers(*ops[0]).size(), 2);
    EXPECT_EQ(pipe.getConsumers(*ops[1]).size(), 1);
 }
@@ -82,8 +85,8 @@ TEST_F(ExpressionT, exec) {
 
    // Prepare input chunk.
    auto& ctx = exec.getExecutionContext();
-   auto& c_in1 = ctx.getColumn({in1, 0});
-   auto& c_in2 = ctx.getColumn({in2, 0});
+   auto& c_in1 = ctx.getColumn(*ops[0], in1);
+   auto& c_in2 = ctx.getColumn(*ops[1], in2);
 
    c_in1.size = 10;
    c_in2.size = 10;
@@ -96,12 +99,12 @@ TEST_F(ExpressionT, exec) {
    EXPECT_NO_THROW(exec.runMorsel());
 
    // Check results.
-   auto iu_c_3 = pipe.getSubops()[0]->getIUs()[0];
-   auto iu_c_4 = pipe.getSubops()[1]->getIUs()[0];
-   auto iu_c_5 = pipe.getSubops()[2]->getIUs()[0];
-   auto& c_iu_c_3 = ctx.getColumn({*iu_c_3, 0});
-   auto& c_iu_c_4 = ctx.getColumn({*iu_c_4, 0});
-   auto& c_iu_c_5 = ctx.getColumn({*iu_c_5, 0});
+   auto iu_c_3 = *pipe.getSubops()[0]->getIUs().begin();
+   auto iu_c_4 = *pipe.getSubops()[1]->getIUs().begin();
+   auto iu_c_5 = *pipe.getSubops()[2]->getIUs().begin();
+   auto& c_iu_c_3 = ctx.getColumn(*ops[0], *iu_c_3);
+   auto& c_iu_c_4 = ctx.getColumn(*ops[0], *iu_c_4);
+   auto& c_iu_c_5 = ctx.getColumn(*ops[0], *iu_c_5);
    for (uint16_t k = 0; k < 10; ++k) {
       uint16_t c_3_expected = k + k + 1;
       uint16_t c_4_expected = k + 1;

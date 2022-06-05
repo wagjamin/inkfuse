@@ -28,7 +28,7 @@ struct IndexedIUProvider : public TemplatedSuboperator<IndexedIUProviderState, R
       auto& builder = context.getFctBuilder();
       const auto& program = context.getProgram();
 
-      const auto& loop_idx = context.getIUDeclaration({**this->source_ius.begin(), 0});
+      const auto& loop_idx = context.getIUDeclaration(*this, **this->source_ius.begin());
 
       const IR::Stmt* decl_data_ptr;
       {
@@ -39,7 +39,7 @@ struct IndexedIUProvider : public TemplatedSuboperator<IndexedIUProviderState, R
          // Build data variable.
          auto data_var_name = this->getVarIdentifier();
          data_var_name << "_start";
-         auto target_ptr_type = IR::Pointer::build(this->provided_ius[0]->type);
+         auto target_ptr_type = IR::Pointer::build((*this->provided_ius.begin())->type);
          auto decl_start = IR::DeclareStmt::build(data_var_name.str(), target_ptr_type);
          decl_data_ptr = decl_start.get();
          // And assign the casted raw pointer.
@@ -58,9 +58,9 @@ struct IndexedIUProvider : public TemplatedSuboperator<IndexedIUProviderState, R
       }
 
       // Declare IU.
-      IUScoped declared_iu{**this->provided_ius.begin(), 0};
-      auto declare = IR::DeclareStmt::build(this->buildIUName(declared_iu), (*this->provided_ius.begin())->type);
-      context.declareIU(declared_iu, *declare);
+      const auto& declared_iu = **this->provided_ius.begin();
+      auto declare = IR::DeclareStmt::build(context.buildIUIdentifier(*this, declared_iu), (*this->provided_ius.begin())->type);
+      context.declareIU(*this, declared_iu, *declare);
       // Assign value to IU. This is done by adding the offset to the data pointer and dereferencing.
       auto assign = IR::AssignmentStmt::build(
          *declare,

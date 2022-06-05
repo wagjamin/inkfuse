@@ -10,9 +10,9 @@ namespace inkfuse {
 struct ExpressionSubop : public TemplatedSuboperator<EmptyState, EmptyState> {
 
    /// Constructor for directly building a smart pointer.
-   static SuboperatorArc build(const RelAlgOp* source_, std::vector<const IU*> provided_ius_, std::vector<const IU*> source_ius_, ExpressionOp::ComputeNode::Type type_);
+   static SuboperatorArc build(const RelAlgOp* source_, std::unordered_set<const IU*> provided_ius_, std::vector<const IU*> operands_, ExpressionOp::ComputeNode::Type type_);
    /// Constructor.
-   ExpressionSubop(const RelAlgOp* source_, std::vector<const IU*> provided_ius_, std::vector<const IU*> source_ius_, ExpressionOp::ComputeNode::Type type_);
+   ExpressionSubop(const RelAlgOp* source_, std::unordered_set<const IU*> provided_ius_, std::vector<const IU*> operands_, ExpressionOp::ComputeNode::Type type_);
 
    /// Consume once all IUs are ready.
    void consumeAllChildren(CompilationContext& context) override;
@@ -20,6 +20,9 @@ struct ExpressionSubop : public TemplatedSuboperator<EmptyState, EmptyState> {
    std::string id() const override;
 
    private:
+   // Operands of the expression - order matters!
+   std::vector<const IU*> operands;
+   // Which expression type to evaluate.
    ExpressionOp::ComputeNode::Type type;
 
 };

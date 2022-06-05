@@ -23,6 +23,9 @@ using FunctionArc = std::shared_ptr<Function>;
 // Helper struct for building an if statement.
 struct If {
    public:
+   If(If&& other);
+   If& operator=(If&& other) noexcept;
+
    // Enter the else block.
    void Else();
 
@@ -38,7 +41,7 @@ struct If {
    If(FunctionBuilder& builder_, ExprPtr expr_);
 
    /// Backing function builder.
-   FunctionBuilder& builder;
+   FunctionBuilder* builder;
    /// Original block of the backing builder.
    Block* original_block;
    /// ExpressionOp to be evaluated in the if.

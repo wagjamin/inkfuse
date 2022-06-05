@@ -11,15 +11,33 @@ If::~If() {
 }
 
 If::If(FunctionBuilder& builder_, ExprPtr expr_)
-   : builder(builder_),
-     original_block(builder.curr_block),
+   : builder(&builder_),
+     original_block(builder->curr_block),
      expr(std::move(expr_)),
      if_block(std::make_unique<Block>(std::deque<StmtPtr>{})),
      else_block(std::make_unique<Block>(std::deque<StmtPtr>{}))
 {
    // Install if block as the current one in the builder.
    // Form now on, all appendStmts in the backing builder will go into this block.
-   builder.curr_block = if_block.get();
+   builder->curr_block = if_block.get();
+}
+
+If::If(If&& other)
+{
+   *this = std::move(other);
+}
+
+If & If::operator=(If&& other) noexcept
+{
+   builder = other.builder;
+   original_block = other.original_block;
+   expr.swap(other.expr);
+   if_block.swap(other.if_block);
+   else_block.swap(other.else_block);
+   else_entered = other.else_entered;
+   finished = other.finished;
+   other.finished = true;
+   return *this;
 }
 
 void If::Else()
@@ -29,7 +47,7 @@ void If::Else()
    }
 
    // Install else block as the current one in the builder.
-   builder.curr_block = else_block.get();
+   builder->curr_block = else_block.get();
 
    // Else can only be entered once, otherwise we made a logical error.
    else_entered = true;
@@ -42,11 +60,11 @@ void If::End()
    }
 
    // Install original block again.
-   builder.curr_block = original_block;
+   builder->curr_block = original_block;
    // Create the if statement.
    StmtPtr stmt = std::make_unique<IfStmt>(std::move(expr), std::move(if_block), std::move(else_block));
    // Add it as the first one to the original builder.
-   builder.appendStmt(std::move(stmt));
+   builder->appendStmt(std::move(stmt));
    // Finished can only be entered once.
    finished = true;
 }

@@ -31,10 +31,7 @@ struct ExecutionContext {
    ExecutionContext recontextualize(const Pipeline& new_pipe_) const;
 
    /// Get the raw data column for the given IU.
-   Column& getColumn(IUScoped iu) const;
-
-   /// Get the raw data column for the selection vector.
-   Column& getSel(size_t scope) const;
+   Column& getColumn(Suboperator& subop, const IU& iu) const;
 
    /// Clear the execution context at a certain scope.
    void clear(size_t scope) const;

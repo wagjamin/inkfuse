@@ -28,9 +28,4 @@ std::stringstream Suboperator::getVarIdentifier() const
    return str;
 }
 
-std::string Suboperator::buildIUName(IUScoped iu) const
-{
-   return getVarIdentifier().str();
-}
-
 }

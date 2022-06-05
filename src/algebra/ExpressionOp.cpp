@@ -22,12 +22,12 @@ ExpressionOp::ComputeNode::ComputeNode(Type code_, std::vector<Node*> children_)
    : code(code_), out(IR::Void::build()), children(std::move(children_)) {
    // Derive result type.
    if (auto c_node = dynamic_cast<ConstantNode*>(children[0])) {
-      out = IU(c_node->value->getType());
+      out.type = c_node->value->getType();
    } else if (auto r_node = dynamic_cast<IURefNode*>(children[0])) {
-      out = IU(r_node->child->type);
+      out.type = r_node->child->type;
    } else {
       auto compute_node = dynamic_cast<ComputeNode*>(children[0]);
-      out = IU(compute_node->out);
+      out.type = compute_node->out.type;
    }
 }
 
@@ -36,7 +36,13 @@ ExpressionOp::ComputeNode::ComputeNode(IR::TypeArc casted, Node* child)
 {
 }
 
-void ExpressionOp::decay(std::vector<const IU*> required, PipelineDAG& dag) const {
+void ExpressionOp::decay(std::unordered_set<const IU*> required, PipelineDAG& dag) const {
+   // Our children need to produce everything required upstream, plus the input IU refs.
+   for (const auto& node: nodes) {
+      if (auto r_node = dynamic_cast<IURefNode*>(node.get())) {
+         required.insert(r_node->child);
+      }
+   }
    // First decay the children.
    for (const auto& child: children) {
       child->decay(required, dag);
@@ -70,17 +76,17 @@ void ExpressionOp::decayNode(Node* node, std::unordered_map<Node*, const IU*>& b
          source_ius.push_back(built[child]);
       }
       // And add the suboperator for this node.
-      std::vector<const IU*> out_ius{&compute_node->out};
+      std::unordered_set<const IU*> out_ius{&compute_node->out};
       auto subop = std::make_shared<ExpressionSubop>(this, std::move(out_ius), std::move(source_ius), compute_node->code);
       dag.getCurrentPipeline().attachSuboperator(std::move(subop));
    }
 }
 
-void ExpressionOp::addIUs(std::vector<const IU*>& vec) const {
+void ExpressionOp::addIUs(std::unordered_set<const IU*>& set) const {
    // Only add those IUs which actually get produced.
    for (const auto& node : out) {
       auto compute_node = dynamic_cast<ComputeNode*>(node);
-      vec.push_back(&compute_node->out);
+      set.insert(&compute_node->out);
    }
 }
 

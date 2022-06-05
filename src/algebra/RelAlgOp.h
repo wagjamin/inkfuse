@@ -3,13 +3,13 @@
 
 #include "algebra/IU.h"
 #include <vector>
+#include <unordered_set>
 
 namespace inkfuse {
 
 struct PipelineDAG;
 
-/// Relational algebra operator producing a set of IUs. Presents a single SQL query at the
-/// relational operator.
+/// Relational algebra operator producing a set of IUs.
 /// As we prepare a relational algebra query for execution, it "decays" into a DAG suitable of suboperators.
 ///
 /// Let's look at this from a compiler perspective - inkfuse is effectively a compiler lowering to progressively
@@ -23,12 +23,12 @@ struct RelAlgOp {
    virtual ~RelAlgOp() = default;
 
    /// Transform the relational algebra operator into a DAG of suboperators.
-   virtual void decay(std::vector<const IU*> required, PipelineDAG& dag) const = 0;
+   virtual void decay(std::unordered_set<const IU*> required, PipelineDAG& dag) const = 0;
 
    /// Get the IUs produced by this operator.
-   std::vector<const IU*> getIUs() const;
+   std::unordered_set<const IU*> getIUs() const;
    /// Get the IUs produced by the tree rooted in this operator.
-   std::vector<const IU*> getIUsRecursive() const;
+   std::unordered_set<const IU*> getIUsRecursive() const;
 
    /// Get the children of this operator.
    const std::vector<std::unique_ptr<RelAlgOp>>& getChildren() const;
@@ -36,9 +36,9 @@ struct RelAlgOp {
 
    protected:
    /// Add the IUs produced by this operator to the given set.
-   virtual void addIUs(std::vector<const IU*>& vec) const = 0;
+   virtual void addIUs(std::unordered_set<const IU*>& set) const = 0;
    /// Add the IUs produced by this oeprator and all children to the given set.
-   void addIUsRecursive(std::vector<const IU*>& vec) const;
+   void addIUsRecursive(std::unordered_set<const IU*>& set) const;
 
    /// Child operators.
    std::vector<std::unique_ptr<RelAlgOp>> children;
