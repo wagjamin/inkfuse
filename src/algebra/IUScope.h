@@ -2,7 +2,7 @@
 #define INKFUSE_IUSCOPE_H
 
 #include <memory>
-#include <set>
+#include <unordered_set>
 #include <unordered_map>
 #include <vector>
 
@@ -21,15 +21,15 @@ struct Suboperator;
 /// Note that this corresponds very closely to actual scopes in the generated code.
 struct IUScope {
    public:
-   IUScope(const IU* filter_iu_): filter_iu(filter_iu_) {};
+   IUScope(const IU* filter_iu_, size_t scope_id_): scope_id(scope_id_), filter_iu(filter_iu_) {};
    virtual ~IUScope() = default;
 
-   /// Create a new scope which keeps some previous IU identifiers alive.
-   /// However, it installs a new filter IU on top of them. This filter IU is part of the reatined sets.
-   static IUScope retain(const IUScope& parent, const IU* filter_iu, const std::set<const IU*>& retained_ius);
+   /// Create a new scope which keeps some previous IU identifiers alive, but under a new producer.
+   /// This also installs a new filter IU on top of them. This filter IU is part of the reatined sets.
+   static IUScope retain(const IU* filter_iu, const IUScope& parent, Suboperator& producer, const std::unordered_set<const IU*>& retained_ius);
    /// Create a new scope that drops all IU identifiers.
    /// This will drop all IUs which will have to be redeclared on a new producer.
-   static IUScope rewire(const IU* filter_iu);
+   static IUScope rewire(const IU* filter_iu, const IUScope& parent);
 
    /// Register a new IU in this scope.
    void registerIU(const IU& iu, Suboperator& op);
@@ -37,9 +37,12 @@ struct IUScope {
    /// Does an IU exist within this scope?
    bool exists(const IU& iu) const;
 
-   /// Get the id of a given IU within this scope. These are needed to create unique
-   /// variable identifiers in the generated code.
-   uint64_t getId(const IU& iu) const;
+   /// Get the scope id of a given IU. This represents the source scope in which
+   /// this IU was created.
+   size_t getScopeId(const IU& iu) const;
+
+   /// Get the scope id of this scope. This will be returned by getScopeId of newly registered IUs.
+   size_t getIdThisScope() const;
 
    /// Get the producing sub-operator of a given IU.
    Suboperator& getProducer(const IU& iu) const;
@@ -49,8 +52,10 @@ struct IUScope {
 
    /// Description of a IU which can be uniquely identified in this scope.
    struct IUDescription {
+      /// Which IU are we referencing?
       const IU* iu;
-      size_t id;
+      /// What is the id of the source scope that created the scoped IU?
+      size_t source_scope;
    };
 
    /// Get all the IUs stored within this chunk.
@@ -59,13 +64,13 @@ struct IUScope {
    protected:
    /// Register an IU with a given ID.
    void registerIU(const IU& iu, Suboperator& op, uint64_t id);
-   /// Generate a new global IU identifier that is not in use yet.
-   static uint64_t generateId();
 
-   /// A mapping from IUs to the backing IU identifiers.
-   std::unordered_map<const IU*, uint64_t> iu_mapping;
+   /// A mapping from IUs to the backing scope identifiers (the index of the root scope).
+   std::unordered_map<const IU*, size_t> iu_mapping;
    /// A mapping from the IUs to the backing IU producers.
    std::unordered_map<const IU*, Suboperator*> iu_producers;
+   /// The unique scope id within the backing pipeline.
+   size_t scope_id;
    /// The backing filter IU in this scope. Is part of the above mappings.
    /// If the filter_iu is null, the current scope is not filtered.
    const IU* filter_iu;

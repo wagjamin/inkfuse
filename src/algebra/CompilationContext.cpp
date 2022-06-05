@@ -1,6 +1,7 @@
 #include "algebra/CompilationContext.h"
 #include "algebra/Pipeline.h"
 #include "algebra/suboperators/Suboperator.h"
+#include <sstream>
 
 namespace inkfuse {
 
@@ -97,18 +98,21 @@ std::string CompilationContext::buildIUIdentifier(const Suboperator& op, const I
 {
    const auto scope_id = resolveScope(op);
    auto& scope = pipeline.scopes[scope_id];
-   auto id_str = std::to_string(scope->getId(iu));
+   auto iu_scope = std::to_string(scope->getScopeId(iu));
    if (!iu.name.empty()) {
-      return iu.name + "_" + id_str;
+      return iu.name + "_" + iu_scope;
    } else {
-      return "iu_" + id_str;
+      std::stringstream iu_stream;
+      iu_stream << "iu_" << &iu << "_" + iu_scope;
+      return iu_stream.str();
    }
 }
 
 const IR::Stmt & CompilationContext::getIUDeclaration(const Suboperator& op, const IU& iu)
 {
    const auto scope_id = resolveScope(op);
-   return *scoped_declarations.at({&iu, scope_id});
+   const auto iu_source_scope = pipeline.scopes[scope_id]->getScopeId(iu);
+   return *scoped_declarations.at({&iu, iu_source_scope});
 }
 
 IR::ExprPtr CompilationContext::accessGlobalState(const Suboperator& op) {

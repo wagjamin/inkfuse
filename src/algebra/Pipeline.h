@@ -35,8 +35,6 @@ struct Pipeline {
 
    /// Get the current scope.
    const IUScope& getScope(size_t id) const;
-   /// Rescope the pipeline.
-   void rescope(IUScopeArc new_scope);
 
    /// Get the downstream consumers of IUs for a given sub-operator.
    const std::vector<Suboperator*>& getConsumers(Suboperator& subop) const;

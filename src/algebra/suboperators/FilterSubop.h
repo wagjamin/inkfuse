@@ -2,6 +2,7 @@
 #define INKFUSE_FILTERSUBOP_H
 
 #include "algebra/Filter.h"
+#include "algebra/IUScope.h"
 #include "algebra/suboperators/Suboperator.h"
 #include "codegen/IRBuilder.h"
 
@@ -18,7 +19,8 @@ struct FilterSubop : public TemplatedSuboperator<EmptyState, EmptyState> {
    ///                      and as provider of the IUs in the new scope.
    FilterSubop(const RelAlgOp* source_, std::unordered_set<const IU*> provided_ius_, const IU& filter_iu_);
 
-   void rescopePipeline(Pipeline& pipe) override;
+   /// A FilterSubop has RescopeRetain semantics and installs the filter iu as the selection vector in the new scope.
+   std::pair<ScopingBehaviour, const IU*> scopingBehaviour() const override;
 
    std::string id() const override;
 

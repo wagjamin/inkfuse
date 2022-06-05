@@ -50,8 +50,22 @@ struct Suboperator {
 
    virtual ~Suboperator() = default;
 
-   /// Rescope a pipeline based on this suboperator.
-   virtual void rescopePipeline(Pipeline& pipe){};
+   /// The scoping behaviour of a sub-operator. This defines how the operator should behave in terms of the pipeline scope.
+   enum class ScopingBehaviour {
+      /// The operator should keep the pipeline scope unchanged.
+      NoRescope,
+      /// The operator should rescope the pipeline, but IU vectors for interpretation should be retained.
+      /// The new scope will contain all source IUs with the same variable ids, but the current subop as new producer.
+      RescopeRetain,
+      /// The operator should rescope the pipeline and define new IU vectors for interpretation.
+      /// The new scope will contain no IUs.
+      RescopeRewire,
+   };
+
+   /// What is the scoping behaviour of this suboperator?
+   virtual std::pair<ScopingBehaviour, const IU*> scopingBehaviour() const {
+      return {ScopingBehaviour::NoRescope, nullptr};
+   };
 
    /// Generate initial code for this operator when IUs are requested the first time.
    /// Will usually call open on all children and make the target IUs available to the parent operator.

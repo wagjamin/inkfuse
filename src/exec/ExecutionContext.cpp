@@ -22,8 +22,12 @@ ExecutionContext ExecutionContext::recontextualize(const Pipeline& new_pipe_) co
 
 Column & ExecutionContext::getColumn(Suboperator& subop, const IU& iu) const
 {
-   const auto scope_idx = pipe.resolveOperatorScope(subop);
-   return (*chunks)[scope_idx]->getColumn(iu);
+   // Figure out the operator scope.
+   const auto op_scope_idx = pipe.resolveOperatorScope(subop);
+   // Figure out the creating scope of the given iu.
+   const auto iu_scope_idx = pipe.scopes[op_scope_idx]->getScopeId(iu);
+   // And return the IU's column in the creating scope.
+   return (*chunks)[iu_scope_idx]->getColumn(iu);
 }
 
 void ExecutionContext::clear(size_t scope) const

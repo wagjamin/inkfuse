@@ -23,12 +23,10 @@ struct LoopDriver : public TemplatedSuboperator<LoopDriverState, RuntimeParams> 
    /// The LoopDriver is a source operator which picks morsel ranges from the backing storage.
    bool isSource() const override { return true; }
 
-   void rescopePipeline(Pipeline& pipe) override {
-      // Loop drivers should always be at the beginning of a pipeline.
-      assert(pipe.resolveOperatorScope(*this) == 0);
-      IUScopeArc scope = std::make_unique<IUScope>(nullptr);
-      pipe.rescope(std::move(scope));
-   };
+   virtual std::pair<Suboperator::ScopingBehaviour, const IU*> scopingBehaviour() const override {
+      // NoRescope as Pipeline creates source scope anyways.
+      return {Suboperator::ScopingBehaviour::NoRescope, nullptr};
+   }
 
    /// Source - only open and close are relevant and create the respective loop driving execution.
    void open(CompilationContext& context) override {

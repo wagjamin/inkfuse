@@ -4,46 +4,35 @@
 
 namespace inkfuse {
 
-namespace {
-// Atomicity is not required as long as inkfuse is single threaded, but
-// let's still increase the guarantees we can provide here.
-std::atomic<uint64_t> iu_identifier = 0;
-}
-
-uint64_t IUScope::generateId()
-{
-   return iu_identifier.fetch_add(1);
-}
-
-IUScope IUScope::retain(const IUScope& parent, const IU* filter_iu, const std::set<const IU*>& retained_ius)
-{
-   IUScope new_scope(filter_iu);
+IUScope IUScope::retain(const IU* filter_iu, const IUScope& parent, Suboperator& producer, const std::unordered_set<const IU*>& retained_ius) {
+   IUScope new_scope(filter_iu, parent.scope_id + 1);
    // Iterate over the retained IUs and register them locally under the old id.
-   for (auto retained: retained_ius) {
-      const auto id = parent.getId(*retained);
-      auto& producer = parent.getProducer(*retained);
+   for (auto retained : retained_ius) {
+      const auto id = parent.getScopeId(*retained);
       new_scope.registerIU(*retained, producer, id);
    }
    return new_scope;
 }
 
-IUScope IUScope::rewire(const IU* filter_iu) {
-   IUScope new_scope(filter_iu);
+IUScope IUScope::rewire(const IU* filter_iu, const IUScope& parent) {
+   IUScope new_scope(filter_iu, parent.scope_id + 1);
    return new_scope;
 }
 
 void IUScope::registerIU(const IU& iu, Suboperator& op) {
-   const auto new_id = generateId();
-   registerIU(iu, op, new_id);
+   registerIU(iu, op, scope_id);
 }
 
-bool IUScope::exists(const IU& iu) const
-{
+bool IUScope::exists(const IU& iu) const {
    return iu_mapping.count(&iu) != 0;
 }
 
-uint64_t IUScope::getId(const IU& iu) const {
+size_t IUScope::getScopeId(const IU& iu) const {
    return iu_mapping.at(&iu);
+}
+
+size_t IUScope::getIdThisScope() const {
+   return scope_id;
 }
 
 Suboperator& IUScope::getProducer(const IU& iu) const {
@@ -54,18 +43,16 @@ const IU* IUScope::getFilterIU() const {
    return filter_iu;
 }
 
-std::vector<IUScope::IUDescription> IUScope::getIUs() const
-{
+std::vector<IUScope::IUDescription> IUScope::getIUs() const {
    std::vector<IUDescription> result;
    result.reserve(iu_mapping.size());
-   for (const auto& [iu, id]: iu_mapping) {
-      result.push_back({.iu = iu, .id = id});
+   for (const auto& [iu, source_scope] : iu_mapping) {
+      result.push_back({.iu = iu, .source_scope=source_scope});
    }
    return result;
 }
 
-void IUScope::registerIU(const IU& iu, Suboperator& op, uint64_t id)
-{
+void IUScope::registerIU(const IU& iu, Suboperator& op, uint64_t id) {
    assert(!iu_mapping.count(&iu));
    iu_mapping[&iu] = id;
    iu_producers[&iu] = &op;
