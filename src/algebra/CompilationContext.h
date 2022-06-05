@@ -38,9 +38,11 @@ struct CompilationContext {
    void notifyOpClosed(Suboperator& op);
 
    /// Declare an IU within the context of the given suboperator.
-   void declareIU(IUScoped iu, const IR::Stmt& stmt);
+   void declareIU(const Suboperator& op, const IU& iu, const IR::Stmt& stmt);
+   /// Get a unique IU identifier for a producing operator.
+   std::string buildIUIdentifier(const Suboperator& op, const IU& iu);
    /// Get an IU declaration.
-   const IR::Stmt& getIUDeclaration(IUScoped iu);
+   const IR::Stmt& getIUDeclaration(const Suboperator& op, const IU& iu);
 
    /// Access the local state of the given sub-operator. Returns a void pointer.
    IR::ExprPtr accessGlobalState(const Suboperator& op);
@@ -81,6 +83,7 @@ struct CompilationContext {
    /// The open IU requests which need to be mapped. (from -> to)
    std::unordered_map<Suboperator*, std::pair<Suboperator*, const IU*>> requests;
    /// Scoped IU declarations.
+   /// TODO it would be cleaner to have these run over scope pointers directly.
    std::map<std::pair<const IU*, size_t>, const IR::Stmt*> scoped_declarations;
 };
 

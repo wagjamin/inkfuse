@@ -26,8 +26,7 @@ void FuseChunkSink::consume(const IU& iu, CompilationContext& context) {
    auto& builder = context.getFctBuilder();
    const auto& program = context.getProgram();
 
-   auto scope = context.resolveScope(*this);
-   const auto& input_iu = context.getIUDeclaration({**source_ius.begin(), scope});
+   const auto& input_iu = context.getIUDeclaration(*this, **source_ius.begin());
 
    const IR::Stmt* decl_data_ptr;
    const IR::Stmt* decl_size_ptr;
@@ -93,8 +92,7 @@ void FuseChunkSink::consume(const IU& iu, CompilationContext& context) {
 
 void FuseChunkSink::setUpState(const ExecutionContext& context) {
    state = std::make_unique<FuseChunkSinkState>();
-   auto scope = context.getPipe().resolveOperatorScope(*this);
-   auto& col = context.getColumn({**source_ius.begin(), scope});
+   auto& col = context.getColumn(*this, **source_ius.begin());
    state->raw_data = col.raw_data;
    state->size = &col.size;
 }

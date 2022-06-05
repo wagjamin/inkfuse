@@ -88,12 +88,27 @@ void CompilationContext::requestIU(Suboperator& op, const IU& iu) {
    }
 }
 
-void CompilationContext::declareIU(IUScoped iu, const IR::Stmt& stmt) {
-   scoped_declarations[{&iu.iu, iu.scope_id}] = &stmt;
+void CompilationContext::declareIU(const Suboperator& op, const IU& iu, const IR::Stmt& stmt) {
+   auto scope_id = resolveScope(op);
+   scoped_declarations[{&iu, scope_id}] = &stmt;
 }
 
-const IR::Stmt& CompilationContext::getIUDeclaration(IUScoped iu) {
-   return *scoped_declarations.at({&iu.iu, iu.scope_id});
+std::string CompilationContext::buildIUIdentifier(const Suboperator& op, const IU& iu)
+{
+   const auto scope_id = resolveScope(op);
+   auto& scope = pipeline.scopes[scope_id];
+   auto id_str = std::to_string(scope->getId(iu));
+   if (!iu.name.empty()) {
+      return iu.name + "_" + id_str;
+   } else {
+      return "iu_" + id_str;
+   }
+}
+
+const IR::Stmt & CompilationContext::getIUDeclaration(const Suboperator& op, const IU& iu)
+{
+   const auto scope_id = resolveScope(op);
+   return *scoped_declarations.at({&iu, scope_id});
 }
 
 IR::ExprPtr CompilationContext::accessGlobalState(const Suboperator& op) {

@@ -31,8 +31,7 @@ void FilterSubop::consumeAllChildren(CompilationContext& context)
    const auto& program = context.getProgram();
 
    // Resolve incoming operator scope. This is the one where we get source IUs from.
-   auto scope = context.resolveScope(*this);
-   const auto& decl = context.getIUDeclaration({filter_iu, scope});
+   const auto& decl = context.getIUDeclaration(*this, filter_iu);
    auto expr = IR::VarRefExpr::build(decl);
 
    // Construct the if - will later be closed in close().

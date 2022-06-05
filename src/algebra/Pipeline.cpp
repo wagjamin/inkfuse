@@ -6,22 +6,6 @@
 
 namespace inkfuse {
 
-void Scope::registerProducer(const IU& iu, Suboperator& op) {
-   iu_producers[&iu] = &op;
-}
-
-Suboperator& Scope::getProducer(const IU& iu) const {
-   return *iu_producers.at(&iu);
-}
-
-Suboperator* Scope::tryGetProducer(const IU& iu) const {
-   auto it = iu_producers.find(&iu);
-   if (it == iu_producers.end()) {
-      return nullptr;
-   }
-   return it->second;
-}
-
 Pipeline::Pipeline() {
 }
 
@@ -54,7 +38,7 @@ std::unique_ptr<Pipeline> Pipeline::repipe(size_t start, size_t end, bool materi
 
    if (!in_required.empty()) {
       // Attach the IU proving operators.
-      auto try_provider = tryGetProvider({**in_required.begin(), 0});
+      auto try_provider = tryGetProvider(0, **in_required.begin());
       if (try_provider && try_provider->isSource()) {
          // If the provider was actually a source, it has to be at index zero. Retain it.
          new_pipe->attachSuboperator(suboperators[0]);
@@ -124,12 +108,12 @@ std::unique_ptr<Pipeline> Pipeline::repipe(size_t start, size_t end, bool materi
    return new_pipe;
 }
 
-const Scope& Pipeline::getScope(size_t id) const {
+const IUScope& Pipeline::getScope(size_t id) const {
    assert(id < scopes.size());
    return *scopes[id];
 }
 
-void Pipeline::rescope(ScopeArc new_scope) {
+void Pipeline::rescope(IUScopeArc new_scope) {
    scopes.push_back(std::move(new_scope));
    rescope_offsets.push_back(scopes.size() - 1);
 }
@@ -142,12 +126,17 @@ const std::vector<Suboperator*>& Pipeline::getProducers(Suboperator& subop) cons
    return graph.incoming_edges.at(&subop);
 }
 
-Suboperator& Pipeline::getProvider(IUScoped iu) const {
-   return scopes.at(iu.scope_id)->getProducer(iu.iu);
+Suboperator & Pipeline::getProvider(size_t scope_idx, const IU& iu) const
+{
+   return scopes.at(scope_idx)->getProducer(iu);
 }
 
-Suboperator* Pipeline::tryGetProvider(IUScoped iu) const {
-   return scopes.at(iu.scope_id)->tryGetProducer(iu.iu);
+Suboperator * Pipeline::tryGetProvider(size_t scope_idx, const IU& iu) const
+{
+   if (scopes.at(scope_idx)->exists(iu)) {
+      return &scopes.at(scope_idx)->getProducer(iu);
+   }
+   return nullptr;
 }
 
 size_t Pipeline::resolveOperatorScope(const Suboperator& op, bool incoming) const {
@@ -176,15 +165,14 @@ size_t Pipeline::resolveOperatorScope(const Suboperator& op, bool incoming) cons
 Suboperator& Pipeline::attachSuboperator(SuboperatorArc subop) {
    if (suboperators.empty() && !subop->isSource()) {
       // Create a fake initial scope.
-      scopes.push_back(std::make_unique<Scope>(0, nullptr));
+      scopes.push_back(std::make_unique<IUScope>(nullptr));
       rescope_offsets.push_back(0);
    }
    if (!subop->isSource()) {
       auto scope = rescope_offsets.size() - 1;
       for (const auto& depends : subop->getSourceIUs()) {
          // Resolve input.
-         IUScoped scoped_iu{*depends, scope};
-         if (auto provider = tryGetProvider(scoped_iu)) {
+         if (auto provider = tryGetProvider(scope, *depends)) {
             // Add edges.
             graph.outgoing_edges[provider].push_back(subop.get());
             graph.incoming_edges[subop.get()].push_back(provider);
@@ -196,7 +184,7 @@ Suboperator& Pipeline::attachSuboperator(SuboperatorArc subop) {
    // Register new IUs within the current scope.
    for (auto iu : subop->getIUs()) {
       // Add the produced IU to the (potentially) new scope.
-      scopes.back()->registerProducer(*iu, *subop);
+      scopes.back()->registerIU(*iu, *subop);
    }
    suboperators.push_back(std::move(subop));
    return *suboperators.back();

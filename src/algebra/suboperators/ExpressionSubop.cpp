@@ -58,15 +58,16 @@ void ExpressionSubop::consumeAllChildren(CompilationContext& context) {
    auto scope = context.resolveScope(*this);
 
    // First, declare the output IU.
-   auto& declare = builder.appendStmt(IR::DeclareStmt::build(buildIUName({*out, scope}), out->type));
+   auto iu_name = context.buildIUIdentifier(*this, *out);
+   auto& declare = builder.appendStmt(IR::DeclareStmt::build(iu_name, out->type));
    // Declare the output IU.
-   context.declareIU({*out, scope}, declare);
+   context.declareIU(*this, *out, declare);
 
    // Then, compute it. First resolve the child IU statements.
    std::vector<const IR::Stmt*> children;
    children.reserve(operands.size());
    for (auto elem : operands) {
-      const auto& decl = context.getIUDeclaration({*elem, scope});
+      const auto& decl = context.getIUDeclaration(*this, *elem);
       children.push_back(&decl);
    }
    if (type == Type::Cast) {

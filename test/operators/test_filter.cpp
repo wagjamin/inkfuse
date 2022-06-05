@@ -12,6 +12,7 @@ namespace inkfuse {
 
 namespace {
 
+/*
 /// Test fixture setting up a simple filter expression.
 struct FilterT : ::testing::Test {
    FilterT() : in1(IR::UnsignedInt::build(4), "in_1"),
@@ -111,6 +112,7 @@ TEST_F(FilterT, exec) {
       EXPECT_EQ(reinterpret_cast<bool*>(col_filter.raw_data)[k], k % 2 == 0);
    }
 }
+ */
 
 }
 

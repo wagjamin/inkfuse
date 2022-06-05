@@ -10,7 +10,12 @@ TableScan::TableScan(StoredRelation& rel_, std::vector<std::string> cols_, std::
 {
    for(auto& col: cols_) {
       // Set up the IUs.
-      std::string iu_name = name + "." + col;
+      std::string iu_name;
+      if (!name.empty()) {
+         iu_name = name + "_" + col;
+      } else {
+         iu_name = col;
+      }
       IU iu(rel.getColumn(col).getType(), std::move(iu_name));
       cols.push_back(std::make_pair(std::move(col), std::move(iu)));
    }

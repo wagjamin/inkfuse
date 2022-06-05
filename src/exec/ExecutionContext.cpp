@@ -9,8 +9,8 @@ ExecutionContext::ExecutionContext(const Pipeline& pipe_)
    chunks->reserve(pipe.scopes.size());
    for (const auto& scope: pipe.scopes) {
       auto& chunk = *chunks->emplace_back(std::make_unique<FuseChunk>());
-      for (auto& [k, _]: scope->iu_producers) {
-         chunk.attachColumn(*k);
+      for (auto description: scope->getIUs()) {
+         chunk.attachColumn(*description.iu);
       }
    }
 }
@@ -20,20 +20,10 @@ ExecutionContext ExecutionContext::recontextualize(const Pipeline& new_pipe_) co
    return ExecutionContext(chunks, new_pipe_);
 }
 
-Column& ExecutionContext::getColumn(IUScoped iu) const
+Column & ExecutionContext::getColumn(Suboperator& subop, const IU& iu) const
 {
-   assert(iu.scope_id < chunks->size());
-   return (*chunks)[iu.scope_id]->getColumn(iu.iu);
-}
-
-Column& ExecutionContext::getSel(size_t scope) const
-{
-   assert(scope < chunks->size());
-   const auto iu = pipe.getScope(scope).sel;
-   if (!iu) {
-      throw std::runtime_error("No selection iu in the given scope.");
-   }
-   return getColumn({*iu, scope});
+   const auto scope_idx = pipe.resolveOperatorScope(subop);
+   return (*chunks)[scope_idx]->getColumn(iu);
 }
 
 void ExecutionContext::clear(size_t scope) const

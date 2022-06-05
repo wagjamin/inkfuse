@@ -12,8 +12,8 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g -O0 -fsanitize=address")
-set(CMAKE_CXX_FLAGS_RELWITHDEBINFO  "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g -O0 -fsanitize=address -fstandalone-debug")
+set(CMAKE_CXX_FLAGS_RELWITHDEBINFO  "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -fstandalone-debug")
 
 # ---------------------------------------------------------------------------
 # Dependencies
@@ -69,6 +69,8 @@ set(INCLUDE_H
         "${CMAKE_SOURCE_DIR}/src/algebra/RelAlgOp.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/ExpressionOp.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/Filter.h"
+        "${CMAKE_SOURCE_DIR}/src/algebra/IU.h"
+        "${CMAKE_SOURCE_DIR}/src/algebra/IUScope.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/TableScan.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/CompilationContext.h"
         "${CMAKE_SOURCE_DIR}/src/codegen/backend_c/BackendC.h"
@@ -112,6 +114,7 @@ set(SRC_CC
         "${CMAKE_SOURCE_DIR}/src/algebra/TableScan.cpp"
         "${CMAKE_SOURCE_DIR}/src/algebra/ExpressionOp.cpp"
         "${CMAKE_SOURCE_DIR}/src/algebra/Filter.cpp"
+        "${CMAKE_SOURCE_DIR}/src/algebra/IUScope.cpp"
         "${CMAKE_SOURCE_DIR}/src/algebra/RelAlgOp.cpp"
         "${CMAKE_SOURCE_DIR}/src/exec/PipelineExecutor.cpp"
         "${CMAKE_SOURCE_DIR}/src/exec/runners/PipelineRunner.cpp"
@@ -142,6 +145,7 @@ set(TEST_CC
         "${CMAKE_SOURCE_DIR}/test/test_ir.cpp"
         "${CMAKE_SOURCE_DIR}/test/test_c_backend.cpp"
         "${CMAKE_SOURCE_DIR}/test/test_runtime.cpp"
+        "${CMAKE_SOURCE_DIR}/test/algebra/test_iu_scope.cpp"
         "${CMAKE_SOURCE_DIR}/test/exec/test_interruptable_job.cpp"
         "${CMAKE_SOURCE_DIR}/test/operators/test_table_scan.cpp"
         "${CMAKE_SOURCE_DIR}/test/operators/test_expression.cpp"
