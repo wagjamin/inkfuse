@@ -1,6 +1,7 @@
 #include "algebra/CompilationContext.h"
 #include "interpreter/FragmentGenerator.h"
 #include "interpreter/TScanFragmentizer.h"
+#include "interpreter/FilterFragmentizer.h"
 #include "interpreter/ExpressionFragmentizer.h"
 #include "interpreter/CopyFragmentizer.h"
 #include "interpreter/CountingSinkFragmentizer.h"
@@ -76,6 +77,7 @@ IR::ProgramArc FragmentGenerator::build()
    fragmentizers.push_back(std::make_unique<CopyFragmentizer>());
    fragmentizers.push_back(std::make_unique<ExpressionFragmentizer>());
    fragmentizers.push_back(std::make_unique<CountingSinkFragmentizer>());
+   fragmentizers.push_back(std::make_unique<FilterFragmentizer>());
 
    // Create the IR program.
    auto program = std::make_shared<IR::Program>("fragments", false);
