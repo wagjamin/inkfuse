@@ -26,7 +26,7 @@ struct IUScope {
 
    /// Create a new scope which keeps some previous IU identifiers alive, but under a new producer.
    /// This also installs a new filter IU on top of them. This filter IU is part of the reatined sets.
-   static IUScope retain(const IU* filter_iu, const IUScope& parent, Suboperator& producer, const std::unordered_set<const IU*>& retained_ius);
+   static IUScope retain(const IU* filter_iu, const IUScope& parent, Suboperator& producer, const std::vector<const IU*>& retained_ius);
    /// Create a new scope that drops all IU identifiers.
    /// This will drop all IUs which will have to be redeclared on a new producer.
    static IUScope rewire(const IU* filter_iu, const IUScope& parent);

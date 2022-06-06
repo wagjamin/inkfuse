@@ -3,7 +3,7 @@
 
 namespace inkfuse {
 
-IUScope IUScope::retain(const IU* filter_iu, const IUScope& parent, Suboperator& producer, const std::unordered_set<const IU*>& retained_ius) {
+IUScope IUScope::retain(const IU* filter_iu, const IUScope& parent, Suboperator& producer, const std::vector<const IU*>& retained_ius) {
    IUScope new_scope(filter_iu, parent.scope_id + 1);
    // Iterate over the retained IUs and register them locally under the old id.
    for (auto retained : retained_ius) {

@@ -69,8 +69,8 @@ TEST_F(FilterTNonParametrized, decay) {
 
    // Two computations: less, filter.
    EXPECT_EQ(ops.size(), 2);
-   EXPECT_EQ(ops[0]->getSourceIUs().count(&read_col_1), 1);
-   EXPECT_EQ(ops[0]->getSourceIUs().count(&read_col_2), 1);
+   EXPECT_EQ(ops[0]->getSourceIUs()[0], &read_col_1);
+   EXPECT_EQ(ops[0]->getSourceIUs()[1], &read_col_2);
    EXPECT_EQ(pipe.getConsumers(*ops[0]).size(), 1);
    EXPECT_ANY_THROW(pipe.getConsumers(*ops[1]));
 
