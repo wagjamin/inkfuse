@@ -23,6 +23,9 @@ struct IndexedIUProviderState {
 template <class RuntimeParams>
 struct IndexedIUProvider : public TemplatedSuboperator<IndexedIUProviderState, RuntimeParams> {
 
+   /// An IndexedIUProvider has to be understood in the context of its preceding LoopDriver.
+   bool incomingStrongLinks() const override { return true; }
+
    void consume(const IU& iu, CompilationContext& context) override {
       assert(&iu == *this->source_ius.begin());
       auto& builder = context.getFctBuilder();
