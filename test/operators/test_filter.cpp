@@ -14,7 +14,7 @@ namespace inkfuse {
 namespace {
 
 /// Test fixture setting up a simple filter expression.
-struct FilterT : ::testing::Test {
+struct FilterT {
    FilterT() : read_col_1(IR::UnsignedInt::build(2), "in_1"), read_col_2(IR::UnsignedInt::build(2), "in_2") {
       nodes.reserve(3);
       auto c1 = nodes.emplace_back(std::make_unique<ExpressionOp::IURefNode>(&read_col_1)).get();
@@ -46,7 +46,17 @@ struct FilterT : ::testing::Test {
    std::optional<Filter> filter;
 };
 
-TEST_F(FilterT, decay) {
+/// Non-parametrized test fixture for decay tests.
+struct FilterTNonParametrized : public FilterT, public ::testing::Test {
+
+};
+
+/// Parametrized test fixture for execution modes.
+struct FilterTParametrized : public FilterT, public ::testing::TestWithParam<PipelineExecutor::ExecutionMode> {
+
+};
+
+TEST_F(FilterTNonParametrized, decay) {
    PipelineDAG dag;
    dag.buildNewPipeline();
    filter->decay({}, dag);
@@ -84,7 +94,7 @@ TEST_F(FilterT, decay) {
    EXPECT_EQ(scope_1.getIUs().size(), 1);
 }
 
-TEST_F(FilterT, exec) {
+TEST_P(FilterTParametrized, exec) {
    PipelineDAG dag;
    dag.buildNewPipeline();
    filter->decay({filter_iu}, dag);
@@ -94,8 +104,9 @@ TEST_F(FilterT, exec) {
    // Repipe to add fuse chunk sinks.
    auto repiped = pipe.repipe(0, pipe.getSubops().size(), true);
 
-   // Get ready for compiled execution.
-   PipelineExecutor exec(*repiped, PipelineExecutor::ExecutionMode::Fused, "FilterT_exec");
+   // Get ready for execution on the parametrized execution mode.
+   PipelineExecutor::ExecutionMode mode = GetParam();
+   PipelineExecutor exec(*repiped, mode, "FilterT_exec");
 
    // Prepare input chunk.
    auto& ctx = exec.getExecutionContext();
@@ -116,15 +127,30 @@ TEST_F(FilterT, exec) {
    }
 
    // And run a single morsel.
-   ASSERT_NO_THROW(exec.runMorsel());
+   exec.runMorsel();
    // Get the output.
    auto& col_filter = ctx.getColumn(*ops.back(), *filter_iu);
-   for (uint16_t k = 0; k < 5; ++k) {
-      // The raw filter column should have a positive entry on every second row.
-      // TODO Fix type deduction here to bool
-      EXPECT_EQ(reinterpret_cast<uint16_t*>(col_filter.raw_data)[k], 1);
+   if (mode == PipelineExecutor::ExecutionMode::Fused) {
+      for (uint16_t k = 0; k < 5; ++k) {
+         // The raw filter column should have a positive entry on every row as we narrowed it down.
+         // TODO Fix type deduction here to bool
+         EXPECT_EQ(reinterpret_cast<uint16_t*>(col_filter.raw_data)[k], 1);
+      }
+   } else {
+      for (uint16_t k = 0; k < 10; ++k) {
+         // The raw filter column should have a positive entry on every second row as we now have the backing selection vector installed.
+         // TODO Fix type deduction here to bool
+         EXPECT_EQ(reinterpret_cast<uint16_t*>(col_filter.raw_data)[k], k % 2 != 0);
+      }
    }
 }
+
+INSTANTIATE_TEST_CASE_P(
+   FilterExecution,
+   FilterTParametrized,
+   ::testing::Values(PipelineExecutor::ExecutionMode::Fused,
+                     PipelineExecutor::ExecutionMode::Interpreted)
+   );
 
 }
 

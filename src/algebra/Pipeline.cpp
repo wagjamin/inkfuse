@@ -15,28 +15,32 @@ Pipeline::Pipeline() {
 std::unique_ptr<Pipeline> Pipeline::repipe(size_t start, size_t end, bool materialize_all) const {
    // TODO Currently this does not support proper scope offsetting if start is not in the first scope.
    auto new_pipe = std::make_unique<Pipeline>();
+   if (start == end) {
+      // We are creating an empty pipe, return.
+      return new_pipe;
+   }
 
    // Resolve in_scope of the first operator.
    auto in_scope = resolveOperatorScope(*suboperators[start]);
    auto out_scope = resolveOperatorScope(*suboperators[end - 1], false);
    size_t in_scope_end = in_scope + 1 == scopes.size() ? suboperators.size() : rescope_offsets[in_scope + 1];
    size_t out_scope_start = rescope_offsets[out_scope];
-   size_t out_scope_end = out_scope + 1 == scopes.size() ? suboperators.size() : rescope_offsets[out_scope + 1];
 
    // Find out which IUs we will need in the first in_scope that are not in_provided.
    std::set<const IU*> in_provided;
    std::set<const IU*> in_required;
    std::for_each(
       suboperators.begin() + start,
-      suboperators.begin() + std::min(in_scope_end, end),
+      suboperators.begin() + std::min(in_scope_end + 1, end),
       [&](const SuboperatorArc& subop) {
-         for (auto iu : subop->getIUs()) {
-            in_provided.insert(iu);
-         }
+         // We need to first check against required, as we might provide what we request on a rescoping operator.
          for (auto iu : subop->getSourceIUs()) {
             if (!in_provided.count(iu)) {
                in_required.insert(iu);
             }
+         }
+         for (auto iu : subop->getIUs()) {
+            in_provided.insert(iu);
          }
       });
 
@@ -90,10 +94,13 @@ std::unique_ptr<Pipeline> Pipeline::repipe(size_t start, size_t end, bool materi
                out_provided.insert(iu);
             }
          });
-      // Find out which IUs we will need after this interval.
+      // Find out which IUs we will need after this interval. Note that IUs can also be consumed
+      // in followup scopes.
+      // We don't have to worry about IU scoping here, as if a followup scope uses the iu, it has
+      // to be updated by the producing operator in the previous scope.
       std::for_each(
          suboperators.begin() + end,
-         suboperators.begin() + out_scope_end,
+         suboperators.end(),
          [&](const SuboperatorArc& subop) {
             for (auto iu : subop->getSourceIUs()) {
                if (!subop->isSource() && out_provided.count(iu)) {

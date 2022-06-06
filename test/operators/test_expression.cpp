@@ -2,7 +2,6 @@
 #include "algebra/ExpressionOp.h"
 #include "algebra/Pipeline.h"
 #include "algebra/RelAlgOp.h"
-#include "algebra/suboperators/ExpressionSubop.h"
 #include "codegen/backend_c/BackendC.h"
 #include "exec/PipelineExecutor.h"
 #include <gtest/gtest.h>
@@ -11,7 +10,7 @@ namespace inkfuse {
 
 namespace {
 
-struct ExpressionT : ::testing::Test {
+struct ExpressionT {
 
    ExpressionT():
       in1(IR::UnsignedInt::build(2), "in_1"),
@@ -47,8 +46,18 @@ struct ExpressionT : ::testing::Test {
 
 };
 
+/// Non-parametrized test fixture for decay tests.
+struct ExpressionTNonParametrized : public ExpressionT, public ::testing::Test {
+
+};
+
+/// Parametrized test fixture for execution modes.
+struct ExpressionTParametrized: public ExpressionT, public ::testing::TestWithParam<PipelineExecutor::ExecutionMode> {
+
+};
+
 // Check graph structure for expression decay.
-TEST_F(ExpressionT, decay) {
+TEST_F(ExpressionTNonParametrized, decay) {
 
    PipelineDAG dag;
    dag.buildNewPipeline();
@@ -67,7 +76,7 @@ TEST_F(ExpressionT, decay) {
    EXPECT_EQ(pipe.getConsumers(*ops[1]).size(), 1);
 }
 
-TEST_F(ExpressionT, exec) {
+TEST_P(ExpressionTParametrized, exec) {
    PipelineDAG dag;
    dag.buildNewPipeline();
    op->decay({}, dag);
@@ -81,7 +90,8 @@ TEST_F(ExpressionT, exec) {
    EXPECT_EQ(ops.size(), 9);
 
    // Get ready for compiled execution.
-   PipelineExecutor exec(*repiped, PipelineExecutor::ExecutionMode::Fused, "ExpressionT_exec");
+   auto mode = GetParam();
+   PipelineExecutor exec(*repiped, mode, "ExpressionT_exec");
 
    // Prepare input chunk.
    auto& ctx = exec.getExecutionContext();
@@ -115,6 +125,13 @@ TEST_F(ExpressionT, exec) {
    }
 
 }
+
+INSTANTIATE_TEST_CASE_P(
+   ExpressionExecution,
+   ExpressionTParametrized,
+   ::testing::Values(PipelineExecutor::ExecutionMode::Fused,
+                     PipelineExecutor::ExecutionMode::Interpreted)
+);
 
 }
 
