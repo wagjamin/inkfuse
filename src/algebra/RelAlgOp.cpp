@@ -2,26 +2,9 @@
 
 namespace inkfuse {
 
-std::unordered_set<const IU*> RelAlgOp::getIUs() const
+const std::vector<const IU *> & RelAlgOp::getOutput() const
 {
-   std::unordered_set<const IU*> vec;
-   addIUs(vec);
-   return vec;
-}
-
-std::unordered_set<const IU*> RelAlgOp::getIUsRecursive() const
-{
-   std::unordered_set<const IU*> vec;
-   addIUsRecursive(vec);
-   return vec;
-}
-
-void RelAlgOp::addIUsRecursive(std::unordered_set<const IU*>& set) const
-{
-   addIUs(set);
-   for (const auto& child: children) {
-      child->addIUsRecursive(set);
-   }
+   return output_ius;
 }
 
 const std::vector<std::unique_ptr<RelAlgOp>>& RelAlgOp::getChildren() const

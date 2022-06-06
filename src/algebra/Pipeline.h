@@ -13,6 +13,7 @@ namespace inkfuse {
 
 /// Pipelines are DAG structured through IU dependencies. The PipelineGraph explicitly
 /// models the edges induced by IU dependencies between sub-operators.
+/// Strong edges are modeled directly through the sub-operator properties on "incoming edges".
 struct PipelineGraph {
    /// Incoming edges into a given sub-operator.
    std::unordered_map<const Suboperator*, std::vector<Suboperator*>> incoming_edges;

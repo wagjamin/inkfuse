@@ -50,23 +50,6 @@ struct Suboperator {
 
    virtual ~Suboperator() = default;
 
-   /// The scoping behaviour of a sub-operator. This defines how the operator should behave in terms of the pipeline scope.
-   enum class ScopingBehaviour {
-      /// The operator should keep the pipeline scope unchanged.
-      NoRescope,
-      /// The operator should rescope the pipeline, but IU vectors for interpretation should be retained.
-      /// The new scope will contain all source IUs with the same variable ids, but the current subop as new producer.
-      RescopeRetain,
-      /// The operator should rescope the pipeline and define new IU vectors for interpretation.
-      /// The new scope will contain no IUs.
-      RescopeRewire,
-   };
-
-   /// What is the scoping behaviour of this suboperator?
-   virtual std::pair<ScopingBehaviour, const IU*> scopingBehaviour() const {
-      return {ScopingBehaviour::NoRescope, nullptr};
-   };
-
    /// Generate initial code for this operator when IUs are requested the first time.
    /// Will usually call open on all children and make the target IUs available to the parent operator.
    virtual void open(CompilationContext& context);
@@ -81,6 +64,12 @@ struct Suboperator {
    virtual bool isSink() const { return false; }
    /// Is this a source sub-operator driving execution?
    virtual bool isSource() const { return false; }
+   /// Are the incoming edges to nodes of this sub-operator strong?
+   /// This means that the sub-operator will retain all incoming sub-operators during a repipe.
+   virtual bool incomingStrongLinks() const { return false; }
+   /// Are the outgoing edges to nodes of this sub-operator strong?
+   /// This means that the sub-operator does not have to be interpreted.
+   virtual bool outgoingStrongLinks() const { return false; }
 
    /// Set up the state needed by this operator. In an IncrementalFusion engine it's easiest to actually
    /// make this interpreted.
