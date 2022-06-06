@@ -38,16 +38,12 @@ const std::unordered_map<Type, IR::ArithmeticExpr::Opcode> code_map{
 }
 
 // static
-SuboperatorArc ExpressionSubop::build(const RelAlgOp* source_, std::unordered_set<const IU*> provided_ius_, std::vector<const IU*> operands_, ExpressionOp::ComputeNode::Type type_) {
+SuboperatorArc ExpressionSubop::build(const RelAlgOp* source_, std::vector<const IU*> provided_ius_, std::vector<const IU*> operands_, ExpressionOp::ComputeNode::Type type_) {
    return std::make_shared<ExpressionSubop>(source_, std::move(provided_ius_), std::move(operands_), type_);
 }
 
-ExpressionSubop::ExpressionSubop(const RelAlgOp* source_, std::unordered_set<const IU*> provided_ius_, std::vector<const IU*> operands_, ExpressionOp::ComputeNode::Type type_)
-   : TemplatedSuboperator<EmptyState, EmptyState>(source_, std::move(provided_ius_), std::unordered_set<const IU*>{}), type(type_), operands(std::move(operands_)) {
-   // We also need to update the source_ius - note that these are not ordered.
-   for (auto operand : operands) {
-      source_ius.emplace(operand);
-   }
+ExpressionSubop::ExpressionSubop(const RelAlgOp* source_, std::vector<const IU*> provided_ius_, std::vector<const IU*> source_ius_, ExpressionOp::ComputeNode::Type type_)
+   : TemplatedSuboperator<EmptyState, EmptyState>(source_, std::move(provided_ius_), std::move(source_ius_)), type(type_) {
 }
 
 void ExpressionSubop::consumeAllChildren(CompilationContext& context) {
@@ -64,8 +60,8 @@ void ExpressionSubop::consumeAllChildren(CompilationContext& context) {
 
    // Then, compute it. First resolve the child IU statements.
    std::vector<const IR::Stmt*> children;
-   children.reserve(operands.size());
-   for (auto elem : operands) {
+   children.reserve(source_ius.size());
+   for (auto elem : source_ius) {
       const auto& decl = context.getIUDeclaration(*this, *elem);
       children.push_back(&decl);
    }

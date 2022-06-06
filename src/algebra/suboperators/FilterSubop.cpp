@@ -4,7 +4,7 @@
 
 namespace inkfuse {
 
-FilterSubop::FilterSubop(const RelAlgOp* source_, std::unordered_set<const IU*> provided_ius_, const IU& filter_iu_)
+FilterSubop::FilterSubop(const RelAlgOp* source_, std::vector<const IU*> provided_ius_, const IU& filter_iu_)
    : TemplatedSuboperator<EmptyState, EmptyState>(source_, provided_ius_, std::move(provided_ius_)), filter_iu(filter_iu_)
 {
 }

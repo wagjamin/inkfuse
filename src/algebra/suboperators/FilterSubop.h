@@ -17,7 +17,7 @@ struct FilterSubop : public TemplatedSuboperator<EmptyState, EmptyState> {
    /// @param provided_ius_ all input ius which will be needed further up the filter.
    ///                      The filter is created as both consumer of these IUs in the old scope,
    ///                      and as provider of the IUs in the new scope.
-   FilterSubop(const RelAlgOp* source_, std::unordered_set<const IU*> provided_ius_, const IU& filter_iu_);
+   FilterSubop(const RelAlgOp* source_, std::vector<const IU*> provided_ius_, const IU& filter_iu_);
 
    /// A FilterSubop has RescopeRetain semantics and installs the filter iu as the selection vector in the new scope.
    std::pair<ScopingBehaviour, const IU*> scopingBehaviour() const override;

@@ -2,5 +2,6 @@ cmake-build-debug
 cmake-build-release
 cmake-build-relwithdebinfo
 cmake-build-debugcovered
+cmake-build-*
 .idea
 

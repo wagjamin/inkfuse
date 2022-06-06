@@ -76,7 +76,7 @@ void ExpressionOp::decayNode(Node* node, std::unordered_map<Node*, const IU*>& b
          source_ius.push_back(built[child]);
       }
       // And add the suboperator for this node.
-      std::unordered_set<const IU*> out_ius{&compute_node->out};
+      std::vector<const IU*> out_ius{&compute_node->out};
       auto subop = std::make_shared<ExpressionSubop>(this, std::move(out_ius), std::move(source_ius), compute_node->code);
       dag.getCurrentPipeline().attachSuboperator(std::move(subop));
    }

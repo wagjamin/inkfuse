@@ -16,7 +16,12 @@ void Filter::decay(std::unordered_set<const IU*> required, PipelineDAG& dag) con
    children[0]->decay(required, dag);
    // Attach the filter sub-operator. Note that it rescopes the pipeline.
    auto& pipe = dag.getCurrentPipeline();
-   auto subop = std::make_shared<FilterSubop>(this, std::move(required), filter_iu);
+   std::vector<const IU*> provided_ius;
+   provided_ius.reserve(required.size());
+   for (const IU* iu: required) {
+      provided_ius.push_back(iu);
+   }
+   auto subop = std::make_shared<FilterSubop>(this, std::move(provided_ius), filter_iu);
    pipe.attachSuboperator(std::move(subop));
 }
 

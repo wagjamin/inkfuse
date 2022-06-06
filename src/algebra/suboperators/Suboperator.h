@@ -44,7 +44,7 @@ struct Pipeline;
 /// parameter logic and codegen structure.
 struct Suboperator {
    /// Suboperator constructor. Parametrized as described above and also fitting a certain type.
-   Suboperator(const RelAlgOp* source_, std::unordered_set<const IU*> provided_ius_, std::unordered_set<const IU*> source_ius_)
+   Suboperator(const RelAlgOp* source_, std::vector<const IU*> provided_ius_, std::vector<const IU*> source_ius_)
 
       : source(source_), provided_ius(std::move(provided_ius_)), source_ius(std::move(source_ius_)) {}
 
@@ -102,17 +102,20 @@ struct Suboperator {
 
    /// How many ius does this suboperator depend on?
    size_t getNumSourceIUs() const { return source_ius.size(); }
-   const std::unordered_set<const IU*>& getSourceIUs() const { return source_ius; }
-   const std::unordered_set<const IU*>& getIUs() const { return provided_ius; }
+   const std::vector<const IU*>& getSourceIUs() const { return source_ius; }
+   const std::vector<const IU*>& getIUs() const { return provided_ius; }
 
    protected:
    /// The operator which decayed into this Suboperator.
    const RelAlgOp* source;
 
    /// IUs produced by this sub-operator.
-   std::unordered_set<const IU*> provided_ius;
-   /// Source IUs on which this sub-operator depends.
-   std::unordered_set<const IU*> source_ius;
+   std::vector<const IU*> provided_ius;
+   /// Source IUs on which this sub-operator depends. Note that these are ordered.
+   /// This is important for operators like subtraction. This is important when e.g.
+   /// interpreting an operator to make sure that the input columns are extracted in
+   /// the right order.
+   std::vector<const IU*> source_ius;
 };
 
 /// Empty state which can be used in the templated suboperators.
@@ -151,7 +154,7 @@ struct TemplatedSuboperator : public Suboperator {
    };
 
    protected:
-   TemplatedSuboperator(const RelAlgOp* source_, std::unordered_set<const IU*> provided_ius_, std::unordered_set<const IU*> source_ius_)
+   TemplatedSuboperator(const RelAlgOp* source_, std::vector<const IU*> provided_ius_, std::vector<const IU*> source_ius_)
       : Suboperator(source_, std::move(provided_ius_), std::move(source_ius_)){};
 
    /// Set up the state given that the precondition that both params and state

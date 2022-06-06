@@ -70,8 +70,8 @@ TEST_F(ExpressionTNonParametrized, decay) {
    auto& ops = pipe.getSubops();
    // Three actual computations are done.
    EXPECT_EQ(ops.size(), 3);
-   EXPECT_EQ(ops[0]->getSourceIUs().count(&in1), 1);
-   EXPECT_EQ(ops[0]->getSourceIUs().count(&in2), 1);
+   EXPECT_EQ(ops[0]->getSourceIUs()[0], &in1);
+   EXPECT_EQ(ops[0]->getSourceIUs()[1], &in2);
    EXPECT_EQ(pipe.getConsumers(*ops[0]).size(), 2);
    EXPECT_EQ(pipe.getConsumers(*ops[1]).size(), 1);
 }
