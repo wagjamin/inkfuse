@@ -12,13 +12,13 @@ void Copy::consume(const IU& iu, CompilationContext& context)
 {
    auto& builder = context.getFctBuilder();
 
-   const auto& in = context.getIUDeclaration(*this, iu);
+   const auto& in = context.getIUDeclaration(iu);
    // Declare the new IU.
-   auto declare = IR::DeclareStmt::build(context.buildIUIdentifier(*this, produced), iu.type);
+   auto declare = IR::DeclareStmt::build(context.buildIUIdentifier(produced), iu.type);
    auto assign = IR::AssignmentStmt::build(*declare, IR::VarRefExpr::build(in));
 
    // Register it with the context.
-   context.declareIU(*this, produced, *declare);
+   context.declareIU(produced, *declare);
 
    // Add the statements to the generated program.
    builder.appendStmt(std::move(declare));

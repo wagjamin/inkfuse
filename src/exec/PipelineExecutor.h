@@ -55,8 +55,8 @@ struct PipelineExecutor {
    /// Set up fused state in an asynchronous way.
    /// Returns a handle to a thread performing asynchronous compilation.
    std::thread setUpFusedAsync(InterruptableJob& interrupt);
-   /// Clean up the fuse chunks in a given scope.
-   void cleanUpScope(size_t scope);
+   /// Clean up the fuse chunks for a new morsel.
+   void cleanUp();
 
    /// Backing pipeline.
    Pipeline& pipe;

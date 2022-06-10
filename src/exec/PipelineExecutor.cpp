@@ -96,7 +96,7 @@ std::thread PipelineExecutor::setUpFusedAsync(InterruptableJob& interrupt)
 {
    return std::thread([&]() {
      // Set up runner.
-     auto repiped = pipe.repipe(0, pipe.getSubops().size());
+     auto repiped = pipe.repipeRequired(0, pipe.getSubops().size());
      auto runner = std::make_unique<CompiledRunner>(std::move(repiped), context, std::move(full_name));
      // And Compile.
      bool done = runner->prepare(interrupt);
@@ -114,8 +114,8 @@ void PipelineExecutor::setUpFused() {
    thread.join();
 }
 
-void PipelineExecutor::cleanUpScope(size_t scope) {
-   context.clear(scope);
+void PipelineExecutor::cleanUp() {
+   context.clear();
 }
 
 bool PipelineExecutor::runFusedMorsel() {
@@ -125,7 +125,7 @@ bool PipelineExecutor::runFusedMorsel() {
    }
    // Run the whole compiled executor.
    if (compiled.at({0, pipe.getSubops().size()})->runMorsel(true)) {
-      cleanUpScope(0);
+      cleanUp();
       return true;
    }
    return false;
@@ -139,7 +139,7 @@ bool PipelineExecutor::runInterpretedMorsel() {
    for (auto interpreter = interpreters.begin() + 1; interpreter < interpreters.end(); ++interpreter) {
       (*interpreter)->runMorsel(false);
    }
-   cleanUpScope(0);
+   cleanUp();
    return pickResult;
 }
 

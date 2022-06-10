@@ -46,10 +46,6 @@ void CompilationContext::notifyOpClosed(Suboperator& op) {
    }
 }
 
-size_t CompilationContext::resolveScope(const Suboperator& op) {
-   return pipeline.resolveOperatorScope(op);
-}
-
 void CompilationContext::notifyIUsReady(Suboperator& op) {
    // Fetch the sub-operator which requested the given IU.
    computed.emplace(&op);

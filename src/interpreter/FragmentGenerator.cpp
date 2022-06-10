@@ -1,7 +1,6 @@
 #include "algebra/CompilationContext.h"
 #include "interpreter/FragmentGenerator.h"
 #include "interpreter/TScanFragmentizer.h"
-#include "interpreter/FilterFragmentizer.h"
 #include "interpreter/ExpressionFragmentizer.h"
 #include "interpreter/CopyFragmentizer.h"
 #include "interpreter/CountingSinkFragmentizer.h"
@@ -77,7 +76,6 @@ IR::ProgramArc FragmentGenerator::build()
    fragmentizers.push_back(std::make_unique<CopyFragmentizer>());
    fragmentizers.push_back(std::make_unique<ExpressionFragmentizer>());
    fragmentizers.push_back(std::make_unique<CountingSinkFragmentizer>());
-   fragmentizers.push_back(std::make_unique<FilterFragmentizer>());
 
    // Create the IR program.
    auto program = std::make_shared<IR::Program>("fragments", false);
@@ -87,7 +85,7 @@ IR::ProgramArc FragmentGenerator::build()
          // We now repipe the full pipeline. This is elegant, as it automatically takes care of generating
          // the right fuse-chunk input and output operators which are needed in the actual fragment.
          // This in turn means that sub-operators don't have to create fuse chunk sources and sinks themselves.
-         auto repiped = pipe.repipe(0, pipe.getSubops().size(), true);
+         auto repiped = pipe.repipeAll(0, pipe.getSubops().size());
          CompilationContext context(program, name, *repiped);
          context.compile();
       }

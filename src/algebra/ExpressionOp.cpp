@@ -36,16 +36,10 @@ ExpressionOp::ComputeNode::ComputeNode(IR::TypeArc casted, Node* child)
 {
 }
 
-void ExpressionOp::decay(std::unordered_set<const IU*> required, PipelineDAG& dag) const {
-   // Our children need to produce everything required upstream, plus the input IU refs.
-   for (const auto& node: nodes) {
-      if (auto r_node = dynamic_cast<IURefNode*>(node.get())) {
-         required.insert(r_node->child);
-      }
-   }
+void ExpressionOp::decay(PipelineDAG& dag) const {
    // First decay the children.
    for (const auto& child: children) {
-      child->decay(required, dag);
+      child->decay(dag);
    }
    // The set stores which expression suboperators were created already.
    std::unordered_map<Node*, const IU*> built;
@@ -79,14 +73,6 @@ void ExpressionOp::decayNode(Node* node, std::unordered_map<Node*, const IU*>& b
       std::vector<const IU*> out_ius{&compute_node->out};
       auto subop = std::make_shared<ExpressionSubop>(this, std::move(out_ius), std::move(source_ius), compute_node->code);
       dag.getCurrentPipeline().attachSuboperator(std::move(subop));
-   }
-}
-
-void ExpressionOp::addIUs(std::unordered_set<const IU*>& set) const {
-   // Only add those IUs which actually get produced.
-   for (const auto& node : out) {
-      auto compute_node = dynamic_cast<ComputeNode*>(node);
-      set.insert(&compute_node->out);
    }
 }
 

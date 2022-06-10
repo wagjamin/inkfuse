@@ -5,7 +5,7 @@
 #include "exec/FuseChunk.h"
 #include <map>
 #include <memory>
-#include <set>
+#include <unordered_set>
 #include <vector>
 
 namespace inkfuse {
@@ -28,8 +28,14 @@ struct Pipeline {
    public:
 
    /// Rebuild the pipeline for a subset of the sub-operators in the given range.
-   /// Inserts face sources and fake sinks.
-   std::unique_ptr<Pipeline> repipe(size_t start, size_t end, bool materialize_all = false) const;
+   /// Inserts fake sources and fake sinks. Materializes all IUs that are produced by nodes that don't have a strong output link.
+   std::unique_ptr<Pipeline> repipeAll(size_t start, size_t end) const;
+   /// Rebuild the pipeline for a subset of the sub-operators in the given range.
+   /// Inserts fake sources and fake sinks. Materializes all IUs that are used by followup operators.
+   std::unique_ptr<Pipeline> repipeRequired(size_t start, size_t end) const;
+   /// Rebuilt the pipeline for a subset of the sub-operators in the given range.
+   /// Inserts fake sources and fake sinks. Materializes the IUs in 'materialize'.
+   std::unique_ptr<Pipeline> repipe(size_t start, size_t end, const std::unordered_set<const IU*>& materialize) const;
 
    /// Get the downstream consumers of IUs for a given sub-operator.
    const std::vector<Suboperator*>& getConsumers(Suboperator& subop) const;
@@ -57,6 +63,8 @@ struct Pipeline {
 
    /// Explicit graph structure induced by the sub-operators.
    PipelineGraph graph;
+   /// The IU providers.
+   std::unordered_map<const IU*, Suboperator*> iu_providers;
 };
 
 using PipelinePtr = std::unique_ptr<Pipeline>;

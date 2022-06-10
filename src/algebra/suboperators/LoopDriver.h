@@ -44,7 +44,7 @@ struct LoopDriver : public TemplatedSuboperator<LoopDriverState, RuntimeParams> 
          // Build start and end variables. Start variable is also the index IU.
          auto end_var_name = this->getVarIdentifier();
          end_var_name << "_end";
-         auto driver_iu_name = context.buildIUIdentifier(*this, loop_driver_iu);
+         auto driver_iu_name = context.buildIUIdentifier(loop_driver_iu);
          auto decl_start = IR::DeclareStmt::build(driver_iu_name, IR::UnsignedInt::build(8));
          decl_start_ptr = decl_start.get();
          auto decl_end = IR::DeclareStmt::build(end_var_name.str(), IR::UnsignedInt::build(8));
@@ -62,7 +62,7 @@ struct LoopDriver : public TemplatedSuboperator<LoopDriverState, RuntimeParams> 
       }
 
       // Register provided IU with the compilation context.
-      context.declareIU(*this, loop_driver_iu, *decl_start_ptr);
+      context.declareIU(loop_driver_iu, *decl_start_ptr);
 
       // Next up we create the driving for-loop.
       this->opt_while = builder.buildWhile(
@@ -78,7 +78,7 @@ struct LoopDriver : public TemplatedSuboperator<LoopDriverState, RuntimeParams> 
 
    void close(CompilationContext& context) override {
       // And update the loop counter
-      auto& decl_start = context.getIUDeclaration(*this, loop_driver_iu);
+      auto& decl_start = context.getIUDeclaration(loop_driver_iu);
       auto increment = IR::AssignmentStmt::build(
          decl_start,
          IR::ArithmeticExpr::build(

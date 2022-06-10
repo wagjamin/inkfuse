@@ -31,18 +31,18 @@ struct ExecutionContext {
    ExecutionContext recontextualize(const Pipeline& new_pipe_) const;
 
    /// Get the raw data column for the given IU.
-   Column& getColumn(Suboperator& subop, const IU& iu) const;
+   Column& getColumn(const IU& iu) const;
 
-   /// Clear the execution context at a certain scope.
-   void clear(size_t scope) const;
+   /// Clear the execution context.
+   void clear() const;
 
    const Pipeline& getPipe() const;
 
    private:
-   ExecutionContext(std::shared_ptr<std::vector<FuseChunkPtr>> chunks_, const Pipeline& pipe_);
+   ExecutionContext(FuseChunkArc chunk_, const Pipeline& pipe_);
 
-   /// The backing fuse chunks.
-   std::shared_ptr<std::vector<FuseChunkPtr>> chunks;
+   /// The backing fuse chunk for the pipeline.
+   FuseChunkArc chunk;
    /// The pipeline.
    const Pipeline& pipe;
 };

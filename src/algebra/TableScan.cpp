@@ -21,7 +21,7 @@ TableScan::TableScan(StoredRelation& rel_, std::vector<std::string> cols_, std::
    }
 }
 
-void TableScan::decay(std::unordered_set<const IU*> required, PipelineDAG& dag) const
+void TableScan::decay(PipelineDAG& dag) const
 {
    // Create a new pipeline.
    auto& pipe = dag.buildNewPipeline();
@@ -40,13 +40,6 @@ void TableScan::decay(std::unordered_set<const IU*> required, PipelineDAG& dag) 
             .raw_data = data_col.getRawData(),
          };
       provider.attachRuntimeParams(iu_params);
-   }
-}
-
-void TableScan::addIUs(std::unordered_set<const IU*>& set) const
-{
-   for (auto& col: cols) {
-      set.insert(&col.second);
    }
 }
 

@@ -31,7 +31,7 @@ struct IndexedIUProvider : public TemplatedSuboperator<IndexedIUProviderState, R
       auto& builder = context.getFctBuilder();
       const auto& program = context.getProgram();
 
-      const auto& loop_idx = context.getIUDeclaration(*this, **this->source_ius.begin());
+      const auto& loop_idx = context.getIUDeclaration(**this->source_ius.begin());
 
       const IR::Stmt* decl_data_ptr;
       {
@@ -62,8 +62,8 @@ struct IndexedIUProvider : public TemplatedSuboperator<IndexedIUProviderState, R
 
       // Declare IU.
       const auto& declared_iu = **this->provided_ius.begin();
-      auto declare = IR::DeclareStmt::build(context.buildIUIdentifier(*this, declared_iu), (*this->provided_ius.begin())->type);
-      context.declareIU(*this, declared_iu, *declare);
+      auto declare = IR::DeclareStmt::build(context.buildIUIdentifier(declared_iu), (*this->provided_ius.begin())->type);
+      context.declareIU(declared_iu, *declare);
       // Assign value to IU. This is done by adding the offset to the data pointer and dereferencing.
       auto assign = IR::AssignmentStmt::build(
          *declare,
