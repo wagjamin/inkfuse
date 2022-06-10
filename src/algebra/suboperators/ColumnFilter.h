@@ -18,8 +18,8 @@ namespace inkfuse {
 /// Scoping operator building the if statement needed in a filter.
 struct ColumnFilterScope : public TemplatedSuboperator<EmptyState, EmptyState> {
 
-   /// Set up a ColumnFilterScope that consumes all incoming IUs and defines a new pseudo IU.
-   static SuboperatorArc build(const RelAlgOp* source_, std::vector<const IU*> source_ius_, const IU& filter_iu_, const IU& pseudo);
+   /// Set up a ColumnFilterScope that consumes the filter IU and defines a new pseudo IU.
+   static SuboperatorArc build(const RelAlgOp* source_, const IU& filter_iu_, const IU& pseudo);
 
    /// A ColumnFilterScope sub-operator does not have to be interpreted.
    /// Rather, it will get warped into the primitives of the successive ColumnFilterLogic operator.
@@ -33,10 +33,8 @@ struct ColumnFilterScope : public TemplatedSuboperator<EmptyState, EmptyState> {
    std::string id() const override;
 
    private:
-   ColumnFilterScope(const RelAlgOp* source_, std::vector<const IU*> source_ius_, const IU& filter_iu_, const IU& pseudo);
+   ColumnFilterScope(const RelAlgOp* source_, const IU& filter_iu_, const IU& pseudo);
 
-   // IU on which we filter.
-   const IU& filter_iu;
    /// In-flight if statement being generated.
    std::optional<IR::If> opt_if;
 };
@@ -45,7 +43,7 @@ struct ColumnFilterScope : public TemplatedSuboperator<EmptyState, EmptyState> {
 struct ColumnFilterLogic : public TemplatedSuboperator<EmptyState, EmptyState> {
 
    /// Set up a ColumnFilterLogic that consumes the ColumnFilterScope pseudo IU and redefines the incoming one.
-   static SuboperatorArc build(const RelAlgOp* source_, const IU& pseudo, const IU& incoming_, const IU& redefined);
+   static SuboperatorArc build(const RelAlgOp* source_, const IU& pseudo, const IU& incoming, const IU& redefined);
 
    /// A ColumnFilterLogic sub-operator will wrap the incoming ColumnFilterScope
    /// operator into its vectorized primitive.
@@ -57,11 +55,7 @@ struct ColumnFilterLogic : public TemplatedSuboperator<EmptyState, EmptyState> {
    std::string id() const override;
 
    private:
-   ColumnFilterLogic(const RelAlgOp* source_, const IU& pseudo, const IU& incoming_, const IU& redefined);
-
-   /// The incoming IU that should be redefined. Different from the pseudo iu, as there is
-   /// no dependency on this IU in the backing pipeline graph.
-   const IU& incoming;
+   ColumnFilterLogic(const RelAlgOp* source_, const IU& pseudo, const IU& incoming, const IU& redefined);
 
 };
 

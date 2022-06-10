@@ -5,13 +5,13 @@
 
 namespace inkfuse {
 
-SuboperatorArc ColumnFilterScope::build(const RelAlgOp* source_, std::vector<const IU*> source_ius_, const IU& filter_iu_, const IU& pseudo)
+SuboperatorArc ColumnFilterScope::build(const RelAlgOp* source_, const IU& filter_iu_, const IU& pseudo)
 {
-   return SuboperatorArc{new ColumnFilterScope(source_, std::move(source_ius_), filter_iu_, pseudo)};
+   return SuboperatorArc{new ColumnFilterScope(source_, filter_iu_, pseudo)};
 }
 
-ColumnFilterScope::ColumnFilterScope(const RelAlgOp* source_, std::vector<const IU*> source_ius_, const IU& filter_iu_, const IU& pseudo)
-: TemplatedSuboperator<EmptyState, EmptyState>(source_, std::vector<const IU*>{&pseudo}, std::move(source_ius_)), filter_iu(filter_iu_)
+ColumnFilterScope::ColumnFilterScope(const RelAlgOp* source_, const IU& filter_iu_, const IU& pseudo)
+: TemplatedSuboperator<EmptyState, EmptyState>(source_, std::vector<const IU*>{&pseudo}, std::vector<const IU*>{&filter_iu_})
 {
 }
 
@@ -52,8 +52,8 @@ SuboperatorArc ColumnFilterLogic::build(const RelAlgOp* source_, const IU& pseud
    return SuboperatorArc{new ColumnFilterLogic(source_, pseudo, incoming_, redefined)};
 }
 
-ColumnFilterLogic::ColumnFilterLogic(const RelAlgOp* source_, const IU& pseudo, const IU& incoming_, const IU& redefined)
-   : TemplatedSuboperator<EmptyState, EmptyState>(source_, std::vector<const IU*>{&redefined}, std::vector<const IU*>{&pseudo}), incoming(incoming_)
+ColumnFilterLogic::ColumnFilterLogic(const RelAlgOp* source_, const IU& pseudo, const IU& incoming, const IU& redefined)
+   : TemplatedSuboperator<EmptyState, EmptyState>(source_, std::vector<const IU*>{&redefined}, std::vector<const IU*>{&pseudo, &incoming})
 {
 }
 
@@ -61,7 +61,8 @@ void ColumnFilterLogic::consumeAllChildren(CompilationContext& context)
 {
    auto& builder = context.getFctBuilder();
 
-   const auto& in = context.getIUDeclaration(incoming);
+   // Get the definition of the filter IU - this is the second source IU.
+   const auto& in = context.getIUDeclaration(*source_ius[1]);
    // Declare the new IU.
    auto declare = IR::DeclareStmt::build(context.buildIUIdentifier(*provided_ius[0]), provided_ius[0]->type);
    auto assign = IR::AssignmentStmt::build(*declare, IR::VarRefExpr::build(in));
@@ -79,7 +80,7 @@ void ColumnFilterLogic::consumeAllChildren(CompilationContext& context)
 
 std::string ColumnFilterLogic::id() const
 {
-   return "ColumnFilterLogic_" + incoming.type->id();
+   return "ColumnFilterLogic_" + source_ius[1]->type->id();
 }
 
 }

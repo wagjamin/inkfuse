@@ -31,7 +31,7 @@ void Filter::decay(PipelineDAG& dag) const
    children[0]->decay(dag);
    auto& pipe = dag.getCurrentPipeline();
    // Attach the control flow sub-operator.
-   auto scope = ColumnFilterScope::build(this, to_redefine, filter_iu, pseudo_iu);
+   auto scope = ColumnFilterScope::build(this, filter_iu, pseudo_iu);
    pipe.attachSuboperator(std::move(scope));
    // Attach the logic operators performing the copies.
    for (size_t k = 0; k < redefined.size(); ++k) {

@@ -15,7 +15,10 @@ std::unique_ptr<Pipeline> Pipeline::repipeAll(size_t start, size_t end) const {
       [&](const SuboperatorArc& subop) {
          if (!subop->outgoingStrongLinks()) {
             for (auto iu : subop->getIUs()) {
-               out_provided.insert(iu);
+               if (!dynamic_cast<IR::Void*>(iu->type.get())) {
+                  // We do not add void IUs as these present pseudo IU to properly connect the graph.
+                  out_provided.insert(iu);
+               }
             }
          }
       });

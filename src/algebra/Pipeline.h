@@ -33,7 +33,7 @@ struct Pipeline {
    /// Rebuild the pipeline for a subset of the sub-operators in the given range.
    /// Inserts fake sources and fake sinks. Materializes all IUs that are used by followup operators.
    std::unique_ptr<Pipeline> repipeRequired(size_t start, size_t end) const;
-   /// Rebuilt the pipeline for a subset of the sub-operators in the given range.
+   /// Rebuild the pipeline for a subset of the sub-operators in the given range.
    /// Inserts fake sources and fake sinks. Materializes the IUs in 'materialize'.
    std::unique_ptr<Pipeline> repipe(size_t start, size_t end, const std::unordered_set<const IU*>& materialize) const;
 

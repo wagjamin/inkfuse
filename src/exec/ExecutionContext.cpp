@@ -14,6 +14,11 @@ ExecutionContext ExecutionContext::recontextualize(const Pipeline& new_pipe_) co
    return ExecutionContext(chunk, new_pipe_);
 }
 
+Column & ExecutionContext::getColumn(const IU& iu) const
+{
+   return chunk->getColumn(iu);
+}
+
 void ExecutionContext::clear() const {
    chunk->clearColumns();
 }
