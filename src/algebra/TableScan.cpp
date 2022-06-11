@@ -17,7 +17,8 @@ TableScan::TableScan(StoredRelation& rel_, std::vector<std::string> cols_, std::
          iu_name = col;
       }
       IU iu(rel.getColumn(col).getType(), std::move(iu_name));
-      cols.push_back(std::make_pair(std::move(col), std::move(iu)));
+      auto& elem = cols.emplace_back(std::make_pair(std::move(col), std::move(iu)));
+      output_ius.push_back(&elem.second);
    }
 }
 

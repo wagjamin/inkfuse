@@ -26,7 +26,6 @@ DEFINE_double(sf, 1, "Data in the underlying three columns - in GB");
 // We are running on table T[a: int64_t, b: int64_t, c: uint32_t]
 // Query: SELECT c:int64_t * (a + b) + c:int64_t * c:int64_t (a + b + c) + ...  FROM T
 int main(int argc, char* argv[]) {
-   /*
    gflags::SetUsageMessage("inkfuse_runner --depth <depth of expression tree> --sf <sf>");
    gflags::ParseCommandLineFlags(&argc, &argv, true);
 
@@ -65,10 +64,10 @@ int main(int argc, char* argv[]) {
 
       // Set up the table scan.
       std::unique_ptr<RelAlgOp> scan = std::make_unique<TableScan>(rel, std::vector<std::string>{"a", "b", "c"}, "tscan");
-      auto ius = scan->getIUs();
-      auto& in_0 = ius[0];
-      auto& in_1 = ius[1];
-      auto& in_2 = ius[2];
+      const auto& ius = scan->getOutput();
+      auto in_0 = ius[0];
+      auto in_1 = ius[1];
+      auto in_2 = ius[2];
 
       // Set up the expression tree.
       std::vector<ExpressionOp::NodePtr> nodes;
@@ -107,10 +106,10 @@ int main(int argc, char* argv[]) {
       /// Set up the actual pipelines.
       PipelineDAG dag;
       dag.buildNewPipeline();
-      op.decay({}, dag);
+      op.decay(dag);
 
       auto& pipe = dag.getCurrentPipeline();
-      auto expression_result_iu = op.getIUs().back();
+      auto expression_result_iu = op.getOutput().back();
       auto& sink = pipe.attachSuboperator(FuseChunkSink::build(nullptr, *expression_result_iu));
 
       auto runInMode = [&](PipelineExecutor::ExecutionMode mode, std::string readable) {
@@ -131,15 +130,8 @@ int main(int argc, char* argv[]) {
       };
 
       runInMode(PipelineExecutor::ExecutionMode::Fused, "Fused");
-      runInMode(PipelineExecutor::ExecutionMode::Fused, "Fused");
-      runInMode(PipelineExecutor::ExecutionMode::Fused, "Fused");
       runInMode(PipelineExecutor::ExecutionMode::Interpreted, "Interpreted");
-      runInMode(PipelineExecutor::ExecutionMode::Interpreted, "Interpreted");
-      runInMode(PipelineExecutor::ExecutionMode::Interpreted, "Interpreted");
-      runInMode(PipelineExecutor::ExecutionMode::Hybrid, "Hybrid");
-      runInMode(PipelineExecutor::ExecutionMode::Hybrid, "Hybrid");
       runInMode(PipelineExecutor::ExecutionMode::Hybrid, "Hybrid");
    }
-   */
    return 0;
 }

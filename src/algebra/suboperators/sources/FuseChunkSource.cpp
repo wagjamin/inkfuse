@@ -50,8 +50,6 @@ FuseChunkSourceIUProvider::FuseChunkSourceIUProvider(const IU& driver_iu, const 
 
 void FuseChunkSourceIUProvider::setUpStateImpl(const ExecutionContext& context)
 {
-   // Fuse chunk source iu providers should always be in the source scope of a given pipeline.
-   assert(context.getPipe().resolveOperatorScope(*this) == 0);
    // Extract the raw data from which to read within the backing chunk.
    auto& col = context.getColumn(**provided_ius.begin());
    state->raw_data = col.raw_data;

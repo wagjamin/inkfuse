@@ -145,6 +145,7 @@ set(TEST_CC
         "${CMAKE_SOURCE_DIR}/test/test_ir.cpp"
         "${CMAKE_SOURCE_DIR}/test/test_c_backend.cpp"
         "${CMAKE_SOURCE_DIR}/test/test_runtime.cpp"
+        "${CMAKE_SOURCE_DIR}/test/algebra/test_repipe.cpp"
         # "${CMAKE_SOURCE_DIR}/test/algebra/test_iu_scope.cpp"
         "${CMAKE_SOURCE_DIR}/test/exec/test_interruptable_job.cpp"
         # "${CMAKE_SOURCE_DIR}/test/operators/test_table_scan.cpp"
@@ -153,7 +154,6 @@ set(TEST_CC
         # "${CMAKE_SOURCE_DIR}/test/suboperators/test_minimal_pipeline.cpp"
         # "${CMAKE_SOURCE_DIR}/test/suboperators/test_sources.cpp"
         "${CMAKE_SOURCE_DIR}/test/test_fragmentizors.cpp"
-        # "${CMAKE_SOURCE_DIR}/test/test_repipe.cpp"
         )
 
 set(TOOLS_SRC

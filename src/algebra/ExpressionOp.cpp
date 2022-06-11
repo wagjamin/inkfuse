@@ -8,6 +8,11 @@ namespace inkfuse {
 
 ExpressionOp::ExpressionOp(std::vector<std::unique_ptr<RelAlgOp>> children_, std::string op_name_, std::vector<Node*> out_, std::vector<NodePtr> nodes_)
    : RelAlgOp(std::move(children_), std::move(op_name_)), out(std::move(out_)), nodes(std::move(nodes_)) {
+   for (const auto& node: nodes) {
+      if (auto compute = dynamic_cast<ComputeNode*>(node.get())) {
+         output_ius.push_back(&compute->out);
+      }
+   }
 }
 
 ExpressionOp::ConstantNode::ConstantNode(IR::ValuePtr val)

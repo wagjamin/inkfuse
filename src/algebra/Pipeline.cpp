@@ -67,6 +67,21 @@ std::unique_ptr<Pipeline> Pipeline::repipe(size_t start, size_t end, const std::
    // Find out which IUs we need to access that are not provided by one of the suboperators in [start, end[.
    std::unordered_set<const IU*> in_provided;
    std::unordered_set<const IU*> in_required;
+
+   if (first->incomingStrongLinks()) {
+      // The suboperator has incoming strong links, meaning it cannot be separated from its input
+      // suboperator. We have to attach the source of the strong link.
+      // Note that at the moment, the length of a strong link chain can be at most one hop.
+      const auto& input = graph.incoming_edges.at(first.get());
+      assert(input.size() == 1);
+      auto strong_op = std::find_if(suboperators.begin(), suboperators.end(), [&](const SuboperatorArc& elem) {
+        return elem.get() == input[0];
+      });
+      assert(strong_op != suboperators.end());
+      new_pipe->attachSuboperator(*strong_op);
+      in_provided.insert((*strong_op)->getIUs()[0]);
+   }
+
    std::for_each(
       suboperators.begin() + start,
       suboperators.begin() + end,
@@ -100,19 +115,6 @@ std::unique_ptr<Pipeline> Pipeline::repipe(size_t start, size_t end, const std::
          }
       }
    }
-
-   if (first->incomingStrongLinks()) {
-      // The suboperator has incoming strong links, meaning it cannot be separated from its input
-      // suboperator. We have to attac the source of the strong link.
-      // Note that at the moment, the length of a strong link chain can be at most one hop.
-      const auto& input = graph.incoming_edges.at(first.get());
-      assert(input.size() == 1);
-      auto strong_op = std::find_if(suboperators.begin(), suboperators.end(), [&](const SuboperatorArc& elem) {
-         return elem.get() == input[0];
-      });
-      assert(strong_op != suboperators.end());
-      new_pipe->attachSuboperator(*strong_op);
-   }
    // Copy all intermediate operators.
    std::for_each(
       suboperators.begin() + start,
@@ -126,7 +128,6 @@ std::unique_ptr<Pipeline> Pipeline::repipe(size_t start, size_t end, const std::
       // suboperator. We have move the end to contain all consumers.
       // Note that at the moment, the length of this chain can be at most one hop.
       const auto& output = graph.outgoing_edges.at(last.get());
-      assert(input.size() == 1);
       auto strong_op = std::find_if(suboperators.begin(), suboperators.end(), [&](const SuboperatorArc& elem) {
          return elem.get() == output[0];
       });
