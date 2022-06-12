@@ -23,7 +23,7 @@ struct ColumnFilterScope : public TemplatedSuboperator<EmptyState, EmptyState> {
 
    /// A ColumnFilterScope sub-operator does not have to be interpreted.
    /// Rather, it will get warped into the primitives of the successive ColumnFilterLogic operator.
-   bool outgoingStrongLinks() const override { return false; }
+   bool outgoingStrongLinks() const override { return true; }
 
    /// We can only generate the actual filter scoping logic once all source ius were created.
    void consumeAllChildren(CompilationContext& context) override;

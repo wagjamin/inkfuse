@@ -79,12 +79,8 @@ void PipelineExecutor::setUpInterpreted() {
 
    for (size_t k = 0; k < count; ++k) {
       const auto& op = *pipe.getSubops()[k];
-      /*
-      if (isFuseChunkOp(&op)) {
-         throw std::runtime_error("Interpreted execution must not have fuse chunk sub-operators");
-      }*/
-      if (!op.isSource() && !isFuseChunkOp(&op)) {
-         // Only non-sources have to be interpreted.
+      if (!op.outgoingStrongLinks() && !isFuseChunkOp(&op)) {
+         // Only operators without outgoing strong links have to be interpreted.
          interpreters.push_back(std::make_unique<InterpretedRunner>(pipe, k, context));
          interpreters.back()->prepare();
       }

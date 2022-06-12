@@ -6,7 +6,10 @@ namespace inkfuse {
 ExecutionContext::ExecutionContext(const Pipeline& pipe_)
    : pipe(pipe_), chunk(std::make_shared<FuseChunk>()) {
    for (const auto& [iu, _] : pipe.iu_providers) {
-      chunk->attachColumn(*iu);
+      // Do not add void-typed pseudo-IUs to the fuse chunks.
+      if (!dynamic_cast<IR::Void*>(iu->type.get())) {
+         chunk->attachColumn(*iu);
+      }
    }
 }
 

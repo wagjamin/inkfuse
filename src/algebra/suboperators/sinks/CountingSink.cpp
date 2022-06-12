@@ -43,6 +43,11 @@ void CountingSink::consume(const IU& iu, CompilationContext& context)
    builder.appendStmt(std::move(increment_start));
 }
 
+void CountingSink::setUpStateImpl(const ExecutionContext& context)
+{
+   state->count = 0;
+}
+
 std::string CountingSink::id() const
 {
    return "CountingSink";

@@ -1,9 +1,9 @@
 #include "algebra/CompilationContext.h"
 #include "algebra/ExpressionOp.h"
 #include "algebra/Filter.h"
+#include "algebra/suboperators/ColumnFilter.h"
 #include "algebra/Pipeline.h"
 #include "algebra/RelAlgOp.h"
-#include "algebra/TableScan.h"
 #include "codegen/backend_c/BackendC.h"
 #include "codegen/Type.h"
 #include "exec/PipelineExecutor.h"
@@ -21,7 +21,7 @@ struct FilterT {
       auto c2 = nodes.emplace_back(std::make_unique<ExpressionOp::IURefNode>(&read_col_2)).get();
       auto c3 = nodes.emplace_back(
                         std::make_unique<ExpressionOp::ComputeNode>(
-                           ExpressionOp::ComputeNode::Type::Less,
+                           ExpressionOp::ComputeNode::Type::Greater,
                            std::vector<ExpressionOp::Node*>{c1, c2}))
                    .get();
       RelAlgOpPtr expression = std::make_unique<ExpressionOp>(
@@ -29,10 +29,11 @@ struct FilterT {
          "expression_1",
          std::vector<ExpressionOp::Node*>{c3},
          std::move(nodes));
-      filter_iu = *expression->getIUs().begin();
+      filter_iu = expression->getOutput()[0];
       std::vector<RelAlgOpPtr> children;
       children.push_back(std::move(expression));
-      filter.emplace(std::move(children), "filter_1", *filter_iu);
+      // Filter c3.
+      filter = Filter::build(std::move(children), "filter_1", std::vector<const IU*>{&read_col_1, &read_col_2}, *filter_iu);
    }
 
    // IUs for the read columns.
@@ -43,7 +44,7 @@ struct FilterT {
    /// IU on which the filter is defined.
    const IU* filter_iu;
    /// Filter operator on the expression.
-   std::optional<Filter> filter;
+   std::unique_ptr<Filter> filter;
 };
 
 /// Non-parametrized test fixture for decay tests.
@@ -59,50 +60,46 @@ struct FilterTParametrized : public FilterT, public ::testing::TestWithParam<Pip
 TEST_F(FilterTNonParametrized, decay) {
    PipelineDAG dag;
    dag.buildNewPipeline();
-   filter->decay({}, dag);
+   filter->decay(dag);
 
    // One pipeline.
    EXPECT_EQ(dag.getPipelines().size(), 1);
 
    auto& pipe= dag.getCurrentPipeline();
-   auto& ops = pipe.getSubops();
+   auto repiped = pipe.repipeRequired(0, pipe.getSubops().size());
+   auto& ops = repiped->getSubops();
 
-   // Two computations: less, filter.
-   EXPECT_EQ(ops.size(), 2);
-   EXPECT_EQ(ops[0]->getSourceIUs()[0], &read_col_1);
-   EXPECT_EQ(ops[0]->getSourceIUs()[1], &read_col_2);
-   EXPECT_EQ(pipe.getConsumers(*ops[0]).size(), 1);
-   EXPECT_ANY_THROW(pipe.getConsumers(*ops[1]));
-
-   // One input for the filter - the filter one itself.
-   EXPECT_EQ(pipe.getProducers(*ops[1]).size(), 1);
-
-   // Check that rescoping works correctly.
-   EXPECT_EQ(pipe.resolveOperatorScope(*ops[0], true), 0);
-   EXPECT_EQ(pipe.resolveOperatorScope(*ops[0], false), 0);
-   EXPECT_EQ(pipe.resolveOperatorScope(*ops[1], true), 0);
-   EXPECT_EQ(pipe.resolveOperatorScope(*ops[1], false), 1);
-   const auto& scope_0 = pipe.getScope(0);
-   // We are reading from a base relation without a filter IU.
-   EXPECT_EQ(scope_0.getFilterIU(), nullptr);
-   // Only the filter IU was registered.
-   EXPECT_EQ(scope_0.getIUs().size(), 1);
-   // But in the second scope the filter is what matters.
-   const auto& scope_1 = pipe.getScope(1);
-   EXPECT_EQ(scope_1.getFilterIU(), filter_iu);
-   // Only the filter IU was registered.
-   EXPECT_EQ(scope_1.getIUs().size(), 1);
+   // Three readers, one compute, three filter.
+   EXPECT_EQ(ops.size(), 7);
+   EXPECT_EQ(ops[1]->getIUs()[0], &read_col_1);
+   EXPECT_EQ(ops[2]->getIUs()[0], &read_col_2);
+   // Filter rescopes the read columns - every read IU + Filter should have the correct consumers.
+   const auto& c_op0 = repiped->getConsumers(*ops[1]);
+   const auto& c_op1 = repiped->getConsumers(*ops[2]);
+   const auto& c_op2 = repiped->getConsumers(*ops[3]);
+   // Inputs are also needed by the filter.
+   EXPECT_EQ(c_op0.size(), 2);
+   EXPECT_EQ(c_op1.size(), 2);
+   EXPECT_EQ(c_op2.size(), 1);
+   // Scan IUs get consumed by FilterLogics. These are the second consumers after the compute expression.
+   EXPECT_EQ(c_op0[1], ops[5].get());
+   EXPECT_EQ(c_op1[1], ops[6].get());
+   EXPECT_TRUE(dynamic_cast<ColumnFilterLogic*>(ops[6].get()));
+   EXPECT_TRUE(dynamic_cast<ColumnFilterLogic*>(ops[5].get()));
+   // Filter IU gets consumed by FilterScope.
+   EXPECT_EQ(c_op2[0], ops[4].get());
+   EXPECT_TRUE(dynamic_cast<ColumnFilterScope*>(ops[4].get()));
 }
 
 TEST_P(FilterTParametrized, exec) {
    PipelineDAG dag;
    dag.buildNewPipeline();
-   filter->decay({filter_iu}, dag);
+   filter->decay(dag);
 
    auto& pipe = dag.getCurrentPipeline();
    auto& ops = pipe.getSubops();
    // Repipe to add fuse chunk sinks.
-   auto repiped = pipe.repipe(0, pipe.getSubops().size(), true);
+   auto repiped = pipe.repipe(0, pipe.getSubops().size(), std::unordered_set<const IU*>{filter->getOutput()[0], filter->getOutput()[1]});
 
    // Get ready for execution on the parametrized execution mode.
    PipelineExecutor::ExecutionMode mode = GetParam();
@@ -110,8 +107,8 @@ TEST_P(FilterTParametrized, exec) {
 
    // Prepare input chunk.
    auto& ctx = exec.getExecutionContext();
-   auto& c_in1 = ctx.getColumn(*ops[0], read_col_1);
-   auto& c_in2 = ctx.getColumn(*ops[0], read_col_2);
+   auto& c_in1 = ctx.getColumn(read_col_1);
+   auto& c_in2 = ctx.getColumn(read_col_2);
 
    c_in1.size = 10;
    c_in2.size = 10;
@@ -129,19 +126,12 @@ TEST_P(FilterTParametrized, exec) {
    // And run a single morsel.
    exec.runMorsel();
    // Get the output.
-   auto& col_filter = ctx.getColumn(*ops.back(), *filter_iu);
-   if (mode == PipelineExecutor::ExecutionMode::Fused) {
-      for (uint16_t k = 0; k < 5; ++k) {
-         // The raw filter column should have a positive entry on every row as we narrowed it down.
-         // TODO Fix type deduction here to bool
-         EXPECT_EQ(reinterpret_cast<uint16_t*>(col_filter.raw_data)[k], 1);
-      }
-   } else {
-      for (uint16_t k = 0; k < 10; ++k) {
-         // The raw filter column should have a positive entry on every second row as we now have the backing selection vector installed.
-         // TODO Fix type deduction here to bool
-         EXPECT_EQ(reinterpret_cast<uint16_t*>(col_filter.raw_data)[k], k % 2 != 0);
-      }
+   auto& col_filter_1 = ctx.getColumn(*filter->getOutput()[0]);
+   auto& col_filter_2 = ctx.getColumn(*filter->getOutput()[1]);
+
+   for (uint16_t k = 0; k < 5; ++k) {
+      EXPECT_EQ(reinterpret_cast<uint16_t*>(col_filter_1.raw_data)[k], 2*k + 1);
+      EXPECT_EQ(reinterpret_cast<uint16_t*>(col_filter_2.raw_data)[k], 2*k);
    }
 }
 

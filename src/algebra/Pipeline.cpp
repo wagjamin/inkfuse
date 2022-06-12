@@ -16,7 +16,7 @@ std::unique_ptr<Pipeline> Pipeline::repipeAll(size_t start, size_t end) const {
          if (!subop->outgoingStrongLinks()) {
             for (auto iu : subop->getIUs()) {
                if (!dynamic_cast<IR::Void*>(iu->type.get())) {
-                  // We do not add void IUs as these present pseudo IU to properly connect the graph.
+                  // We do not add void IUs as these present pseudo IUs to properly connect the graph.
                   out_provided.insert(iu);
                }
             }
@@ -67,19 +67,43 @@ std::unique_ptr<Pipeline> Pipeline::repipe(size_t start, size_t end, const std::
    // Find out which IUs we need to access that are not provided by one of the suboperators in [start, end[.
    std::unordered_set<const IU*> in_provided;
    std::unordered_set<const IU*> in_required;
+   // For repiping to work and be consistent, we order the inputs by order of appearance in the suboperator range.
+   // This is really important during interpreted execution, as it allows us to get consistent input operator ordering.
+   std::vector<const IU*> in_required_ordered;
 
+   // Potential strong links.
+   SuboperatorArc incoming_strong;
+   SuboperatorArc outgoing_strong;
+
+   // Analyze strong links on this sub-operator.
    if (first->incomingStrongLinks()) {
       // The suboperator has incoming strong links, meaning it cannot be separated from its input
       // suboperator. We have to attach the source of the strong link.
       // Note that at the moment, the length of a strong link chain can be at most one hop.
       const auto& input = graph.incoming_edges.at(first.get());
-      assert(input.size() == 1);
+      assert(input.size() >= 1);
       auto strong_op = std::find_if(suboperators.begin(), suboperators.end(), [&](const SuboperatorArc& elem) {
         return elem.get() == input[0];
       });
       assert(strong_op != suboperators.end());
-      new_pipe->attachSuboperator(*strong_op);
+      incoming_strong = *strong_op;
       in_provided.insert((*strong_op)->getIUs()[0]);
+      for (auto in_iu : incoming_strong->getSourceIUs()) {
+         in_required.insert(in_iu);
+         in_required_ordered.push_back(in_iu);
+      }
+   }
+
+   if (last->outgoingStrongLinks()) {
+      // The suboperator has outgoing strong links, meaning it cannot be separated from its consuming
+      // suboperator. We have move the end to contain all consumers.
+      // Note that at the moment, the length of this chain can be at most one hop.
+      const auto& output = graph.outgoing_edges.at(last.get());
+      auto strong_op = std::find_if(suboperators.begin(), suboperators.end(), [&](const SuboperatorArc& elem) {
+        return elem.get() == output[0];
+      });
+      assert(strong_op != suboperators.end());
+      outgoing_strong = *strong_op;
    }
 
    std::for_each(
@@ -91,18 +115,18 @@ std::unique_ptr<Pipeline> Pipeline::repipe(size_t start, size_t end, const std::
             assert(!in_required.count(iu));
          }
          for (auto iu : subop->getSourceIUs()) {
-            if (!in_provided.count(iu)) {
+            if (!in_provided.count(iu) && !in_required.count(iu)) {
                in_required.insert(iu);
+               in_required_ordered.push_back(iu);
             }
          }
       });
 
    if (!in_required.empty()) {
       // Attach the IU proving operators.
-      auto try_provider = tryGetProvider(**in_required.begin());
+      auto try_provider = tryGetProvider(**in_required_ordered.begin());
       if (try_provider && try_provider->isSource()) {
          // If the provider was actually a source, it has to be at index zero. Retain it.
-
          new_pipe->attachSuboperator(suboperators[0]);
       } else {
          // Otherwise, build a FuseChunkSource for those that are not driven by an existing provider.
@@ -110,11 +134,17 @@ std::unique_ptr<Pipeline> Pipeline::repipe(size_t start, size_t end, const std::
          auto& driver = new_pipe->attachSuboperator(FuseChunkSourceDriver::build());
          auto& driver_iu = **driver.getIUs().begin();
          // And the IU providers.
-         for (auto iu : in_required) {
+         for (auto iu : in_required_ordered) {
             new_pipe->attachSuboperator(FuseChunkSourceIUProvider::build(driver_iu, *iu));
          }
       }
    }
+
+   if (incoming_strong) {
+      // An incoming strong link has to be attached after the base IU providers.
+      new_pipe->attachSuboperator(incoming_strong);
+   }
+
    // Copy all intermediate operators.
    std::for_each(
       suboperators.begin() + start,
@@ -123,16 +153,9 @@ std::unique_ptr<Pipeline> Pipeline::repipe(size_t start, size_t end, const std::
          new_pipe->attachSuboperator(op);
       });
 
-   if (last->outgoingStrongLinks()) {
-      // The suboperator has outgoing strong links, meaning it cannot be separated from its consuming
-      // suboperator. We have move the end to contain all consumers.
-      // Note that at the moment, the length of this chain can be at most one hop.
-      const auto& output = graph.outgoing_edges.at(last.get());
-      auto strong_op = std::find_if(suboperators.begin(), suboperators.end(), [&](const SuboperatorArc& elem) {
-         return elem.get() == output[0];
-      });
-      assert(strong_op != suboperators.end());
-      new_pipe->attachSuboperator(*strong_op);
+   if (outgoing_strong) {
+      // An outgoing strong link has to be attached before result materialization.
+      new_pipe->attachSuboperator(outgoing_strong);
    }
 
    for (auto& out_iu : materialize) {

@@ -61,7 +61,7 @@ TEST_F(ExpressionTNonParametrized, decay) {
 
    PipelineDAG dag;
    dag.buildNewPipeline();
-   op->decay({}, dag);
+   op->decay(dag);
 
    // One pipeline.
    EXPECT_EQ(dag.getPipelines().size(), 1);
@@ -79,11 +79,11 @@ TEST_F(ExpressionTNonParametrized, decay) {
 TEST_P(ExpressionTParametrized, exec) {
    PipelineDAG dag;
    dag.buildNewPipeline();
-   op->decay({}, dag);
+   op->decay(dag);
 
    auto& pipe = dag.getCurrentPipeline();
    // Repipe to add fuse chunk sinks and sources.
-   auto repiped = pipe.repipe(0, pipe.getSubops().size(), true);
+   auto repiped = pipe.repipeAll(0, pipe.getSubops().size());
 
    // Repiping should have added 1 driver, 2 iu input and 3 iu output ops.
    auto& ops = repiped->getSubops();
@@ -95,8 +95,8 @@ TEST_P(ExpressionTParametrized, exec) {
 
    // Prepare input chunk.
    auto& ctx = exec.getExecutionContext();
-   auto& c_in1 = ctx.getColumn(*ops[0], in1);
-   auto& c_in2 = ctx.getColumn(*ops[1], in2);
+   auto& c_in1 = ctx.getColumn(in1);
+   auto& c_in2 = ctx.getColumn(in2);
 
    c_in1.size = 10;
    c_in2.size = 10;
@@ -112,9 +112,9 @@ TEST_P(ExpressionTParametrized, exec) {
    auto iu_c_3 = *pipe.getSubops()[0]->getIUs().begin();
    auto iu_c_4 = *pipe.getSubops()[1]->getIUs().begin();
    auto iu_c_5 = *pipe.getSubops()[2]->getIUs().begin();
-   auto& c_iu_c_3 = ctx.getColumn(*ops[0], *iu_c_3);
-   auto& c_iu_c_4 = ctx.getColumn(*ops[0], *iu_c_4);
-   auto& c_iu_c_5 = ctx.getColumn(*ops[0], *iu_c_5);
+   auto& c_iu_c_3 = ctx.getColumn(*iu_c_3);
+   auto& c_iu_c_4 = ctx.getColumn(*iu_c_4);
+   auto& c_iu_c_5 = ctx.getColumn(*iu_c_5);
    for (uint16_t k = 0; k < 10; ++k) {
       uint16_t c_3_expected = k + k + 1;
       uint16_t c_4_expected = k + 1;

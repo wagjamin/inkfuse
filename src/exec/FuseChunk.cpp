@@ -21,6 +21,9 @@ FuseChunk::FuseChunk(size_t capacity_) : capacity(capacity_) {
 FuseChunk::FuseChunk() : FuseChunk(DEFAULT_CHUNK_SIZE) {}
 
 void FuseChunk::attachColumn(const IU& iu) {
+   if (dynamic_cast<IR::Void*>(iu.type.get())) {
+      throw std::runtime_error("Cannot attach void column to FuseChunk.");
+   }
    if (!columns.count(&iu)) {
       auto column = std::make_unique<Column>(*iu.type, capacity);
       columns[&iu] = std::move(column);

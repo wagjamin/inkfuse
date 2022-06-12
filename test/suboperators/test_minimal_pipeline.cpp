@@ -77,7 +77,7 @@ TEST(test_minimal_pipeline, pipeline_3) {
    pipe.attachSuboperator(std::move(provider_2));
 
    // Sinks should get auto-generated.
-   auto repiped = pipe.repipe(0, 3);
+   auto repiped = pipe.repipeAll(0, 3);
 
    // Compile.
    CompilationContext codegen("test_minimal_pipeline_pipeline_3", *repiped);

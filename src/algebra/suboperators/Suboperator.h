@@ -66,6 +66,7 @@ struct Suboperator {
    virtual bool isSource() const { return false; }
    /// Are the incoming edges to nodes of this sub-operator strong?
    /// This means that the sub-operator will retain all incoming sub-operators during a repipe.
+   /// The incoming strong link is always defined on the first input IU.
    virtual bool incomingStrongLinks() const { return false; }
    /// Are the outgoing edges to nodes of this sub-operator strong?
    /// This means that the sub-operator does not have to be interpreted.
@@ -148,7 +149,7 @@ struct TemplatedSuboperator : public Suboperator {
 
    /// Set up the state given that the precondition that both params and state
    /// are non-empty is satisfied.
-   virtual void setUpStateImpl(const ExecutionContext& context){};
+   virtual void setUpStateImpl(const ExecutionContext& context) {};
 
    /// Global state of the respective operator.
    std::unique_ptr<GlobalState> state;

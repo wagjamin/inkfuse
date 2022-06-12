@@ -1,7 +1,6 @@
 #include "algebra/ExpressionOp.h"
 #include "algebra/TableScan.h"
 #include "algebra/suboperators/sinks/CountingSink.h"
-#include "algebra/suboperators/sinks/FuseChunkSink.h"
 #include "exec/ExecutionContext.h"
 #include "exec/PipelineExecutor.h"
 #include "gflags/gflags.h"
@@ -110,7 +109,8 @@ int main(int argc, char* argv[]) {
 
       auto& pipe = dag.getCurrentPipeline();
       auto expression_result_iu = op.getOutput().back();
-      auto& sink = pipe.attachSuboperator(FuseChunkSink::build(nullptr, *expression_result_iu));
+      // auto& sink = pipe.attachSuboperator(FuseChunkSink::build(nullptr, *expression_result_iu));
+      auto& sink = pipe.attachSuboperator(CountingSink::build(*expression_result_iu));
 
       auto runInMode = [&](PipelineExecutor::ExecutionMode mode, std::string readable) {
          // Get ready for compiled execution.
@@ -119,11 +119,11 @@ int main(int argc, char* argv[]) {
          auto start = std::chrono::steady_clock::now();
          exec.runPipeline();
          auto stop = std::chrono::steady_clock::now();
-         auto dur = std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count();
+         auto dur = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count();
 
          auto state = reinterpret_cast<CountingState*>(sink.accessState());
          if (state->count != rows) {
-            // throw std::runtime_error("Did not calculate expression on all rows.");
+            throw std::runtime_error("Did not calculate expression on all rows.");
          }
 
          std::cout << ind << "," << rows << "," << readable << "," << dur << std::endl;

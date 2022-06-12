@@ -6,38 +6,42 @@
 
 namespace inkfuse {
 
+IR::TypeArc ExpressionOp::derive(ComputeNode::Type code, const IR::TypeArc& left, const IR::TypeArc& right)
+{
+   if (code == ComputeNode::Type::Eq
+       || code == ComputeNode::Type::Less
+       || code == ComputeNode::Type::LessEqual
+       || code == ComputeNode::Type::Greater
+       || code == ComputeNode::Type::GreaterEqual) {
+      return IR::Bool::build();
+   }
+   // TODO Unify type derivation rules with the raw codegen::Expression.
+   return left;
+}
+
 ExpressionOp::ExpressionOp(std::vector<std::unique_ptr<RelAlgOp>> children_, std::string op_name_, std::vector<Node*> out_, std::vector<NodePtr> nodes_)
    : RelAlgOp(std::move(children_), std::move(op_name_)), out(std::move(out_)), nodes(std::move(nodes_)) {
-   for (const auto& node: nodes) {
-      if (auto compute = dynamic_cast<ComputeNode*>(node.get())) {
-         output_ius.push_back(&compute->out);
-      }
+   for (auto node: out) {
+      auto casted = dynamic_cast<ComputeNode*>(node);
+      assert(casted);
+      output_ius.push_back(&casted->out);
    }
 }
 
 ExpressionOp::ConstantNode::ConstantNode(IR::ValuePtr val)
-   : value(std::move(val)), iu(val->getType()) {
+   : Node(val->getType()), value(std::move(val)), iu(val->getType()) {
 }
 
 ExpressionOp::IURefNode::IURefNode(const IU* child_)
-   : child(child_) {
+   : Node(child_->type), child(child_) {
 }
 
 ExpressionOp::ComputeNode::ComputeNode(Type code_, std::vector<Node*> children_)
-   : code(code_), out(IR::Void::build()), children(std::move(children_)) {
-   // Derive result type.
-   if (auto c_node = dynamic_cast<ConstantNode*>(children[0])) {
-      out.type = c_node->value->getType();
-   } else if (auto r_node = dynamic_cast<IURefNode*>(children[0])) {
-      out.type = r_node->child->type;
-   } else {
-      auto compute_node = dynamic_cast<ComputeNode*>(children[0]);
-      out.type = compute_node->out.type;
-   }
+   : Node(derive(code_, children_[0]->output_type, children_[1]->output_type)), code(code_), out(output_type), children(std::move(children_)) {
 }
 
 ExpressionOp::ComputeNode::ComputeNode(IR::TypeArc casted, Node* child)
-   : code(Type::Cast), out(std::move(casted)), children({child})
+   : Node(casted), code(Type::Cast), out(std::move(casted)), children({child})
 {
 }
 

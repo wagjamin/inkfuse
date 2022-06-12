@@ -1,6 +1,8 @@
 #include "gtest/gtest.h"
 #include "algebra/Pipeline.h"
 #include "algebra/suboperators/Suboperator.h"
+#include "algebra/suboperators/sources/FuseChunkSource.h"
+#include "algebra/suboperators/sinks/FuseChunkSink.h"
 #include <deque>
 
 namespace inkfuse {
@@ -114,6 +116,39 @@ TEST_F(RepipeF, deep_repipe_open) {
    auto repiped_cust = pipe.repipe(0, pipe.getSubops().size(), out_ius_1);
    // 100 custom requests.
    ASSERT_EQ(repiped_cust->getSubops().size(), 201 + 100);
+}
+
+/// Test is repiping works on the start of a new "scope".
+TEST_F(RepipeF, scope_start) {
+   setUpSourceIUs(2);
+   // Filter style - we filter on the first IU.
+   auto scope = build<ScopeDyn>({&source_ius[0]}, 1);
+   auto& scope_ius = scope->getIUs();
+   // Consume this. First IU is the strong link.
+   auto compute = build<ScopeConsumerDyn>({scope_ius[0], &source_ius[1]}, 1);
+
+   pipe.attachSuboperator(scope);
+   pipe.attachSuboperator(compute);
+
+   auto verify = [&scope, &compute](Pipeline& pipe) {
+     const auto& ops = pipe.getSubops();
+     // Add 3 providers for the two input IUs. In the end one consumer for the compute IU.
+     EXPECT_EQ(ops.size(), 6);
+     // First three are providers.
+     EXPECT_TRUE(dynamic_cast<FuseChunkSourceDriver*>(ops[0].get()));
+     EXPECT_TRUE(dynamic_cast<FuseChunkSourceIUProvider*>(ops[1].get()));
+     EXPECT_TRUE(dynamic_cast<FuseChunkSourceIUProvider*>(ops[2].get()));
+     EXPECT_EQ(ops[3].get(), scope.get());
+     EXPECT_EQ(ops[4].get(), compute.get());
+     EXPECT_TRUE(dynamic_cast<FuseChunkSink*>(ops[5].get()));
+     EXPECT_EQ(ops[5]->getSourceIUs()[0], compute->getIUs()[0]);
+   };
+
+   // As we have a strong link in the beginning, repiping should be invariant under index 0/1.
+   auto repiped_all = pipe.repipeAll(0, pipe.getSubops().size());
+   auto repiped_second = pipe.repipeAll(1, pipe.getSubops().size());
+   verify(*repiped_all);
+   verify(*repiped_second);
 }
 }
 

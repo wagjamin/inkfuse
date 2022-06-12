@@ -15,6 +15,7 @@ Filter::Filter(std::vector<std::unique_ptr<RelAlgOp>> children_, std::string nam
       output_ius.reserve(to_redefine.size());
       // Define the output IUs which we will use.
       for (const IU* iu : to_redefine) {
+         assert(iu);
          redefined.emplace_back(iu->type);
       }
       // Set up output structure.
@@ -38,7 +39,7 @@ void Filter::decay(PipelineDAG& dag) const
       const IU& old_iu = *to_redefine[k];
       const IU& new_iu = redefined[k];
       auto logic = ColumnFilterLogic::build(this, pseudo_iu, old_iu, new_iu);
-      pipe.attachSuboperator(std::move(scope));
+      pipe.attachSuboperator(std::move(logic));
    }
 }
 
