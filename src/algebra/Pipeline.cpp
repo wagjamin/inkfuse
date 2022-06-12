@@ -6,47 +6,125 @@
 
 namespace inkfuse {
 
-Pipeline::Pipeline() {
-   // Create a fake initial scope.
-   scopes.push_back(std::make_unique<IUScope>(nullptr, 0));
-   rescope_offsets.push_back(0);
+std::unique_ptr<Pipeline> Pipeline::repipeAll(size_t start, size_t end) const {
+   // Find everything we provide that's not from strong output links.
+   std::unordered_set<const IU*> out_provided;
+   std::for_each(
+      suboperators.begin() + start,
+      suboperators.begin() + end,
+      [&](const SuboperatorArc& subop) {
+         if (!subop->outgoingStrongLinks()) {
+            for (auto iu : subop->getIUs()) {
+               if (!dynamic_cast<IR::Void*>(iu->type.get())) {
+                  // We do not add void IUs as these present pseudo IUs to properly connect the graph.
+                  out_provided.insert(iu);
+               }
+            }
+         }
+      });
+
+   return repipe(start, end, out_provided);
 }
 
-std::unique_ptr<Pipeline> Pipeline::repipe(size_t start, size_t end, bool materialize_all) const {
-   // TODO Currently this does not support proper scope offsetting if start is not in the first scope.
+std::unique_ptr<Pipeline> Pipeline::repipeRequired(size_t start, size_t end) const {
+   // Find output IUs we provide.
+   std::unordered_set<const IU*> out_provided;
+   std::for_each(
+      suboperators.begin() + start,
+      suboperators.begin() + end,
+      [&](const SuboperatorArc& subop) {
+         for (auto iu : subop->getIUs()) {
+            out_provided.insert(iu);
+         }
+      });
+
+   // And figure out which of those will be needed by other sub-operators down the line.
+   std::unordered_set<const IU*> out_required;
+   std::for_each(
+      suboperators.begin() + end,
+      suboperators.end(),
+      [&](const SuboperatorArc& subop) {
+         for (auto iu : subop->getSourceIUs()) {
+            if (!out_provided.count(iu)) {
+               out_required.insert(iu);
+            }
+         }
+      });
+
+   return repipe(start, end, out_required);
+}
+
+std::unique_ptr<Pipeline> Pipeline::repipe(size_t start, size_t end, const std::unordered_set<const IU*>& materialize) const {
    auto new_pipe = std::make_unique<Pipeline>();
    if (start == end) {
       // We are creating an empty pipe, return.
       return new_pipe;
    }
 
-   // Resolve in_scope of the first operator.
-   auto in_scope = resolveOperatorScope(*suboperators[start]);
-   auto out_scope = resolveOperatorScope(*suboperators[end - 1], false);
-   size_t in_scope_end = in_scope + 1 == scopes.size() ? suboperators.size() : rescope_offsets[in_scope + 1];
-   size_t out_scope_start = rescope_offsets[out_scope];
+   const auto& first = suboperators[start];
+   const auto& last = suboperators[end - 1];
 
-   // Find out which IUs we will need in the first in_scope that are not in_provided.
-   std::set<const IU*> in_provided;
-   std::set<const IU*> in_required;
+   // Find out which IUs we need to access that are not provided by one of the suboperators in [start, end[.
+   std::unordered_set<const IU*> in_provided;
+   std::unordered_set<const IU*> in_required;
+   // For repiping to work and be consistent, we order the inputs by order of appearance in the suboperator range.
+   // This is really important during interpreted execution, as it allows us to get consistent input operator ordering.
+   std::vector<const IU*> in_required_ordered;
+
+   // Potential strong links.
+   SuboperatorArc incoming_strong;
+   SuboperatorArc outgoing_strong;
+
+   // Analyze strong links on this sub-operator.
+   if (first->incomingStrongLinks()) {
+      // The suboperator has incoming strong links, meaning it cannot be separated from its input
+      // suboperator. We have to attach the source of the strong link.
+      // Note that at the moment, the length of a strong link chain can be at most one hop.
+      const auto& input = graph.incoming_edges.at(first.get());
+      assert(input.size() >= 1);
+      auto strong_op = std::find_if(suboperators.begin(), suboperators.end(), [&](const SuboperatorArc& elem) {
+        return elem.get() == input[0];
+      });
+      assert(strong_op != suboperators.end());
+      incoming_strong = *strong_op;
+      in_provided.insert((*strong_op)->getIUs()[0]);
+      for (auto in_iu : incoming_strong->getSourceIUs()) {
+         in_required.insert(in_iu);
+         in_required_ordered.push_back(in_iu);
+      }
+   }
+
+   if (last->outgoingStrongLinks()) {
+      // The suboperator has outgoing strong links, meaning it cannot be separated from its consuming
+      // suboperator. We have move the end to contain all consumers.
+      // Note that at the moment, the length of this chain can be at most one hop.
+      const auto& output = graph.outgoing_edges.at(last.get());
+      auto strong_op = std::find_if(suboperators.begin(), suboperators.end(), [&](const SuboperatorArc& elem) {
+        return elem.get() == output[0];
+      });
+      assert(strong_op != suboperators.end());
+      outgoing_strong = *strong_op;
+   }
+
    std::for_each(
       suboperators.begin() + start,
-      suboperators.begin() + std::min(in_scope_end + 1, end),
+      suboperators.begin() + end,
       [&](const SuboperatorArc& subop) {
-         // We need to first check against required, as we might provide what we request on a rescoping operator.
-         for (auto iu : subop->getSourceIUs()) {
-            if (!in_provided.count(iu)) {
-               in_required.insert(iu);
-            }
-         }
          for (auto iu : subop->getIUs()) {
             in_provided.insert(iu);
+            assert(!in_required.count(iu));
+         }
+         for (auto iu : subop->getSourceIUs()) {
+            if (!in_provided.count(iu) && !in_required.count(iu)) {
+               in_required.insert(iu);
+               in_required_ordered.push_back(iu);
+            }
          }
       });
 
    if (!in_required.empty()) {
       // Attach the IU proving operators.
-      auto try_provider = tryGetProvider(in_scope, **in_required.begin());
+      auto try_provider = tryGetProvider(**in_required_ordered.begin());
       if (try_provider && try_provider->isSource()) {
          // If the provider was actually a source, it has to be at index zero. Retain it.
          new_pipe->attachSuboperator(suboperators[0]);
@@ -56,10 +134,15 @@ std::unique_ptr<Pipeline> Pipeline::repipe(size_t start, size_t end, bool materi
          auto& driver = new_pipe->attachSuboperator(FuseChunkSourceDriver::build());
          auto& driver_iu = **driver.getIUs().begin();
          // And the IU providers.
-         for (auto iu : in_required) {
+         for (auto iu : in_required_ordered) {
             new_pipe->attachSuboperator(FuseChunkSourceIUProvider::build(driver_iu, *iu));
          }
       }
+   }
+
+   if (incoming_strong) {
+      // An incoming strong link has to be attached after the base IU providers.
+      new_pipe->attachSuboperator(incoming_strong);
    }
 
    // Copy all intermediate operators.
@@ -70,58 +153,18 @@ std::unique_ptr<Pipeline> Pipeline::repipe(size_t start, size_t end, bool materi
          new_pipe->attachSuboperator(op);
       });
 
-   // Find output IUs which have to be materialized.
-   std::set<const IU*> out_required;
-   if (materialize_all) {
-      // Find all produced IUs which are not loop drivers.
-      std::for_each(
-         suboperators.begin() + rescope_offsets[out_scope],
-         suboperators.begin() + end,
-         [&](const SuboperatorArc& subop) {
-            for (auto iu : subop->getIUs()) {
-               if (!subop->isSource()) {
-                  out_required.insert(iu);
-               }
-            }
-         });
-   } else {
-      std::set<const IU*> out_provided;
-      std::for_each(
-         suboperators.begin() + std::max(start, out_scope_start),
-         suboperators.begin() + end,
-         [&](const SuboperatorArc& subop) {
-            for (auto iu : subop->getIUs()) {
-               out_provided.insert(iu);
-            }
-         });
-      // Find out which IUs we will need after this interval. Note that IUs can also be consumed
-      // in followup scopes.
-      // We don't have to worry about IU scoping here, as if a followup scope uses the iu, it has
-      // to be updated by the producing operator in the previous scope.
-      std::for_each(
-         suboperators.begin() + end,
-         suboperators.end(),
-         [&](const SuboperatorArc& subop) {
-            for (auto iu : subop->getSourceIUs()) {
-               if (!subop->isSource() && out_provided.count(iu)) {
-                  out_required.insert(iu);
-               }
-            }
-         });
+   if (outgoing_strong) {
+      // An outgoing strong link has to be attached before result materialization.
+      new_pipe->attachSuboperator(outgoing_strong);
    }
 
-   for (auto& out_iu : out_required) {
+   for (auto& out_iu : materialize) {
       // And build fuse chunk sinks for those.
       new_pipe->attachSuboperator(
          FuseChunkSink::build(nullptr, *out_iu));
    }
 
    return new_pipe;
-}
-
-const IUScope& Pipeline::getScope(size_t id) const {
-   assert(id < scopes.size());
-   return *scopes[id];
 }
 
 const std::vector<Suboperator*>& Pipeline::getConsumers(Suboperator& subop) const {
@@ -132,72 +175,31 @@ const std::vector<Suboperator*>& Pipeline::getProducers(Suboperator& subop) cons
    return graph.incoming_edges.at(&subop);
 }
 
-Suboperator& Pipeline::getProvider(size_t scope_idx, const IU& iu) const {
-   return scopes.at(scope_idx)->getProducer(iu);
+Suboperator& Pipeline::getProvider(const IU& iu) const {
+   return *iu_providers.at(&iu);
 }
 
-Suboperator* Pipeline::tryGetProvider(size_t scope_idx, const IU& iu) const {
-   if (scopes.at(scope_idx)->exists(iu)) {
-      return &scopes.at(scope_idx)->getProducer(iu);
+Suboperator* Pipeline::tryGetProvider(const IU& iu) const {
+   if (iu_providers.count(&iu)) {
+      return iu_providers.at(&iu);
    }
    return nullptr;
 }
 
-size_t Pipeline::resolveOperatorScope(const Suboperator& op, bool incoming) const {
-   // Find the index of the suboperator in the topological sort.
-   auto it = std::find_if(suboperators.cbegin(), suboperators.cend(), [&op](const SuboperatorArc& target) {
-      return target.get() == &op;
-   });
-   auto idx = std::distance(suboperators.cbegin(), it);
-
-   // Find the index of the scope of the input ius of the target operator.
-   if (idx == 0) {
-      // Source is a special operator which also resolves to scope 0.
-      // This is fine since the source will never have input ius it needs to resolve.
-      return 0;
-   }
-   decltype(rescope_offsets)::const_iterator it_scope;
-   if (incoming) {
-      it_scope = std::lower_bound(rescope_offsets.begin(), rescope_offsets.end(), idx);
-   } else {
-      it_scope = std::upper_bound(rescope_offsets.begin(), rescope_offsets.end(), idx);
-   }
-   // Go back one index as we have to reference the previous scope.
-   return std::distance(rescope_offsets.begin(), it_scope) - 1;
-}
-
 Suboperator& Pipeline::attachSuboperator(SuboperatorArc subop) {
-   if (!subop->isSource()) {
-      // Update the pipeline graph.
-      auto scope = rescope_offsets.size() - 1;
-      for (const auto& depends : subop->getSourceIUs()) {
-         // Resolve input.
-         if (auto provider = tryGetProvider(scope, *depends)) {
-            // Add edges.
-            graph.outgoing_edges[provider].push_back(subop.get());
-            graph.incoming_edges[subop.get()].push_back(provider);
-         }
+   // Update the pipeline graph.
+   for (const auto& depends : subop->getSourceIUs()) {
+      // Resolve input.
+      if (auto provider = tryGetProvider(*depends)) {
+         // Add edges.
+         graph.outgoing_edges[provider].push_back(subop.get());
+         graph.incoming_edges[subop.get()].push_back(provider);
       }
    }
-   // Get the scoping behaviour of the suboperator.
-   const auto [behaviour, new_sel] = subop->scopingBehaviour();
-   if (behaviour == Suboperator::ScopingBehaviour::RescopeRetain) {
-      // Install a new scope which rescopes the source IUs on the suboperator.
-      auto new_scope = IUScope::retain(new_sel, *scopes.back(), *subop, subop->getSourceIUs());
-      scopes.push_back(std::make_shared<IUScope>(std::move(new_scope)));
-      rescope_offsets.push_back(suboperators.size());
-   } else {
-      if (behaviour == Suboperator::ScopingBehaviour::RescopeRewire) {
-         // Install a new scope which does not contain any IUs for now.
-         auto new_scope = IUScope::rewire(new_sel, *scopes.back());
-         scopes.push_back(std::make_shared<IUScope>(std::move(new_scope)));
-         rescope_offsets.push_back(suboperators.size());
-      }
-      // Register newly produced IUs within the current scope.
-      for (auto iu : subop->getIUs()) {
-         // Add the produced IU to the (potentially) new scope.
-         scopes.back()->registerIU(*iu, *subop);
-      }
+   // Register newly produced IUs within the current scope.
+   for (auto iu : subop->getIUs()) {
+      // Add the produced IU to the (potentially) new scope.
+      iu_providers[iu] = subop.get();
    }
    suboperators.push_back(std::move(subop));
    return *suboperators.back();

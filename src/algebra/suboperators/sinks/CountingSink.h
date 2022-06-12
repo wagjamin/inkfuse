@@ -21,6 +21,8 @@ struct CountingSink : public TemplatedSuboperator<CountingState, EmptyState> {
 
    void consume(const IU& iu, CompilationContext& context) override;
 
+   void setUpStateImpl(const ExecutionContext& context) override;
+
    std::string id() const override;
 
    /// Register runtime structs and functions.

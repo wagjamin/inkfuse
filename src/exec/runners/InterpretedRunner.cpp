@@ -19,7 +19,7 @@ InterpretedRunner::InterpretedRunner(const Pipeline& backing_pipeline, size_t id
 // static
 PipelinePtr InterpretedRunner::getRepiped(const Pipeline& backing_pipeline, size_t idx)
 {
-   auto res = backing_pipeline.repipe(idx, idx+1);
+   auto res = backing_pipeline.repipeAll(idx, idx+1);
    return res;
 }
 

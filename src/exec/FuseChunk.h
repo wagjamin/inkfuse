@@ -65,7 +65,7 @@ struct FuseChunk {
    uint64_t capacity;
 };
 
-using FuseChunkPtr = std::unique_ptr<FuseChunk>;
+using FuseChunkArc = std::shared_ptr<FuseChunk>;
 
 }
 

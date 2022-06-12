@@ -23,25 +23,20 @@ struct RelAlgOp {
    virtual ~RelAlgOp() = default;
 
    /// Transform the relational algebra operator into a DAG of suboperators.
-   virtual void decay(std::unordered_set<const IU*> required, PipelineDAG& dag) const = 0;
+   virtual void decay(PipelineDAG& dag) const = 0;
 
-   /// Get the IUs produced by this operator.
-   std::unordered_set<const IU*> getIUs() const;
-   /// Get the IUs produced by the tree rooted in this operator.
-   std::unordered_set<const IU*> getIUsRecursive() const;
+   /// Get the operator output.
+   const std::vector<const IU*>& getOutput() const;
 
    /// Get the children of this operator.
    const std::vector<std::unique_ptr<RelAlgOp>>& getChildren() const;
    const std::string& getName() const;
 
    protected:
-   /// Add the IUs produced by this operator to the given set.
-   virtual void addIUs(std::unordered_set<const IU*>& set) const = 0;
-   /// Add the IUs produced by this oeprator and all children to the given set.
-   void addIUsRecursive(std::unordered_set<const IU*>& set) const;
-
    /// Child operators.
    std::vector<std::unique_ptr<RelAlgOp>> children;
+   /// Output IUs.
+   std::vector<const IU*> output_ius;
    /// The name of this operator.
    std::string op_name;
 };

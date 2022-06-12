@@ -17,11 +17,12 @@ TableScan::TableScan(StoredRelation& rel_, std::vector<std::string> cols_, std::
          iu_name = col;
       }
       IU iu(rel.getColumn(col).getType(), std::move(iu_name));
-      cols.push_back(std::make_pair(std::move(col), std::move(iu)));
+      auto& elem = cols.emplace_back(std::make_pair(std::move(col), std::move(iu)));
+      output_ius.push_back(&elem.second);
    }
 }
 
-void TableScan::decay(std::unordered_set<const IU*> required, PipelineDAG& dag) const
+void TableScan::decay(PipelineDAG& dag) const
 {
    // Create a new pipeline.
    auto& pipe = dag.buildNewPipeline();
@@ -40,13 +41,6 @@ void TableScan::decay(std::unordered_set<const IU*> required, PipelineDAG& dag) 
             .raw_data = data_col.getRawData(),
          };
       provider.attachRuntimeParams(iu_params);
-   }
-}
-
-void TableScan::addIUs(std::unordered_set<const IU*>& set) const
-{
-   for (auto& col: cols) {
-      set.insert(&col.second);
    }
 }
 

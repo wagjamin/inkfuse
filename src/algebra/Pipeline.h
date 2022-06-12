@@ -1,18 +1,19 @@
 #ifndef INKFUSE_PIPELINE_H
 #define INKFUSE_PIPELINE_H
 
-#include "algebra/IUScope.h"
 #include "algebra/suboperators/Suboperator.h"
 #include "exec/FuseChunk.h"
 #include <map>
 #include <memory>
-#include <set>
+#include <unordered_set>
 #include <vector>
 
 namespace inkfuse {
 
 /// Pipelines are DAG structured through IU dependencies. The PipelineGraph explicitly
 /// models the edges induced by IU dependencies between sub-operators.
+/// Strong edges are modeled directly through the sub-operator properties on "incoming edges".
+/// The strong link is always at index 0 of the sub-operator vector.
 struct PipelineGraph {
    /// Incoming edges into a given sub-operator.
    std::unordered_map<const Suboperator*, std::vector<Suboperator*>> incoming_edges;
@@ -26,29 +27,25 @@ struct PipelineGraph {
 /// Internally, the pipeline is a DAG of suboperators.
 struct Pipeline {
    public:
-   /// Constructor which creates a root scope.
-   Pipeline();
 
    /// Rebuild the pipeline for a subset of the sub-operators in the given range.
-   /// Inserts face sources and fake sinks.
-   std::unique_ptr<Pipeline> repipe(size_t start, size_t end, bool materialize_all = false) const;
-
-   /// Get the current scope.
-   const IUScope& getScope(size_t id) const;
+   /// Inserts fake sources and fake sinks. Materializes all IUs that are produced by nodes that don't have a strong output link.
+   std::unique_ptr<Pipeline> repipeAll(size_t start, size_t end) const;
+   /// Rebuild the pipeline for a subset of the sub-operators in the given range.
+   /// Inserts fake sources and fake sinks. Materializes all IUs that are used by followup operators.
+   std::unique_ptr<Pipeline> repipeRequired(size_t start, size_t end) const;
+   /// Rebuild the pipeline for a subset of the sub-operators in the given range.
+   /// Inserts fake sources and fake sinks. Materializes the IUs in 'materialize'.
+   std::unique_ptr<Pipeline> repipe(size_t start, size_t end, const std::unordered_set<const IU*>& materialize) const;
 
    /// Get the downstream consumers of IUs for a given sub-operator.
    const std::vector<Suboperator*>& getConsumers(Suboperator& subop) const;
    /// Get the upstream producers of IUs for a .
    const std::vector<Suboperator*>& getProducers(Suboperator& subop) const;
 
-   /// Get the IU provider in a certain scope.
-   Suboperator& getProvider(size_t scope_idx, const IU& iu) const;
-   Suboperator* tryGetProvider(size_t scope_idx, const IU& iu) const;
-
-   /// Resolve the scope of a given operator.
-   /// Incoming indicates whether the scope should be resolved for incoming
-   /// our outgoing edges.
-   size_t resolveOperatorScope(const Suboperator& op, bool incoming = true) const;
+   /// Get the suboperator producing a given IU.
+   Suboperator& getProvider(const IU& iu) const;
+   Suboperator* tryGetProvider(const IU& iu) const;
 
    /// Add a new sub-operator to the pipeline.
    Suboperator& attachSuboperator(SuboperatorArc subop);
@@ -67,12 +64,8 @@ struct Pipeline {
 
    /// Explicit graph structure induced by the sub-operators.
    PipelineGraph graph;
-
-   /// The offsets of operators which re-scope the pipeline.
-   std::vector<size_t> rescope_offsets;
-
-   /// The scopes of this pipeline.
-   std::vector<IUScopeArc> scopes;
+   /// The IU providers.
+   std::unordered_map<const IU*, Suboperator*> iu_providers;
 };
 
 using PipelinePtr = std::unique_ptr<Pipeline>;

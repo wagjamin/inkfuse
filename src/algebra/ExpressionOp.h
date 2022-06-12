@@ -12,6 +12,9 @@ namespace inkfuse {
 struct ExpressionOp : public RelAlgOp {
    struct Node {
       virtual ~Node() = default;
+      Node(IR::TypeArc output_type_): output_type(std::move(output_type_)) {};
+
+      const IR::TypeArc output_type;
    };
 
    using NodePtr = std::unique_ptr<Node>;
@@ -56,6 +59,8 @@ struct ExpressionOp : public RelAlgOp {
       IU out;
       // Children of this expression. Pointers are useful for DAG-shaped expression trees.
       std::vector<Node*> children;
+
+      private:
    };
 
    ExpressionOp(
@@ -66,10 +71,12 @@ struct ExpressionOp : public RelAlgOp {
       std::vector<NodePtr>
          nodes_);
 
-   void decay(std::unordered_set<const IU*> required, PipelineDAG& dag) const override;
+   void decay(PipelineDAG& dag) const override;
+
+   /// Derive the output type of an expression.
+   static IR::TypeArc derive(ComputeNode::Type code, const IR::TypeArc& left, const IR::TypeArc& right);
 
    protected:
-   void addIUs(std::unordered_set<const IU*>& set) const override;
 
    /// Helper for decaying the expression DAG without duplicate subops.
    void decayNode(

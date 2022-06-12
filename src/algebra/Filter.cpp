@@ -1,32 +1,46 @@
 #include "algebra/Filter.h"
 #include "algebra/Pipeline.h"
-#include "algebra/suboperators/FilterSubop.h"
+#include "algebra/suboperators/ColumnFilter.h"
 
 namespace inkfuse {
 
-Filter::Filter(std::vector<std::unique_ptr<RelAlgOp>> children_, std::string name, const IU& filter_iu_)
-   : RelAlgOp(std::move(children_), std::move(name)), filter_iu(filter_iu_) {
+std::unique_ptr<Filter> Filter::build(std::vector<std::unique_ptr<RelAlgOp>> children_, std::string name, std::vector<const IU*> redefined_, const IU& filter_iu_) {
+   return std::unique_ptr<Filter>(new Filter(std::move(children_), std::move(name), std::move(redefined_), filter_iu_));
 }
 
-void Filter::decay(std::unordered_set<const IU*> required, PipelineDAG& dag) const {
-   // Our children need to produce everything required upstream, plus the filter IU.
-   required.insert(&filter_iu);
+Filter::Filter(std::vector<std::unique_ptr<RelAlgOp>> children_, std::string name, std::vector<const IU*> to_redefine_, const IU& filter_iu_)
+   : RelAlgOp(std::move(children_), std::move(name)), filter_iu(filter_iu_), pseudo_iu(IR::Void::build()), to_redefine(std::move(to_redefine_)) {
+   {
+      redefined.reserve(to_redefine.size());
+      output_ius.reserve(to_redefine.size());
+      // Define the output IUs which we will use.
+      for (const IU* iu : to_redefine) {
+         assert(iu);
+         redefined.emplace_back(iu->type);
+      }
+      // Set up output structure.
+      for (const IU& iu : redefined) {
+         output_ius.push_back(&iu);
+      }
+   }
+}
+
+void Filter::decay(PipelineDAG& dag) const
+{
    // First decay the children.
    assert(children.size() == 1);
-   children[0]->decay(required, dag);
-   // Attach the filter sub-operator. Note that it rescopes the pipeline.
+   children[0]->decay(dag);
    auto& pipe = dag.getCurrentPipeline();
-   std::vector<const IU*> provided_ius;
-   provided_ius.reserve(required.size());
-   for (const IU* iu: required) {
-      provided_ius.push_back(iu);
+   // Attach the control flow sub-operator.
+   auto scope = ColumnFilterScope::build(this, filter_iu, pseudo_iu);
+   pipe.attachSuboperator(std::move(scope));
+   // Attach the logic operators performing the copies.
+   for (size_t k = 0; k < redefined.size(); ++k) {
+      const IU& old_iu = *to_redefine[k];
+      const IU& new_iu = redefined[k];
+      auto logic = ColumnFilterLogic::build(this, pseudo_iu, old_iu, new_iu);
+      pipe.attachSuboperator(std::move(logic));
    }
-   auto subop = std::make_shared<FilterSubop>(this, std::move(provided_ius), filter_iu);
-   pipe.attachSuboperator(std::move(subop));
-}
-
-void Filter::addIUs(std::unordered_set<const IU*>& set) const {
-   // NOOP as the filter does not create new IUs.
 }
 
 }

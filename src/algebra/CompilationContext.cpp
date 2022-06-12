@@ -46,10 +46,6 @@ void CompilationContext::notifyOpClosed(Suboperator& op) {
    }
 }
 
-size_t CompilationContext::resolveScope(const Suboperator& op) {
-   return pipeline.resolveOperatorScope(op);
-}
-
 void CompilationContext::notifyIUsReady(Suboperator& op) {
    // Fetch the sub-operator which requested the given IU.
    computed.emplace(&op);
@@ -89,30 +85,24 @@ void CompilationContext::requestIU(Suboperator& op, const IU& iu) {
    }
 }
 
-void CompilationContext::declareIU(const Suboperator& op, const IU& iu, const IR::Stmt& stmt) {
-   auto scope_id = resolveScope(op);
-   scoped_declarations[{&iu, scope_id}] = &stmt;
+void CompilationContext::declareIU(const IU& iu, const IR::Stmt& stmt) {
+   iu_declarations[&iu] = &stmt;
 }
 
-std::string CompilationContext::buildIUIdentifier(const Suboperator& op, const IU& iu)
+std::string CompilationContext::buildIUIdentifier(const IU& iu)
 {
-   const auto scope_id = resolveScope(op);
-   auto& scope = pipeline.scopes[scope_id];
-   auto iu_scope = std::to_string(scope->getScopeId(iu));
    if (!iu.name.empty()) {
-      return iu.name + "_" + iu_scope;
+      return "iu_" + iu.name;
    } else {
       std::stringstream iu_stream;
-      iu_stream << "iu_" << &iu << "_" + iu_scope;
+      iu_stream << "iu_" << &iu;
       return iu_stream.str();
    }
 }
 
-const IR::Stmt & CompilationContext::getIUDeclaration(const Suboperator& op, const IU& iu)
+const IR::Stmt & CompilationContext::getIUDeclaration(const IU& iu)
 {
-   const auto scope_id = resolveScope(op);
-   const auto iu_source_scope = pipeline.scopes[scope_id]->getScopeId(iu);
-   return *scoped_declarations.at({&iu, iu_source_scope});
+   return *iu_declarations.at(&iu);
 }
 
 IR::ExprPtr CompilationContext::accessGlobalState(const Suboperator& op) {
