@@ -3,6 +3,7 @@
 #include "algebra/suboperators/LoopDriver.h"
 #include "algebra/suboperators/sinks/FuseChunkSink.h"
 #include "algebra/suboperators/sinks/CountingSink.h"
+#include "runtime/HashRuntime.h"
 
 namespace inkfuse {
 
@@ -15,6 +16,7 @@ GlobalRuntime::GlobalRuntime() : program(std::make_unique<IR::Program>("global_r
    IndexedIUProviderRuntime::registerRuntime();
    FuseChunkSink::registerRuntime();
    CountingSink::registerRuntime();
+   HashRuntime::registerRuntime();
 }
 
 RuntimeStructBuilder::~RuntimeStructBuilder() {

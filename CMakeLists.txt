@@ -12,7 +12,8 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g -O0 -fsanitize=address")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -rdynamic")
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -rdynamic -g -O0 -fsanitize=address")
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO  "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
 
 # ---------------------------------------------------------------------------
@@ -25,6 +26,7 @@ set(THREADS_PREFER_PTHREAD_FLAG ON)
 
 include("${CMAKE_SOURCE_DIR}/vendor/googletest.cmake")
 include("${CMAKE_SOURCE_DIR}/vendor/gflags.cmake")
+include("${CMAKE_SOURCE_DIR}/vendor/xxhash.cmake")
 
 option(WITH_COVERAGE "Build inkfuse with coverage information attached" OFF)
 if (WITH_COVERAGE)
@@ -44,6 +46,7 @@ endif()
 include_directories(
         ${CMAKE_SOURCE_DIR}/thirdparty
         ${CMAKE_SOURCE_DIR}/src
+        ${XXHASH_INCLUDE_DIR}
         ${GTEST_INCLUDE_DIR}
         ${GMOCK_INCLUDE_DIR}
         ${GFLAGS_INCLUDE_DIR}
@@ -95,6 +98,7 @@ set(INCLUDE_H
         "${CMAKE_SOURCE_DIR}/src/interpreter/TScanFragmentizer.h"
         "${CMAKE_SOURCE_DIR}/src/interpreter/CopyFragmentizer.h"
         "${CMAKE_SOURCE_DIR}/src/runtime/Runtime.h"
+        "${CMAKE_SOURCE_DIR}/src/runtime/HashRuntime.h"
         "${CMAKE_SOURCE_DIR}/src/storage/Relation.h"
         )
 
@@ -139,6 +143,7 @@ set(SRC_CC
         "${CMAKE_SOURCE_DIR}/src/interpreter/CountingSinkFragmentizer.cpp"
         "${CMAKE_SOURCE_DIR}/src/interpreter/TScanFragmentizer.cpp"
         "${CMAKE_SOURCE_DIR}/src/interpreter/CopyFragmentizer.cpp"
+        "${CMAKE_SOURCE_DIR}/src/runtime/HashRuntime.cpp"
         )
 
 set(TEST_CC
@@ -163,11 +168,15 @@ set(TOOLS_SRC
 # Targets
 # ---------------------------------------------------------------------------
 
-# Core inkfuse library
+# Core inkfuse library, we have to declare it as a shared library
+# in order to make runtime symbols visible during dlopen.
 add_library(inkfuse STATIC ${SRC_CC})
+# We need to expose some of our own symbols within the runtime system, otherwise
+# the compiled code will not find it.
 # target_link_libraries(inkfuse PUBLIC )
 # Need to link to dl in order to open compiled code at runtime
-target_link_libraries(inkfuse PRIVATE gflags dl Threads::Threads)
+target_link_libraries(inkfuse PRIVATE xxhash_static gflags dl Threads::Threads)
+
 
 # inkfuse benchmarking binary for running TPC-H queries
 add_executable(inkfuse_runner tools/inkfuse_runner.cc)
@@ -216,6 +225,8 @@ message(STATUS "    WITH_COVERAGE               = ${WITH_COVERAGE}")
 message(STATUS "    WITH_LINTING                = ${WITH_LINTING}")
 message(STATUS "    JIT_CLANG_11                = ${JIT_CLANG_11}")
 message(STATUS "[TEST] settings")
+message(STATUS "    XXHASH_INCLUDE_DIR          = ${XXHASH_INCLUDE_DIR}")
+message(STATUS "    XXHASH_LIBRARY_PATH         = ${XXHASH_LIBRARY_PATH}")
 message(STATUS "    GTEST_INCLUDE_DIR           = ${GTEST_INCLUDE_DIR}")
 message(STATUS "    GTEST_LIBRARY_PATH          = ${GTEST_LIBRARY_PATH}")
 message(STATUS "    GMOCK_INCLUDE_DIR           = ${GMOCK_INCLUDE_DIR}")

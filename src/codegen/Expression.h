@@ -92,7 +92,8 @@ struct InvokeFctExpr : public Expr {
    public:
    InvokeFctExpr(const Function& fct_, std::vector<ExprPtr> args);
 
-   private:
+   static ExprPtr build(const Function& fct_, std::vector<ExprPtr> args);
+
    /// Backing function to be invoked.
    const Function& fct;
 };
@@ -115,6 +116,7 @@ struct ArithmeticExpr : public BinaryExpr {
       LessEqual,
       Greater,
       GreaterEqual,
+      HashCombine,
    };
 
    /// Opcode of this expression.
@@ -197,6 +199,14 @@ struct CastExpr : public UnaryExpr {
    static CastResult validateCastable(const Type& src, const Type& target);
 };
 
+struct HashExpr : public UnaryExpr {
+   public:
+   static ExprPtr build(ExprPtr child);
+
+   private:
+   HashExpr(ExprPtr child);
+};
+
 /// ExpressionOp visitor utility.
 template <typename Arg>
 struct ExprVisitor {
@@ -216,6 +226,8 @@ struct ExprVisitor {
          visitStructAccess(*elem, arg);
       } else if (auto elem = dynamic_cast<const CastExpr*>(&expr)) {
          visitCast(*elem, arg);
+      } else if (auto elem = dynamic_cast<const HashExpr*>(&expr)) {
+         visitHash(*elem, arg);
       } else {
          assert(false);
       }
@@ -235,6 +247,8 @@ struct ExprVisitor {
    virtual void visitStructAccess(const StructAccesExpr& type, Arg arg) {}
 
    virtual void visitCast(const CastExpr& type, Arg arg) {}
+
+   virtual void visitHash(const HashExpr& type, Arg arg) {}
 };
 
 }

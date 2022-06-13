@@ -69,8 +69,9 @@ void BackendProgramC::link() {
    if (!handle) {
       // Dlopen for the first time
       auto soname = so_path(program_name);
-      handle = dlopen(soname.c_str(), RTLD_NOW);
+      handle = dlopen(soname.c_str(), RTLD_GLOBAL | RTLD_NOW);
       if (!handle) {
+         fprintf(stderr, "dlopen failed: %s\n", dlerror());
          throw std::runtime_error("Could not link BackendProgramC.");
       }
    }
@@ -280,6 +281,7 @@ void BackendC::compileStatement(const IR::Stmt& statement, ScopedWriter& writer)
 
    // Regular statements can meanwhile directly take a statement to write into.
    struct StatementVisitor final : public IR::StmtVisitor<ScopedWriter::Statement&> {
+
       bool visitDeclare(const IR::DeclareStmt& stmt, ScopedWriter::Statement& writer) override {
          typeDescription(*stmt.type, writer);
          writer.stream() << " " << stmt.name;
@@ -311,6 +313,17 @@ void BackendC::compileStatement(const IR::Stmt& statement, ScopedWriter& writer)
 void BackendC::compileExpression(const IR::Expr& expr, ScopedWriter::Statement& str) {
    // Visitor for the different expressions which have to be handled.
    struct ExpressionVisitor final : public IR::ExprVisitor<ScopedWriter::Statement&> {
+      void visitInvokeFct(const IR::InvokeFctExpr& type, ScopedWriter::Statement& stmt) override {
+         stmt.stream() << type.fct.name << "(";
+         for (auto it = type.children.cbegin(); it != type.children.cend(); ++it) {
+            if (it != type.children.cbegin()) {
+               stmt.stream() << ", ";
+            }
+            compileExpression(**it, stmt);
+         }
+         stmt.stream() << ")";
+      }
+
       void visitVarRef(const IR::VarRefExpr& type, ScopedWriter::Statement& stmt) override {
          stmt.stream() << type.declaration.name;
       }
@@ -356,6 +369,10 @@ void BackendC::compileExpression(const IR::Expr& expr, ScopedWriter::Statement& 
          // Set up what should be casted.
          compileExpression(*type.children[0], stmt);
          stmt.stream() << ")";
+      }
+
+      void visitHash(const IR::HashExpr& type, ScopedWriter::Statement& stmt) override {
+
       }
    };
 
