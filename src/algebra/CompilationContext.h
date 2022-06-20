@@ -27,9 +27,6 @@ struct CompilationContext {
    /// Compile the code for this context.
    void compile();
 
-   /// Resolve the scope of a sub-operator.
-   size_t resolveScope(const Suboperator& op);
-
    /// Notify the compilation context that the IUs of a given sub-operator are ready to be consumed.
    void notifyIUsReady(Suboperator& op);
    /// Request a specific IU.
@@ -45,7 +42,9 @@ struct CompilationContext {
    const IR::Stmt& getIUDeclaration(const IU& iu);
 
    /// Access the local state of the given sub-operator. Returns a void pointer.
-   IR::ExprPtr accessGlobalState(const Suboperator& op);
+   IR::ExprPtr accessGlobalState(const Suboperator& op) const;
+   /// Get a function from the inkfuse runtime.
+   IR::FunctionArc getRuntimeFunction(std::string_view name) const;
 
    /// Get the current function builder.
    const IR::Program& getProgram();

@@ -149,7 +149,7 @@ While FunctionBuilder::buildWhile(ExprPtr expr)
    return While{*this, std::move(expr)};
 }
 
-const Stmt& FunctionBuilder::getArg(size_t idx) {
+const Stmt& FunctionBuilder::getArg(size_t idx) const {
    return *function->arguments.at(idx);
 }
 

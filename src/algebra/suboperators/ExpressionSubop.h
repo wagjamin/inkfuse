@@ -6,9 +6,13 @@
 
 namespace inkfuse {
 
+namespace IR {
+struct FunctionBuilder;
+struct Stmt;
+}
+
 /// Basic expression sub-operator, taking a set of input IUs and producing one output IU.
 struct ExpressionSubop : public TemplatedSuboperator<EmptyState, EmptyState> {
-
    /// Constructor for directly building a smart pointer.
    static SuboperatorArc build(const RelAlgOp* source_, std::vector<const IU*> provided_ius_, std::vector<const IU*> operands_, ExpressionOp::ComputeNode::Type type_);
    /// Constructor.
@@ -20,9 +24,11 @@ struct ExpressionSubop : public TemplatedSuboperator<EmptyState, EmptyState> {
    std::string id() const override;
 
    private:
-   // Which expression type to evaluate.
+   /// Which expression type to evaluate.
    ExpressionOp::ComputeNode::Type type;
 
+   /// Build a hashing expression calling into the runtime system.
+   void buildHashingExpression(CompilationContext& context, IR::FunctionBuilder& builder, const IR::Stmt& declaration) const;
 };
 
 }

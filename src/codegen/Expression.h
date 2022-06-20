@@ -92,7 +92,8 @@ struct InvokeFctExpr : public Expr {
    public:
    InvokeFctExpr(const Function& fct_, std::vector<ExprPtr> args);
 
-   private:
+   static ExprPtr build(const Function& fct_, std::vector<ExprPtr> args);
+
    /// Backing function to be invoked.
    const Function& fct;
 };
@@ -115,6 +116,7 @@ struct ArithmeticExpr : public BinaryExpr {
       LessEqual,
       Greater,
       GreaterEqual,
+      HashCombine,
    };
 
    /// Opcode of this expression.
@@ -152,6 +154,17 @@ struct DerefExpr : public UnaryExpr {
 
    static ExprPtr build(ExprPtr child_) {
       return std::make_unique<DerefExpr>(std::move(child_));
+   }
+};
+
+/// Reference some member. Returns a pointer to the underlying expression.
+struct RefExpr : public UnaryExpr {
+   RefExpr(ExprPtr child_) : UnaryExpr(IR::Pointer::build(child_->type)) {
+      children.push_back(std::move(child_));
+   }
+
+   static ExprPtr build(ExprPtr child_) {
+      return std::make_unique<RefExpr>(std::move(child_));
    }
 };
 
@@ -212,6 +225,8 @@ struct ExprVisitor {
          visitArithmetic(*elem, arg);
       } else if (auto elem = dynamic_cast<const DerefExpr*>(&expr)) {
          visitDeref(*elem, arg);
+      } else if (auto elem = dynamic_cast<const RefExpr*>(&expr)) {
+         visitRef(*elem, arg);
       } else if (auto elem = dynamic_cast<const StructAccesExpr*>(&expr)) {
          visitStructAccess(*elem, arg);
       } else if (auto elem = dynamic_cast<const CastExpr*>(&expr)) {
@@ -231,6 +246,8 @@ struct ExprVisitor {
    virtual void visitArithmetic(const ArithmeticExpr& type, Arg arg) {}
 
    virtual void visitDeref(const DerefExpr& type, Arg arg) {}
+
+   virtual void visitRef(const RefExpr& type, Arg arg) {}
 
    virtual void visitStructAccess(const StructAccesExpr& type, Arg arg) {}
 

@@ -14,6 +14,8 @@ struct ExpressionFragmentizer: public Fragmentizer {
    void fragmentizeCasts();
    /// Fragmentize all binary expressions.
    void fragmentizeBinary();
+   /// Fragmentize all hahs expressions.
+   void fragmentizeHashes();
 
 };
 

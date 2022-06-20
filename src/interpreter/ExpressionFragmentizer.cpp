@@ -47,10 +47,21 @@ void ExpressionFragmentizer::fragmentizeBinary()
          auto& [name, pipe] = pipes.emplace_back();
          auto& iu_1 = generated_ius.emplace_back(type, "");
          auto& iu_2 = generated_ius.emplace_back(type, "");
-         auto& iu_out = generated_ius.emplace_back(ExpressionOp::derive(operation, type, type), "");
+         auto& iu_out = generated_ius.emplace_back(ExpressionOp::derive(operation, {type, type}), "");
          auto& op = pipe.attachSuboperator(ExpressionSubop::build(nullptr, {&iu_out}, {&iu_1, &iu_2}, operation));
          name = op.id();
       }
+   }
+}
+
+void ExpressionFragmentizer::fragmentizeHashes()
+{
+   for (auto& type_in : types) {
+      auto& [name, pipe] = pipes.emplace_back();
+      auto& iu_in = generated_ius.emplace_back(type_in, "");
+      auto& iu_out = generated_ius.emplace_back(IR::UnsignedInt::build(8), "");
+      auto& op = pipe.attachSuboperator(ExpressionSubop::build(nullptr, {&iu_out}, {&iu_in}, Type::Hash));
+      name = op.id();
    }
 }
 
@@ -58,6 +69,7 @@ ExpressionFragmentizer::ExpressionFragmentizer()
 {
    fragmentizeBinary();
    fragmentizeCasts();
+   fragmentizeHashes();
 }
 
 

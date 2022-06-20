@@ -32,6 +32,11 @@ InvokeFctExpr::InvokeFctExpr(const Function& fct_, std::vector<ExprPtr> args_)
    children = std::move(args_);
 }
 
+ExprPtr InvokeFctExpr::build(const Function& fct_, std::vector<ExprPtr> args)
+{
+   return ExprPtr(new InvokeFctExpr(fct_, std::move(args)));
+}
+
 bool ArithmeticExpr::isComparison(Opcode code)
 {
    if (code == Opcode::Eq
@@ -48,6 +53,10 @@ TypeArc ArithmeticExpr::deriveType(const Expr& child_l, const Expr& child_r, Opc
 {
    if (isComparison(code)) {
       return Bool::build();
+   }
+   if (code == Opcode::HashCombine) {
+      assert(dynamic_cast<IR::UnsignedInt*>(child_l.type.get()));
+      return UnsignedInt::build(8);
    }
    // TODO nasty hack for the time being.
    assert(child_l.type);

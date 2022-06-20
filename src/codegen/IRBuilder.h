@@ -99,7 +99,7 @@ struct FunctionBuilder {
    While buildWhile(ExprPtr expr);
 
    /// Get the statement at a given index.
-   const Stmt& getArg(size_t idx);
+   const Stmt& getArg(size_t idx) const;
 
    /// Get the current block.
    Block& getCurrBlock();
