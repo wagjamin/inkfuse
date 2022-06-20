@@ -356,6 +356,12 @@ void BackendC::compileExpression(const IR::Expr& expr, ScopedWriter::Statement& 
          stmt.stream() << "))";
       }
 
+      void visitRef(const IR::RefExpr& type, ScopedWriter::Statement& stmt) override {
+         stmt.stream() << "(&(";
+         compileExpression(*type.children[0], stmt);
+         stmt.stream() << "))";
+      }
+
       void visitStructAccess(const IR::StructAccesExpr& type, ScopedWriter::Statement& stmt) override {
          compileExpression(*type.children[0], stmt);
          stmt.stream() << "." << type.field;
@@ -369,10 +375,6 @@ void BackendC::compileExpression(const IR::Expr& expr, ScopedWriter::Statement& 
          // Set up what should be casted.
          compileExpression(*type.children[0], stmt);
          stmt.stream() << ")";
-      }
-
-      void visitHash(const IR::HashExpr& type, ScopedWriter::Statement& stmt) override {
-
       }
    };
 

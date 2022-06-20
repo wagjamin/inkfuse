@@ -14,8 +14,7 @@ namespace inkfuse {
 /// The second option makes it a lot easier to ship inkfuse binaries, and we are going with
 /// it for now until it becomes a performance bottleneck.
 /// (Also note that the include-style option (1) only works nicely in a world where we generate C).
-/// TODO Narrower types should use narrower hashes, but fine for now.
-
+/// TODO Narrower types should use narrower hashes, but fine for now. No point to compute 64 bit hashes on 32 bit data.
 namespace HashRuntime {
 
 extern "C" uint64_t hash(void* in, uint64_t len);

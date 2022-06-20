@@ -105,7 +105,7 @@ const IR::Stmt & CompilationContext::getIUDeclaration(const IU& iu)
    return *iu_declarations.at(&iu);
 }
 
-IR::ExprPtr CompilationContext::accessGlobalState(const Suboperator& op) {
+IR::ExprPtr CompilationContext::accessGlobalState(const Suboperator& op) const {
    assert(builder);
    // Get global state.
    auto& global_state = builder->fct_builder.getArg(0);
@@ -122,6 +122,13 @@ IR::ExprPtr CompilationContext::accessGlobalState(const Suboperator& op) {
       IR::ConstExpr::build(IR::UI<4>::build(idx)),
       IR::ArithmeticExpr::Opcode::Add);
    return IR::DerefExpr::build(std::move(offset));
+}
+
+IR::FunctionArc CompilationContext::getRuntimeFunction(std::string_view name) const
+{
+   assert(program->getIncludes().size() == 1);
+   auto& include = program->getIncludes()[0];
+   return include->getFunction(name);
 }
 
 const IR::Program& CompilationContext::getProgram() {

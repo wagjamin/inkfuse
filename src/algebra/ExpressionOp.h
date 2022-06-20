@@ -40,6 +40,7 @@ struct ExpressionOp : public RelAlgOp {
       enum class Type {
          Add,
          Cast,
+         Hash,
          Subtract,
          Multiply,
          Divide,
@@ -74,7 +75,9 @@ struct ExpressionOp : public RelAlgOp {
    void decay(PipelineDAG& dag) const override;
 
    /// Derive the output type of an expression.
-   static IR::TypeArc derive(ComputeNode::Type code, const IR::TypeArc& left, const IR::TypeArc& right);
+   static IR::TypeArc derive(ComputeNode::Type code, const std::vector<Node*>& nodes);
+   /// Derive the output type of an expression.
+   static IR::TypeArc derive(ComputeNode::Type code, const std::vector<IR::TypeArc>& types);
 
    protected:
 

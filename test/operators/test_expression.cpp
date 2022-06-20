@@ -11,27 +11,24 @@ namespace inkfuse {
 namespace {
 
 struct ExpressionT {
-
-   ExpressionT():
-      in1(IR::UnsignedInt::build(2), "in_1"),
-      in2(IR::UnsignedInt::build(2), "in_2")
-   {
+   ExpressionT() : in1(IR::UnsignedInt::build(2), "in_1"),
+                   in2(IR::UnsignedInt::build(2), "in_2") {
       nodes.reserve(5);
       auto c1 = nodes.emplace_back(std::make_unique<ExpressionOp::IURefNode>(&in1)).get();
       auto c2 = nodes.emplace_back(std::make_unique<ExpressionOp::IURefNode>(&in2)).get();
       auto c3 = nodes.emplace_back(
-            std::make_unique<ExpressionOp::ComputeNode>(
-               ExpressionOp::ComputeNode::Type::Add,
-               std::vector<ExpressionOp::Node*>{c1, c2}))
-         .get();
+                        std::make_unique<ExpressionOp::ComputeNode>(
+                           ExpressionOp::ComputeNode::Type::Add,
+                           std::vector<ExpressionOp::Node*>{c1, c2}))
+                   .get();
       auto c4 = nodes.emplace_back(std::make_unique<ExpressionOp::ComputeNode>(
-            ExpressionOp::ComputeNode::Type::Subtract,
-            std::vector<ExpressionOp::Node*>{c3, c2}))
-         .get();
+                                      ExpressionOp::ComputeNode::Type::Subtract,
+                                      std::vector<ExpressionOp::Node*>{c3, c2}))
+                   .get();
       auto c5 = nodes.emplace_back(std::make_unique<ExpressionOp::ComputeNode>(
-            ExpressionOp::ComputeNode::Type::Multiply,
-            std::vector<ExpressionOp::Node*>{c3, c4}))
-         .get();
+                                      ExpressionOp::ComputeNode::Type::Multiply,
+                                      std::vector<ExpressionOp::Node*>{c3, c4}))
+                   .get();
       op.emplace(
          std::vector<std::unique_ptr<RelAlgOp>>{},
          "expression_1",
@@ -43,22 +40,18 @@ struct ExpressionT {
    IU in2;
    std::vector<ExpressionOp::NodePtr> nodes;
    std::optional<ExpressionOp> op;
-
 };
 
 /// Non-parametrized test fixture for decay tests.
 struct ExpressionTNonParametrized : public ExpressionT, public ::testing::Test {
-
 };
 
 /// Parametrized test fixture for execution modes.
-struct ExpressionTParametrized: public ExpressionT, public ::testing::TestWithParam<PipelineExecutor::ExecutionMode> {
-
+struct ExpressionTParametrized : public ExpressionT, public ::testing::TestWithParam<PipelineExecutor::ExecutionMode> {
 };
 
 // Check graph structure for expression decay.
 TEST_F(ExpressionTNonParametrized, decay) {
-
    PipelineDAG dag;
    dag.buildNewPipeline();
    op->decay(dag);
@@ -100,7 +93,7 @@ TEST_P(ExpressionTParametrized, exec) {
 
    c_in1.size = 10;
    c_in2.size = 10;
-   for (uint16_t  k = 0; k < 10; ++k) {
+   for (uint16_t k = 0; k < 10; ++k) {
       reinterpret_cast<uint16_t*>(c_in1.raw_data)[k] = k + 1;
       reinterpret_cast<uint16_t*>(c_in2.raw_data)[k] = k;
    }
@@ -123,15 +116,70 @@ TEST_P(ExpressionTParametrized, exec) {
       EXPECT_EQ(reinterpret_cast<uint16_t*>(c_iu_c_4.raw_data)[k], c_4_expected);
       EXPECT_EQ(reinterpret_cast<uint16_t*>(c_iu_c_5.raw_data)[k], c_5_expected);
    }
+}
 
+// Test hashing expressions to make sure they work.
+TEST_P(ExpressionTParametrized, hash) {
+   // Custom setup going over a different expression tree.
+   nodes.clear();
+   IU source(IR::UnsignedInt::build(8));
+   auto ref = nodes.emplace_back(std::make_unique<ExpressionOp::IURefNode>(&source)).get();
+   auto hash = nodes.emplace_back(
+                       std::make_unique<ExpressionOp::ComputeNode>(
+                          ExpressionOp::ComputeNode::Type::Hash,
+                          std::vector<ExpressionOp::Node*>{ref}))
+                  .get();
+   op.emplace(
+      std::vector<std::unique_ptr<RelAlgOp>>{},
+      "expression_1",
+      std::vector<ExpressionOp::Node*>{hash},
+      std::move(nodes));
+
+   PipelineDAG dag;
+   dag.buildNewPipeline();
+   op->decay(dag);
+
+   auto& pipe = dag.getCurrentPipeline();
+   // Repipe to add fuse chunk sinks and sources.
+   auto repiped = pipe.repipeAll(0, pipe.getSubops().size());
+
+   // Repiping should have added 1 driver, 1 iu input and 1 output op.
+   auto& ops = repiped->getSubops();
+   EXPECT_EQ(ops.size(), 4);
+
+   // Get ready for compiled execution.
+   auto mode = GetParam();
+   PipelineExecutor exec(*repiped, mode, "ExpressionT_hash");
+
+   // Prepare input chunk.
+   auto& ctx = exec.getExecutionContext();
+   auto& c_in1 = ctx.getColumn(source);
+
+   c_in1.size = 1000;
+   for (uint16_t k = 0; k < 1000; ++k) {
+      reinterpret_cast<uint64_t*>(c_in1.raw_data)[k] = k;
+   }
+
+   // And run a single morsel.
+   EXPECT_NO_THROW(exec.runMorsel());
+
+   // Check results.
+   const IU& hash_iu = **ops[2]->getIUs().begin();
+   std::unordered_set<uint64_t> seen;
+   // This set should have no hash collisions.
+   auto& hash_col = ctx.getColumn(hash_iu);
+   for (uint16_t k = 0; k < 1000; ++k) {
+      auto elem = reinterpret_cast<uint64_t*>(hash_col.raw_data)[k];
+      EXPECT_EQ(seen.count(elem), 0);
+      seen.insert(elem);
+   }
 }
 
 INSTANTIATE_TEST_CASE_P(
    ExpressionExecution,
    ExpressionTParametrized,
    ::testing::Values(PipelineExecutor::ExecutionMode::Fused,
-                     PipelineExecutor::ExecutionMode::Interpreted)
-);
+                     PipelineExecutor::ExecutionMode::Interpreted));
 
 }
 

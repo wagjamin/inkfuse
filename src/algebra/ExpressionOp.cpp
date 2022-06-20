@@ -6,8 +6,20 @@
 
 namespace inkfuse {
 
-IR::TypeArc ExpressionOp::derive(ComputeNode::Type code, const IR::TypeArc& left, const IR::TypeArc& right)
+IR::TypeArc ExpressionOp::derive(ComputeNode::Type code, const std::vector<Node*>& nodes)
 {
+   std::vector<IR::TypeArc> types;
+   std::for_each(nodes.begin(), nodes.end(), [&](Node* node) {
+      types.push_back(node->output_type);
+   });
+   return derive(code, types);
+}
+
+IR::TypeArc ExpressionOp::derive(ComputeNode::Type code, const std::vector<IR::TypeArc>& types)
+{
+   if (code == ComputeNode::Type::Hash) {
+      return IR::UnsignedInt::build(8);
+   }
    if (code == ComputeNode::Type::Eq
        || code == ComputeNode::Type::Less
        || code == ComputeNode::Type::LessEqual
@@ -16,7 +28,7 @@ IR::TypeArc ExpressionOp::derive(ComputeNode::Type code, const IR::TypeArc& left
       return IR::Bool::build();
    }
    // TODO Unify type derivation rules with the raw codegen::Expression.
-   return left;
+   return types[0];
 }
 
 ExpressionOp::ExpressionOp(std::vector<std::unique_ptr<RelAlgOp>> children_, std::string op_name_, std::vector<Node*> out_, std::vector<NodePtr> nodes_)
@@ -37,7 +49,7 @@ ExpressionOp::IURefNode::IURefNode(const IU* child_)
 }
 
 ExpressionOp::ComputeNode::ComputeNode(Type code_, std::vector<Node*> children_)
-   : Node(derive(code_, children_[0]->output_type, children_[1]->output_type)), code(code_), out(output_type), children(std::move(children_)) {
+   : Node(derive(code_, children_)), code(code_), out(output_type), children(std::move(children_)) {
 }
 
 ExpressionOp::ComputeNode::ComputeNode(IR::TypeArc casted, Node* child)

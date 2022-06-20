@@ -157,6 +157,17 @@ struct DerefExpr : public UnaryExpr {
    }
 };
 
+/// Reference some member. Returns a pointer to the underlying expression.
+struct RefExpr : public UnaryExpr {
+   RefExpr(ExprPtr child_) : UnaryExpr(IR::Pointer::build(child_->type)) {
+      children.push_back(std::move(child_));
+   }
+
+   static ExprPtr build(ExprPtr child_) {
+      return std::make_unique<RefExpr>(std::move(child_));
+   }
+};
+
 /// Access a member of a struct - return type is the type of the struct member.
 /// The child expression must be typed a struct.
 struct StructAccesExpr : public UnaryExpr {
@@ -199,14 +210,6 @@ struct CastExpr : public UnaryExpr {
    static CastResult validateCastable(const Type& src, const Type& target);
 };
 
-struct HashExpr : public UnaryExpr {
-   public:
-   static ExprPtr build(ExprPtr child);
-
-   private:
-   HashExpr(ExprPtr child);
-};
-
 /// ExpressionOp visitor utility.
 template <typename Arg>
 struct ExprVisitor {
@@ -222,12 +225,12 @@ struct ExprVisitor {
          visitArithmetic(*elem, arg);
       } else if (auto elem = dynamic_cast<const DerefExpr*>(&expr)) {
          visitDeref(*elem, arg);
+      } else if (auto elem = dynamic_cast<const RefExpr*>(&expr)) {
+         visitRef(*elem, arg);
       } else if (auto elem = dynamic_cast<const StructAccesExpr*>(&expr)) {
          visitStructAccess(*elem, arg);
       } else if (auto elem = dynamic_cast<const CastExpr*>(&expr)) {
          visitCast(*elem, arg);
-      } else if (auto elem = dynamic_cast<const HashExpr*>(&expr)) {
-         visitHash(*elem, arg);
       } else {
          assert(false);
       }
@@ -244,11 +247,11 @@ struct ExprVisitor {
 
    virtual void visitDeref(const DerefExpr& type, Arg arg) {}
 
+   virtual void visitRef(const RefExpr& type, Arg arg) {}
+
    virtual void visitStructAccess(const StructAccesExpr& type, Arg arg) {}
 
    virtual void visitCast(const CastExpr& type, Arg arg) {}
-
-   virtual void visitHash(const HashExpr& type, Arg arg) {}
 };
 
 }

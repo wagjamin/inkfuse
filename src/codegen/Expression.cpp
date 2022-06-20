@@ -127,16 +127,6 @@ TypeArc StructAccesExpr::deriveType(const Expr &child, const std::string &field_
    return CastResult::Permitted;
 }
 
-ExprPtr HashExpr::build(ExprPtr child)
-{
-   return ExprPtr{new HashExpr(std::move(child))};
-}
-
-HashExpr::HashExpr(ExprPtr child) : UnaryExpr(UnsignedInt::build(8))
-{
-   children.emplace_back(std::move(child));
-}
-
 }
 
 }
