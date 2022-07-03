@@ -13,6 +13,10 @@ struct Value {
    virtual TypeArc getType() const = 0;
    virtual std::string str() const { return ""; };
 
+   /// Get a void* to the raw value that can be interpreted by the compiled code.
+   /// This is needed for suboperators like the LazyExpressionSubop.
+   virtual void* rawData() = 0;
+
    virtual ~Value() = default;
 };
 
@@ -41,6 +45,10 @@ struct UI : public Value {
    std::string str() const override {
       return std::to_string(value);
    }
+
+   void* rawData() override {
+      return &value;
+   }
 };
 
 template <unsigned size>
@@ -63,6 +71,10 @@ struct SI : public Value {
 
    TypeArc getType() const override {
       return std::make_unique<SignedInt>(size);
+   }
+
+   void* rawData() override {
+      return &value;
    }
 
    private:

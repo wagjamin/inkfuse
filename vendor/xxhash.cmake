@@ -1,6 +1,7 @@
 include(ExternalProject)
 find_package(Git REQUIRED)
 
+# We use xxhash for fast hashing within e.g. the hash aggregation or hash join operators.
 ExternalProject_Add(
         xxhash_src
         PREFIX "vendor/xxhash"
