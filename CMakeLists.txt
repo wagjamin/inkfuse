@@ -60,10 +60,13 @@ set(INCLUDE_H
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/Copy.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/Suboperator.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/IndexedIUProvider.h"
+        "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/LazyExpressionSubop.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/CountingSink.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/ExpressionSubop.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/ColumnFilter.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/LoopDriver.h"
+        "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/LazyParam.h"
+        "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/properties/WithLazyParams.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/sinks/FuseChunkSink.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/sinks/CountingSink.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/sources/TableScanSource.h"
@@ -99,6 +102,7 @@ set(INCLUDE_H
         "${CMAKE_SOURCE_DIR}/src/interpreter/CopyFragmentizer.h"
         "${CMAKE_SOURCE_DIR}/src/runtime/Runtime.h"
         "${CMAKE_SOURCE_DIR}/src/runtime/HashRuntime.h"
+        "${CMAKE_SOURCE_DIR}/src/runtime/HashTableRuntime.h"
         "${CMAKE_SOURCE_DIR}/src/storage/Relation.h"
         )
 
@@ -109,6 +113,7 @@ set(SRC_CC
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/ExpressionSubop.cpp"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/ColumnFilter.cpp"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/IndexedIUProvider.cpp"
+        "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/LazyExpressionSubop.cpp"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/LoopDriver.cpp"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/Suboperator.cpp"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/sinks/CountingSink.cpp"
@@ -144,6 +149,7 @@ set(SRC_CC
         "${CMAKE_SOURCE_DIR}/src/interpreter/TScanFragmentizer.cpp"
         "${CMAKE_SOURCE_DIR}/src/interpreter/CopyFragmentizer.cpp"
         "${CMAKE_SOURCE_DIR}/src/runtime/HashRuntime.cpp"
+        "${CMAKE_SOURCE_DIR}/src/runtime/HashTableRuntime.cpp"
         )
 
 set(TEST_CC
@@ -155,6 +161,7 @@ set(TEST_CC
         "${CMAKE_SOURCE_DIR}/test/operators/test_table_scan.cpp"
         "${CMAKE_SOURCE_DIR}/test/operators/test_expression.cpp"
         "${CMAKE_SOURCE_DIR}/test/operators/test_filter.cpp"
+        "${CMAKE_SOURCE_DIR}/test/suboperators/test_lazy_param.cpp"
         "${CMAKE_SOURCE_DIR}/test/suboperators/test_minimal_pipeline.cpp"
         "${CMAKE_SOURCE_DIR}/test/suboperators/test_sources.cpp"
         "${CMAKE_SOURCE_DIR}/test/test_fragmentizors.cpp"
