@@ -26,7 +26,7 @@ using ValuePtr = std::unique_ptr<Value>;
 
 template <unsigned size>
 struct UI : public Value {
-   static_assert(size == 1 || size == 8 || size == 4 || size == 8);
+   static_assert(size == 1 || size == 2 || size == 8 || size == 4 || size == 8);
 
    UI(uint64_t value_) : value(value_) {}
 
@@ -53,6 +53,8 @@ struct UI : public Value {
    }
 
    void* rawData() override {
+      // TODO A bit nasty as this can also be a narrower int type that
+      // is cased to void and then back to int in the runtime.
       return &value;
    }
 };
@@ -84,6 +86,8 @@ struct SI : public Value {
    }
 
    void* rawData() override {
+      // TODO A bit nasty as this can also be a narrower int type that
+      // is cased to void and then back to int in the runtime.
       return &value;
    }
 

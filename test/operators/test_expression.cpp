@@ -2,6 +2,7 @@
 #include "algebra/ExpressionOp.h"
 #include "algebra/Pipeline.h"
 #include "algebra/RelAlgOp.h"
+#include "codegen/Value.h"
 #include "codegen/backend_c/BackendC.h"
 #include "exec/PipelineExecutor.h"
 #include <gtest/gtest.h>
@@ -13,7 +14,7 @@ namespace {
 struct ExpressionT {
    ExpressionT() : in1(IR::UnsignedInt::build(2), "in_1"),
                    in2(IR::UnsignedInt::build(2), "in_2") {
-      nodes.reserve(5);
+      nodes.reserve(6);
       auto c1 = nodes.emplace_back(std::make_unique<ExpressionOp::IURefNode>(&in1)).get();
       auto c2 = nodes.emplace_back(std::make_unique<ExpressionOp::IURefNode>(&in2)).get();
       auto c3 = nodes.emplace_back(
@@ -29,10 +30,15 @@ struct ExpressionT {
                                       ExpressionOp::ComputeNode::Type::Multiply,
                                       std::vector<ExpressionOp::Node*>{c3, c4}))
                    .get();
+      // Finally addition with a constant which will produce a LazyExpressionOp.
+      auto c6 = nodes.emplace_back(std::make_unique<ExpressionOp::ComputeNode>(
+                                      ExpressionOp::ComputeNode::Type::Add,
+                                      c5, IR::UI<2>::build(5)))
+                   .get();
       op.emplace(
          std::vector<std::unique_ptr<RelAlgOp>>{},
          "expression_1",
-         std::vector<ExpressionOp::Node*>{c3, c5},
+         std::vector<ExpressionOp::Node*>{c3, c5, c6},
          std::move(nodes));
    }
 
@@ -61,12 +67,14 @@ TEST_F(ExpressionTNonParametrized, decay) {
 
    auto& pipe = dag.getCurrentPipeline();
    auto& ops = pipe.getSubops();
-   // Three actual computations are done.
-   EXPECT_EQ(ops.size(), 3);
+   // Four actual computations are done.
+   EXPECT_EQ(ops.size(), 4);
    EXPECT_EQ(ops[0]->getSourceIUs()[0], &in1);
    EXPECT_EQ(ops[0]->getSourceIUs()[1], &in2);
    EXPECT_EQ(pipe.getConsumers(*ops[0]).size(), 2);
    EXPECT_EQ(pipe.getConsumers(*ops[1]).size(), 1);
+   // Only one input on lazy op.
+   EXPECT_EQ(pipe.getProducers(*ops[3]).size(), 1);
 }
 
 TEST_P(ExpressionTParametrized, exec) {
@@ -78,9 +86,9 @@ TEST_P(ExpressionTParametrized, exec) {
    // Repipe to add fuse chunk sinks and sources.
    auto repiped = pipe.repipeAll(0, pipe.getSubops().size());
 
-   // Repiping should have added 1 driver, 2 iu input and 3 iu output ops.
+   // Repiping should have added 1 driver, 2 iu input and 4 iu output ops.
    auto& ops = repiped->getSubops();
-   EXPECT_EQ(ops.size(), 9);
+   EXPECT_EQ(ops.size(), 11);
 
    // Get ready for compiled execution.
    auto mode = GetParam();
@@ -105,16 +113,20 @@ TEST_P(ExpressionTParametrized, exec) {
    auto iu_c_3 = *pipe.getSubops()[0]->getIUs().begin();
    auto iu_c_4 = *pipe.getSubops()[1]->getIUs().begin();
    auto iu_c_5 = *pipe.getSubops()[2]->getIUs().begin();
+   auto iu_c_6 = *pipe.getSubops()[3]->getIUs().begin();
    auto& c_iu_c_3 = ctx.getColumn(*iu_c_3);
    auto& c_iu_c_4 = ctx.getColumn(*iu_c_4);
    auto& c_iu_c_5 = ctx.getColumn(*iu_c_5);
+   auto& c_iu_c_6 = ctx.getColumn(*iu_c_6);
    for (uint16_t k = 0; k < 10; ++k) {
       uint16_t c_3_expected = k + k + 1;
       uint16_t c_4_expected = k + 1;
       uint16_t c_5_expected = c_3_expected * c_4_expected;
+      uint16_t c_6_expected = c_5_expected + 5;
       EXPECT_EQ(reinterpret_cast<uint16_t*>(c_iu_c_3.raw_data)[k], c_3_expected);
       EXPECT_EQ(reinterpret_cast<uint16_t*>(c_iu_c_4.raw_data)[k], c_4_expected);
       EXPECT_EQ(reinterpret_cast<uint16_t*>(c_iu_c_5.raw_data)[k], c_5_expected);
+      EXPECT_EQ(reinterpret_cast<uint16_t*>(c_iu_c_6.raw_data)[k], c_6_expected);
    }
 }
 

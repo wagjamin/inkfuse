@@ -19,14 +19,6 @@ struct ExpressionOp : public RelAlgOp {
 
    using NodePtr = std::unique_ptr<Node>;
 
-   /// Constant expression.
-   struct ConstantNode : public Node {
-      ConstantNode(IR::ValuePtr val);
-
-      IR::ValuePtr value;
-      IU iu;
-   };
-
    /// Reference to a provided IU.
    struct IURefNode : public Node {
       IURefNode(const IU* child_);
@@ -51,8 +43,12 @@ struct ExpressionOp : public RelAlgOp {
          GreaterEqual,
       };
 
+      // Constructor for regular binary operations.
       ComputeNode(Type code, std::vector<Node*> children);
+      // Constructor for cast operations.
       ComputeNode(IR::TypeArc casted, Node* child);
+      // Constructor for lazy operation.
+      ComputeNode(Type code, Node* arg_1, IR::ValuePtr arg_2);
 
       // Which expression?
       Type code;
@@ -60,8 +56,8 @@ struct ExpressionOp : public RelAlgOp {
       IU out;
       // Children of this expression. Pointers are useful for DAG-shaped expression trees.
       std::vector<Node*> children;
-
-      private:
+      // Optional constant second argument if this is a lazy node.
+      std::optional<IR::ValuePtr> opt_lazy;
    };
 
    ExpressionOp(
