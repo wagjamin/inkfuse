@@ -90,7 +90,7 @@ TEST(test_runtime, runtime_real) {
    auto fct_builder = ir_builder.createFunctionBuilder(std::move(fct));
 
    // Return the size by accessing the respective member in ColumnScanState.
-   auto expr = IR::StructAccesExpr::build(
+   auto expr = IR::StructAccessExpr::build(
       // Cast the first argument to a pointer to the ColumnScanState
       IR::CastExpr::build(
          IR::VarRefExpr::build(fct_builder.getArg(0)),

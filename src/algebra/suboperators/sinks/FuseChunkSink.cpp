@@ -47,7 +47,7 @@ void FuseChunkSink::consume(const IU& iu, CompilationContext& context) {
       auto assign_data = IR::AssignmentStmt::build(
          *decl_data,
          IR::CastExpr::build(
-            IR::StructAccesExpr::build(std::move(data_cast_expr), "raw_data"),
+            IR::StructAccessExpr::build(std::move(data_cast_expr), "raw_data"),
             target_ptr_type));
       // Build the size variable.
       auto size_var_name = getVarIdentifier();
@@ -58,7 +58,7 @@ void FuseChunkSink::consume(const IU& iu, CompilationContext& context) {
       // And assign the casted raw pointer.
       auto assign_size = IR::AssignmentStmt::build(
          *decl_size,
-         IR::StructAccesExpr::build(std::move(size_cast_expr), "size"));
+         IR::StructAccessExpr::build(std::move(size_cast_expr), "size"));
       // Add this to the function preamble.
       std::deque<IR::StmtPtr> preamble_stmts;
       preamble_stmts.push_back(std::move(decl_data));

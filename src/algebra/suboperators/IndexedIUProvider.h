@@ -49,7 +49,7 @@ struct IndexedIUProvider : public TemplatedSuboperator<IndexedIUProviderState, R
          auto assign_start = IR::AssignmentStmt::build(
             *decl_start,
             IR::CastExpr::build(
-               IR::StructAccesExpr::build(std::move(cast_expr), "start"),
+               IR::StructAccessExpr::build(std::move(cast_expr), "start"),
                target_ptr_type
                )
          );

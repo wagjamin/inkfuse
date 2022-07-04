@@ -1,6 +1,6 @@
 #include "algebra/ExpressionOp.h"
 #include "algebra/Pipeline.h"
-#include "algebra/suboperators/ExpressionSubop.h"
+#include "algebra/suboperators/expressions/ExpressionSubop.h"
 
 #include <unordered_set>
 

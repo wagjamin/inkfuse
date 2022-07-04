@@ -362,7 +362,7 @@ void BackendC::compileExpression(const IR::Expr& expr, ScopedWriter::Statement& 
          stmt.stream() << "))";
       }
 
-      void visitStructAccess(const IR::StructAccesExpr& type, ScopedWriter::Statement& stmt) override {
+      void visitStructAccess(const IR::StructAccessExpr& type, ScopedWriter::Statement& stmt) override {
          compileExpression(*type.children[0], stmt);
          stmt.stream() << "." << type.field;
       }

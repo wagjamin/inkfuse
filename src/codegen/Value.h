@@ -13,6 +13,8 @@ struct Value {
    virtual TypeArc getType() const = 0;
    virtual std::string str() const { return ""; };
 
+   virtual std::unique_ptr<Value> copy() = 0;
+
    /// Get a void* to the raw value that can be interpreted by the compiled code.
    /// This is needed for suboperators like the LazyExpressionSubop.
    virtual void* rawData() = 0;
@@ -30,6 +32,10 @@ struct UI : public Value {
 
    static ValuePtr build(uint64_t value) {
       return std::make_unique<UI<size>>(value);
+   };
+
+   std::unique_ptr<Value> copy() override {
+      return build(value);
    };
 
    uint64_t value;
@@ -59,6 +65,10 @@ struct SI : public Value {
 
    static ValuePtr build(uint64_t value) {
       return std::make_unique<SI<size>>(value);
+   };
+
+   std::unique_ptr<Value> copy() override {
+      return build(value);
    };
 
    int64_t getValue() const {

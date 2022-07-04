@@ -32,9 +32,9 @@ void CountingSink::consume(const IU& iu, CompilationContext& context)
 
    // And add to the counter.
    auto increment_start = IR::AssignmentStmt::build(
-      IR::StructAccesExpr::build(std::move(cast_expr_1), "count"),
+      IR::StructAccessExpr::build(std::move(cast_expr_1), "count"),
       IR::ArithmeticExpr::build(
-         IR::StructAccesExpr::build(std::move(cast_expr_2), "count"),
+         IR::StructAccessExpr::build(std::move(cast_expr_2), "count"),
          IR::ConstExpr::build(IR::UI<8>::build(1)),
          IR::ArithmeticExpr::Opcode::Add
       )
