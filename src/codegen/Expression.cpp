@@ -73,7 +73,7 @@ TypeArc DerefExpr::deriveType(const Expr &child)
     return expr->pointed_to;
 }
 
-TypeArc StructAccesExpr::deriveType(const Expr &child, const std::string &field_name)
+TypeArc StructAccessExpr::deriveType(const Expr &child, const std::string &field_name)
 {
     auto struct_ptr = reinterpret_cast<Struct*>(child.type.get());
     if (!struct_ptr) {
@@ -87,7 +87,7 @@ TypeArc StructAccesExpr::deriveType(const Expr &child, const std::string &field_
     throw std::runtime_error("Requested field does not exist.");
 }
 
-    ExprPtr StructAccesExpr::build(ExprPtr child_, std::string field_)
+    ExprPtr StructAccessExpr::build(ExprPtr child_, std::string field_)
     {
         auto expr = reinterpret_cast<Pointer*>(child_->type.get());
         if (expr) {
@@ -95,7 +95,7 @@ TypeArc StructAccesExpr::deriveType(const Expr &child, const std::string &field_
             child_ = DerefExpr::build(std::move(child_));
         }
         // Try to build a struct access expression.
-        return std::make_unique<StructAccesExpr>(std::move(child_), std::move(field_));
+        return std::make_unique<StructAccessExpr>(std::move(child_), std::move(field_));
     }
 
     CastExpr::CastResult CastExpr::validateCastable(const Type& src, const Type& target) {

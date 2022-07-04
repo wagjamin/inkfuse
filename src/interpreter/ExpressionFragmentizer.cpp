@@ -1,6 +1,6 @@
 #include "interpreter/ExpressionFragmentizer.h"
 #include "algebra/ExpressionOp.h"
-#include "algebra/suboperators/ExpressionSubop.h"
+#include "algebra/suboperators/expressions/ExpressionSubop.h"
 
 namespace inkfuse {
 

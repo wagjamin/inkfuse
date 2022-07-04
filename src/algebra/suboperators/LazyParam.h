@@ -4,10 +4,10 @@
 #include "algebra/CompilationContext.h"
 #include "algebra/suboperators/Suboperator.h"
 #include "codegen/Expression.h"
-#include "codegen/Value.h"
 #include "codegen/Type.h"
-#include <optional>
+#include "codegen/Value.h"
 #include <memory>
+#include <optional>
 
 namespace inkfuse {
 
@@ -22,40 +22,40 @@ namespace inkfuse {
 #ifndef LAZY_PARAM
 
 #define LAZY_PARAM(pname, gstate)                                                                                  \
-   IR::ValuePtr pname;                                                                              \
+   IR::ValuePtr pname;                                                                                             \
                                                                                                                    \
    void pname##Set(IR::ValuePtr new_val) {                                                                         \
       pname = std::move(new_val);                                                                                  \
    }                                                                                                               \
                                                                                                                    \
-   IR::ExprPtr pname##Resolve(const Suboperator& op, IR::TypeArc& type, CompilationContext& context) const {       \
+   IR::ExprPtr pname##Resolve(const Suboperator& op, CompilationContext& context) const {                          \
       if (pname) {                                                                                                 \
          const auto& program = context.getProgram();                                                               \
          auto state_expr = context.accessGlobalState(op);                                                          \
          auto casted_state = IR::CastExpr::build(                                                                  \
             std::move(state_expr),                                                                                 \
             IR::Pointer::build(program.getStruct(gstate::name)));                                                  \
-         return IR::CastExpr::build(                                                                               \
-            IR::StructAccesExpr::build(std::move(casted_state), #pname),                                           \
-            IR::Pointer::build(type));                                                                             \
+         /* As there is no type erasure, get the struct member direcly value and deref. */                                                                                                          \
+         return IR::StructAccessExpr::build(std::move(casted_state), #pname);                                      \
       } else {                                                                                                     \
-         return IR::ConstExpr::build(std::move(pname));                                                                      \
+         return IR::ConstExpr::build(pname->copy());                                                               \
       }                                                                                                            \
    }                                                                                                               \
                                                                                                                    \
-   IR::ExprPtr pname##ResolveErased(const Suboperator& op, IR::TypeArc& type, CompilationContext& context) const { \
+   IR::ExprPtr pname##ResolveErased(const Suboperator& op, const IR::TypeArc& type, CompilationContext& context) const { \
       if (pname) {                                                                                                 \
          const auto& program = context.getProgram();                                                               \
          auto state_expr = context.accessGlobalState(op);                                                          \
          auto casted_state = IR::CastExpr::build(                                                                  \
             std::move(state_expr),                                                                                 \
             IR::Pointer::build(program.getStruct(gstate::name)));                                                  \
-         return IR::CastExpr::build(                                                                               \
-            IR::DerefExpr::build(                                                                                  \
-               IR::StructAccesExpr::build(std::move(casted_state), #pname + "_erased"),                                        \
+         /* Get the void pointer to the erased type, cast as pointer to value and deref. */                                                                                                          \
+         return IR::DerefExpr::build(                                                                              \
+            IR::CastExpr::build(                                                                                   \
+               IR::StructAccessExpr::build(std::move(casted_state), #pname "_erased"),                             \
                IR::Pointer::build(type)));                                                                         \
       } else {                                                                                                     \
-         return IR::ConstExpr::build(std::move(pname));                                                                      \
+         return IR::ConstExpr::build(pname->copy());                                                               \
       }                                                                                                            \
    }
 

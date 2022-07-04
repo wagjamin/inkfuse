@@ -50,8 +50,8 @@ struct LoopDriver : public TemplatedSuboperator<LoopDriverState, RuntimeParams> 
          auto decl_end = IR::DeclareStmt::build(end_var_name.str(), IR::UnsignedInt::build(8));
          decl_end_ptr = decl_end.get();
          // And assign.
-         auto assign_start = IR::AssignmentStmt::build(*decl_start, IR::StructAccesExpr::build(std::move(start_cast_expr), "start"));
-         auto assign_end = IR::AssignmentStmt::build(*decl_end, IR::StructAccesExpr::build(std::move(end_cast_expr), "end"));
+         auto assign_start = IR::AssignmentStmt::build(*decl_start, IR::StructAccessExpr::build(std::move(start_cast_expr), "start"));
+         auto assign_end = IR::AssignmentStmt::build(*decl_end, IR::StructAccessExpr::build(std::move(end_cast_expr), "end"));
          // Add this to the function preamble.
          std::deque<IR::StmtPtr> preamble_stmts;
          preamble_stmts.push_back(std::move(decl_start));

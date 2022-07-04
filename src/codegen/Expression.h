@@ -170,8 +170,8 @@ struct RefExpr : public UnaryExpr {
 
 /// Access a member of a struct - return type is the type of the struct member.
 /// The child expression must be typed a struct.
-struct StructAccesExpr : public UnaryExpr {
-   StructAccesExpr(ExprPtr child_, std::string field_) : UnaryExpr(deriveType(*child_, field_)), field(std::move(field_)) {
+struct StructAccessExpr : public UnaryExpr {
+   StructAccessExpr(ExprPtr child_, std::string field_) : UnaryExpr(deriveType(*child_, field_)), field(std::move(field_)) {
       children.push_back(std::move(child_));
    };
 
@@ -227,7 +227,7 @@ struct ExprVisitor {
          visitDeref(*elem, arg);
       } else if (auto elem = dynamic_cast<const RefExpr*>(&expr)) {
          visitRef(*elem, arg);
-      } else if (auto elem = dynamic_cast<const StructAccesExpr*>(&expr)) {
+      } else if (auto elem = dynamic_cast<const StructAccessExpr*>(&expr)) {
          visitStructAccess(*elem, arg);
       } else if (auto elem = dynamic_cast<const CastExpr*>(&expr)) {
          visitCast(*elem, arg);
@@ -249,7 +249,7 @@ struct ExprVisitor {
 
    virtual void visitRef(const RefExpr& type, Arg arg) {}
 
-   virtual void visitStructAccess(const StructAccesExpr& type, Arg arg) {}
+   virtual void visitStructAccess(const StructAccessExpr& type, Arg arg) {}
 
    virtual void visitCast(const CastExpr& type, Arg arg) {}
 };

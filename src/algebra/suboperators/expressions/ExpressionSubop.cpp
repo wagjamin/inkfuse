@@ -1,42 +1,12 @@
-#include "algebra/suboperators/ExpressionSubop.h"
+#include "algebra/suboperators/expressions/ExpressionSubop.h"
+#include "algebra/suboperators/expressions/ExpressionHelpers.h"
 #include "algebra/CompilationContext.h"
 #include "codegen/Statement.h"
 #include <sstream>
 
 namespace inkfuse {
 
-namespace {
-
 using Type = ExpressionOp::ComputeNode::Type;
-
-/// Actual names of the operations for id generation.
-const std::unordered_map<Type, std::string> expr_names{
-   {Type::Add, "add"},
-   {Type::Cast, "cast"},
-   {Type::Subtract, "sub"},
-   {Type::Multiply, "mul"},
-   {Type::Hash, "hash"},
-   {Type::Divide, "div"},
-   {Type::Greater, "gt"},
-   {Type::GreaterEqual, "ge"},
-   {Type::Less, "lt"},
-   {Type::LessEqual, "le"},
-   {Type::Eq, "eq"}};
-
-/// Map from algebra expression types to IR expressions in the jitted code.
-const std::unordered_map<Type, IR::ArithmeticExpr::Opcode> code_map{
-   {Type::Add, IR::ArithmeticExpr::Opcode::Add},
-   {Type::Subtract, IR::ArithmeticExpr::Opcode::Subtract},
-   {Type::Multiply, IR::ArithmeticExpr::Opcode::Multiply},
-   {Type::Divide, IR::ArithmeticExpr::Opcode::Divide},
-   {Type::Greater, IR::ArithmeticExpr::Opcode::Greater},
-   {Type::GreaterEqual, IR::ArithmeticExpr::Opcode::GreaterEqual},
-   {Type::Less, IR::ArithmeticExpr::Opcode::Less},
-   {Type::LessEqual, IR::ArithmeticExpr::Opcode::LessEqual},
-   {Type::Eq, IR::ArithmeticExpr::Opcode::Eq},
-};
-
-}
 
 // static
 SuboperatorArc ExpressionSubop::build(const RelAlgOp* source_, std::vector<const IU*> provided_ius_, std::vector<const IU*> operands_, ExpressionOp::ComputeNode::Type type_) {
@@ -56,7 +26,6 @@ void ExpressionSubop::consumeAllChildren(CompilationContext& context) {
    // First, declare the output IU.
    auto iu_name = context.buildIUIdentifier(*out);
    auto& declare = builder.appendStmt(IR::DeclareStmt::build(iu_name, out->type));
-   // Declare the output IU.
    context.declareIU(*out, declare);
 
    // Then, compute it. First resolve the child IU statements.
@@ -88,14 +57,14 @@ void ExpressionSubop::consumeAllChildren(CompilationContext& context) {
             IR::ArithmeticExpr::build(
                IR::VarRefExpr::build(*children[0]),
                IR::VarRefExpr::build(*children[1]),
-               code_map.at(type))));
+               ExpressionHelpers::code_map.at(type))));
    }
    context.notifyIUsReady(*this);
 }
 
 std::string ExpressionSubop::id() const {
    std::stringstream res;
-   res << "expr_" << expr_names.at(type);
+   res << "expr_" << ExpressionHelpers::expr_names.at(type);
    for (auto child : source_ius) {
       res << "_" << child->type->id();
    }

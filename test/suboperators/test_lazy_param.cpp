@@ -9,7 +9,6 @@ namespace inkfuse {
 namespace {
 
 struct TestLazyParams {
-   LAZY_PARAM(param1, gstate)
 };
 
 }
