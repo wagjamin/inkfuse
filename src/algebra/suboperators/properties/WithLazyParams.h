@@ -16,11 +16,11 @@ struct WithLazyParams {
    virtual ~WithLazyParams() = default;
 
    void attachLazyParams(Params lazy_params_) {
-      lazy_params = lazy_params_;
+      lazy_params = std::move(lazy_params_);
    };
 
    protected:
-   std::optional<Params> lazy_params;
+   Params lazy_params;
 };
 
 }

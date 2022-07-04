@@ -27,12 +27,12 @@ LazyExpressionSubop::LazyExpressionSubop(const RelAlgOp* source_, std::vector<co
 
 void LazyExpressionSubop::setUpStateImpl(const ExecutionContext& context) {
    // Lazy params have to be set up during execution and have the right type.
-   if (!lazy_params || lazy_param_type->id() != lazy_params->data->getType()->id()) {
+   if (!lazy_params.data || lazy_param_type->id() != lazy_params.data->getType()->id()) {
       throw std::runtime_error("LazyParam must be set up and of the right type during execution.");
    }
    // Fetch the underlying raw data from the associated lazy parameters.
    // If the value was hard-coded in the generated code already it will simply never be accessed.
-   state->data_erased = lazy_params->data->rawData();
+   state->data_erased = lazy_params.data->rawData();
 }
 
 void LazyExpressionSubop::consumeAllChildren(CompilationContext& context) {
@@ -53,7 +53,7 @@ void LazyExpressionSubop::consumeAllChildren(CompilationContext& context) {
          declare,
          IR::ArithmeticExpr::build(
             IR::VarRefExpr::build(child),
-            lazy_params->dataResolveErased(*this, lazy_param_type, context),
+            lazy_params.dataResolveErased(*this, lazy_param_type, context),
             ExpressionHelpers::code_map.at(type))));
 
    context.notifyIUsReady(*this);

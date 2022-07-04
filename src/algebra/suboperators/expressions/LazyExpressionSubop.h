@@ -24,7 +24,7 @@ struct LazyExpressionParams {
 
 /// Lazy expression subop takes an IU argument on the left and a constant value on the right.
 /// It then computes the binary expression on top of that.
-struct LazyExpressionSubop : public TemplatedSuboperator<LazyExpressionSubopState, EmptyState>, WithLazyParams<LazyExpressionParams> {
+struct LazyExpressionSubop : public TemplatedSuboperator<LazyExpressionSubopState, EmptyState>, public WithLazyParams<LazyExpressionParams> {
 
    /// Constructor for directly building a smart pointer.
    static SuboperatorArc build(const RelAlgOp* source_, std::vector<const IU*> provided_ius_, std::vector<const IU*> operands_, ExpressionOp::ComputeNode::Type type_, IR::TypeArc lazy_expression_type_);
