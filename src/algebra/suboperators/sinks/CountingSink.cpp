@@ -13,7 +13,7 @@ SuboperatorArc CountingSink::build(const IU& iu)
 }
 
 CountingSink::CountingSink(const IU& input_iu)
-: TemplatedSuboperator<CountingState, EmptyState>(nullptr, {}, {&input_iu})
+: TemplatedSuboperator<CountingState>(nullptr, {}, {&input_iu})
 {
 }
 

@@ -11,17 +11,17 @@
 
 namespace inkfuse {
 
-/// A LazyParam is a parameter influencing suboperator behaviour
+/// A RuntimeParam is a parameter influencing suboperator behaviour
 /// in a way that cannot always be baked into the compiled code.
 /// Take a simple example: addition with a constant. During compiled evaluation,
 /// we want to bake the constant into the generated code.
 /// During interpreted interpretation meanwhile, we have to take the value from the
 /// operator global state.
-/// This is allowed through the LAZY_PARAM macro. While it might seem unergonimic at first,
+/// This is allowed through the RUNTIME_PARAM macro. While it might seem unergonimic at first,
 /// it allows for static typing of these runtime parameters.
-#ifndef LAZY_PARAM
+#ifndef RUNTIME_PARAM
 
-#define LAZY_PARAM(pname, gstate)                                                                                  \
+#define RUNTIME_PARAM(pname, gstate)                                                                                  \
    IR::ValuePtr pname;                                                                                             \
                                                                                                                    \
    void pname##Set(IR::ValuePtr new_val) {                                                                         \
@@ -35,7 +35,7 @@ namespace inkfuse {
          auto casted_state = IR::CastExpr::build(                                                                  \
             std::move(state_expr),                                                                                 \
             IR::Pointer::build(program.getStruct(gstate::name)));                                                  \
-         /* As there is no type erasure, get the struct member direcly value and deref. */                                                                                                          \
+         /* As there is no type erasure, get the struct member directly value and deref. */                                                                                                          \
          return IR::StructAccessExpr::build(std::move(casted_state), #pname);                                      \
       } else {                                                                                                     \
          return IR::ConstExpr::build(pname->copy());                                                               \

@@ -7,7 +7,7 @@ namespace inkfuse {
 
 /// Copies one IU into another. A very boring sub-operator, but a nice
 /// demo and also valuable for testing.
-struct Copy final : public TemplatedSuboperator<EmptyState, EmptyState> {
+struct Copy final : public TemplatedSuboperator<EmptyState> {
    static std::unique_ptr<Copy> build(const IU& copy_iu);
 
    void consume(const IU& iu, CompilationContext& context) override;

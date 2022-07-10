@@ -8,15 +8,10 @@
 /// This file contains the necessary sub-operators for reading from a base table.
 namespace inkfuse {
 
-/// Runtime parameters which are not needed for code generation of the respective operator.
-struct TScanDriverRuntimeParams {
-   /// Size of the backing relation.
-   size_t rel_size;
-};
 
 /// Loop driver for reading a morsel from an underlying table.
-struct TScanDriver final : public LoopDriver<TScanDriverRuntimeParams> {
-   static std::unique_ptr<TScanDriver> build(const RelAlgOp* source);
+struct TScanDriver final : public LoopDriver {
+   static std::unique_ptr<TScanDriver> build(const RelAlgOp* source, size_t rel_size_ = 0);
 
    /// Pick then next set of tuples from the table scan up to the maximum chunk size.
    bool pickMorsel() override;
@@ -25,21 +20,17 @@ struct TScanDriver final : public LoopDriver<TScanDriverRuntimeParams> {
 
    private:
    /// Set up the table scan driver in the respective base pipeline.
-   TScanDriver(const RelAlgOp* source);
+   TScanDriver(const RelAlgOp* source, size_t rel_size_);
 
    /// Was the first morsel picked already?
    bool first_picked = false;
-};
-
-/// Runtime parameters which are needed to get a table scan IU provider running.
-struct TScanIUProviderRuntimeParams {
-   /// Raw data for the backing relation.
-   void* raw_data;
+   /// What is the size of the backing relation?
+   size_t rel_size;
 };
 
 /// IU provider when reading from a table scan.
-struct TScanIUProvider final : public IndexedIUProvider<TScanIUProviderRuntimeParams> {
-   static std::unique_ptr<TScanIUProvider> build(const RelAlgOp* source, const IU& driver_iu, const IU& produced_iu);
+struct TScanIUProvider final : public IndexedIUProvider {
+   static std::unique_ptr<TScanIUProvider> build(const RelAlgOp* source, const IU& driver_iu, const IU& produced_iu, void* raw_data_ = nullptr);
 
    protected:
    void setUpStateImpl(const ExecutionContext& context) override;
@@ -47,7 +38,10 @@ struct TScanIUProvider final : public IndexedIUProvider<TScanIUProviderRuntimePa
    std::string providerName() const override;
 
    private:
-   TScanIUProvider(const RelAlgOp* source, const IU& driver_iu, const IU& produced_iu);
+   TScanIUProvider(const RelAlgOp* source, const IU& driver_iu, const IU& produced_iu, void* raw_data_);
+
+   /// Pointer to the start of the backing stored column.
+   void* raw_data;
 };
 
 }

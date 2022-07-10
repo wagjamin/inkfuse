@@ -30,7 +30,7 @@ struct ExpressionT {
                                       ExpressionOp::ComputeNode::Type::Multiply,
                                       std::vector<ExpressionOp::Node*>{c3, c4}))
                    .get();
-      // Finally addition with a constant which will produce a LazyExpressionOp.
+      // Finally addition with a constant which will produce a RuntimeExpressionOp.
       auto c6 = nodes.emplace_back(std::make_unique<ExpressionOp::ComputeNode>(
                                       ExpressionOp::ComputeNode::Type::Add,
                                       c5, IR::UI<2>::build(5)))
@@ -73,7 +73,7 @@ TEST_F(ExpressionTNonParametrized, decay) {
    EXPECT_EQ(ops[0]->getSourceIUs()[1], &in2);
    EXPECT_EQ(pipe.getConsumers(*ops[0]).size(), 2);
    EXPECT_EQ(pipe.getConsumers(*ops[1]).size(), 1);
-   // Only one input on lazy op.
+   // Only one input on runtime expression op.
    EXPECT_EQ(pipe.getProducers(*ops[3]).size(), 1);
 }
 

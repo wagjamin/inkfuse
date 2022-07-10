@@ -4,7 +4,7 @@
 #include "interpreter/CopyFragmentizer.h"
 #include "interpreter/CountingSinkFragmentizer.h"
 #include "interpreter/ExpressionFragmentizer.h"
-#include "interpreter/LazyExpressionFragmentizer.h"
+#include "interpreter/RuntimeExpressionFragmentizer.h"
 #include "interpreter/TScanFragmentizer.h"
 
 namespace inkfuse {
@@ -68,7 +68,7 @@ IR::ProgramArc FragmentGenerator::build() {
    fragmentizers.push_back(std::make_unique<TScanFragmetizer>());
    fragmentizers.push_back(std::make_unique<CopyFragmentizer>());
    fragmentizers.push_back(std::make_unique<ExpressionFragmentizer>());
-   fragmentizers.push_back(std::make_unique<LazyExpressionFragmentizer>());
+   fragmentizers.push_back(std::make_unique<RuntimeExpressionFragmentizer>());
    fragmentizers.push_back(std::make_unique<CountingSinkFragmentizer>());
    fragmentizers.push_back(std::make_unique<ColumnFilterFragmentizer>());
 

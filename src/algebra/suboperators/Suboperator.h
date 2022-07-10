@@ -113,23 +113,12 @@ struct EmptyState {};
 
 /// Templated suboperator providing functionality required across multiple operators.
 /// @tparam GlobalState execution state of the operator hooked up into the inkfuse runtime.
-/// @tparam RuntimeParams runtime parameters needed to construct the global state.
-template <class GlobalState, class RuntimeParams>
+template <class GlobalState>
 struct TemplatedSuboperator : public Suboperator {
-   /// Add runtime parameters to the given suboperator.
-   void attachRuntimeParams(RuntimeParams params_) {
-      params = params_;
-   };
 
    void setUpState(const ExecutionContext& context) override {
       if (state) {
          return;
-      }
-      if constexpr (!std::is_same<EmptyState, RuntimeParams>::value) {
-         if (!params) {
-            // Params have to be attached for every suboperator which does not operate on empty runtime state.
-            throw std::runtime_error("Runtime parameters need to be attached before state can be set up.");
-         }
       }
       state = std::make_unique<GlobalState>();
       setUpStateImpl(context);
@@ -153,8 +142,6 @@ struct TemplatedSuboperator : public Suboperator {
 
    /// Global state of the respective operator.
    std::unique_ptr<GlobalState> state;
-   /// Runtime parameters not needed for code generation.
-   std::optional<RuntimeParams> params;
 };
 
 using SuboperatorArc = std::shared_ptr<Suboperator>;

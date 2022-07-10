@@ -34,7 +34,7 @@ std::string Copy::id() const
 }
 
 Copy::Copy(const IU& copy_iu)
-: TemplatedSuboperator<EmptyState, EmptyState>(nullptr, {&produced}, {&copy_iu}), produced(copy_iu.type)
+: TemplatedSuboperator<EmptyState>(nullptr, {&produced}, {&copy_iu}), produced(copy_iu.type)
 {
 }
 

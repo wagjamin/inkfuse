@@ -47,7 +47,7 @@ struct ExpressionOp : public RelAlgOp {
       ComputeNode(Type code, std::vector<Node*> children);
       // Constructor for cast operations.
       ComputeNode(IR::TypeArc casted, Node* child);
-      // Constructor for lazy operation.
+      // Constructor for operation with runtime parameter.
       ComputeNode(Type code, Node* arg_1, IR::ValuePtr arg_2);
 
       // Which expression?
@@ -56,8 +56,8 @@ struct ExpressionOp : public RelAlgOp {
       IU out;
       // Children of this expression. Pointers are useful for DAG-shaped expression trees.
       std::vector<Node*> children;
-      // Optional constant second argument if this is a lazy node.
-      std::optional<IR::ValuePtr> opt_lazy;
+      // Optional constant second argument if this is turns into a RuntimeExpressionSubop.
+      std::optional<IR::ValuePtr> opt_runtime_param;
    };
 
    ExpressionOp(

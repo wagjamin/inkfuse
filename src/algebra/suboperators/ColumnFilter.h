@@ -16,7 +16,7 @@
 namespace inkfuse {
 
 /// Scoping operator building the if statement needed in a filter.
-struct ColumnFilterScope : public TemplatedSuboperator<EmptyState, EmptyState> {
+struct ColumnFilterScope : public TemplatedSuboperator<EmptyState> {
 
    /// Set up a ColumnFilterScope that consumes the filter IU and defines a new pseudo IU.
    static SuboperatorArc build(const RelAlgOp* source_, const IU& filter_iu_, const IU& pseudo);
@@ -40,7 +40,7 @@ struct ColumnFilterScope : public TemplatedSuboperator<EmptyState, EmptyState> {
 };
 
 /// Logic operator redefining the IU as a copy of the old one.
-struct ColumnFilterLogic : public TemplatedSuboperator<EmptyState, EmptyState> {
+struct ColumnFilterLogic : public TemplatedSuboperator<EmptyState> {
 
    /// Set up a ColumnFilterLogic that consumes the ColumnFilterScope pseudo IU and redefines the incoming one.
    static SuboperatorArc build(const RelAlgOp* source_, const IU& pseudo, const IU& incoming, const IU& redefined);

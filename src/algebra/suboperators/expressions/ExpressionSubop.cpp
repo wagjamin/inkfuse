@@ -14,7 +14,8 @@ SuboperatorArc ExpressionSubop::build(const RelAlgOp* source_, std::vector<const
 }
 
 ExpressionSubop::ExpressionSubop(const RelAlgOp* source_, std::vector<const IU*> provided_ius_, std::vector<const IU*> source_ius_, ExpressionOp::ComputeNode::Type type_)
-   : TemplatedSuboperator<EmptyState, EmptyState>(source_, std::move(provided_ius_), std::move(source_ius_)), type(type_) {
+   : TemplatedSuboperator<EmptyState>(source_, std::move(provided_ius_), std::move(source_ius_)), type(type_) {
+
 }
 
 void ExpressionSubop::consumeAllChildren(CompilationContext& context) {
