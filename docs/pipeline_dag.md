@@ -140,6 +140,9 @@ and in the other case we need to unroll the loop in the interpreter.
 A final side-note here: the execution model of InkFuse is in principle flexible enough to allow the execution logic
 to only generate optimized code for the raw lookup and key-checking logic that could then be run as a single vectorized primitive.
 
+A final-final side-node here: the above explanations actually aren't enough as they don't cover inserts into the backing hash table.
+But getting these to work as well is not very hard, it just needs another sub-operator.
+
 #### Getting This Right for Hash Joins
 
 The above logic is also applied for hash joins.

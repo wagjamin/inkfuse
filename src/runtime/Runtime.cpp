@@ -5,6 +5,7 @@
 #include "algebra/suboperators/sinks/CountingSink.h"
 #include "algebra/suboperators/sinks/FuseChunkSink.h"
 #include "runtime/HashRuntime.h"
+#include "runtime/HashTableRuntime.h"
 
 namespace inkfuse {
 
@@ -18,6 +19,7 @@ GlobalRuntime::GlobalRuntime() : program(std::make_unique<IR::Program>("global_r
    FuseChunkSink::registerRuntime();
    CountingSink::registerRuntime();
    HashRuntime::registerRuntime();
+   HashTableRuntime::registerRuntime();
    RuntimeExpressionSubop::registerRuntime();
 }
 

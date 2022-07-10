@@ -165,6 +165,7 @@ set(TEST_CC
         "${CMAKE_SOURCE_DIR}/test/operators/test_table_scan.cpp"
         "${CMAKE_SOURCE_DIR}/test/operators/test_expression.cpp"
         "${CMAKE_SOURCE_DIR}/test/operators/test_filter.cpp"
+        "${CMAKE_SOURCE_DIR}/test/runtime/test_hash_table.cpp"
         "${CMAKE_SOURCE_DIR}/test/suboperators/test_runtime_param.cpp"
         "${CMAKE_SOURCE_DIR}/test/suboperators/test_minimal_pipeline.cpp"
         "${CMAKE_SOURCE_DIR}/test/suboperators/test_sources.cpp"
