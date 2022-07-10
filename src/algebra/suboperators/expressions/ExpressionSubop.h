@@ -12,7 +12,7 @@ struct Stmt;
 }
 
 /// Basic expression sub-operator, taking a set of input IUs and producing one output IU.
-struct ExpressionSubop : public TemplatedSuboperator<EmptyState, EmptyState> {
+struct ExpressionSubop : public TemplatedSuboperator<EmptyState> {
    /// Constructor for directly building a smart pointer.
    static SuboperatorArc build(const RelAlgOp* source_, std::vector<const IU*> provided_ius_, std::vector<const IU*> operands_, ExpressionOp::ComputeNode::Type type_);
    /// Constructor.

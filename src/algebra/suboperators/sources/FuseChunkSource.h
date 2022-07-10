@@ -7,7 +7,7 @@
 
 namespace inkfuse {
 
-struct FuseChunkSourceDriver final : public LoopDriver<EmptyState> {
+struct FuseChunkSourceDriver final : public LoopDriver {
 
    static std::unique_ptr<FuseChunkSourceDriver> build();
 
@@ -26,7 +26,7 @@ struct FuseChunkSourceDriver final : public LoopDriver<EmptyState> {
    Column* col = nullptr;
 };
 
-struct FuseChunkSourceIUProvider final : public IndexedIUProvider<EmptyState> {
+struct FuseChunkSourceIUProvider final : public IndexedIUProvider {
    static std::unique_ptr<FuseChunkSourceIUProvider> build(const IU& driver_iu, const IU& produced_iu);
 
    protected:

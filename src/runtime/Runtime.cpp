@@ -1,9 +1,9 @@
 #include "runtime/Runtime.h"
 #include "algebra/suboperators/IndexedIUProvider.h"
 #include "algebra/suboperators/LoopDriver.h"
-#include "algebra/suboperators/expressions/LazyExpressionSubop.h"
-#include "algebra/suboperators/sinks/FuseChunkSink.h"
+#include "algebra/suboperators/expressions/RuntimeExpressionSubop.h"
 #include "algebra/suboperators/sinks/CountingSink.h"
+#include "algebra/suboperators/sinks/FuseChunkSink.h"
 #include "runtime/HashRuntime.h"
 
 namespace inkfuse {
@@ -18,7 +18,7 @@ GlobalRuntime::GlobalRuntime() : program(std::make_unique<IR::Program>("global_r
    FuseChunkSink::registerRuntime();
    CountingSink::registerRuntime();
    HashRuntime::registerRuntime();
-   LazyExpressionSubop::registerRuntime();
+   RuntimeExpressionSubop::registerRuntime();
 }
 
 RuntimeStructBuilder::~RuntimeStructBuilder() {

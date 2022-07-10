@@ -1,6 +1,6 @@
-#include "interpreter/LazyExpressionFragmentizer.h"
+#include "interpreter/RuntimeExpressionFragmentizer.h"
 #include "algebra/ExpressionOp.h"
-#include "algebra/suboperators/expressions/LazyExpressionSubop.h"
+#include "algebra/suboperators/expressions/RuntimeExpressionSubop.h"
 
 namespace inkfuse {
 
@@ -25,7 +25,7 @@ const std::vector<Type> op_types {
 };
 }
 
-LazyExpressionFragmentizer::LazyExpressionFragmentizer()
+RuntimeExpressionFragmentizer::RuntimeExpressionFragmentizer()
 {
    // All binary operations on the same type.
    for (auto& type : types) {
@@ -33,7 +33,7 @@ LazyExpressionFragmentizer::LazyExpressionFragmentizer()
          auto& [name, pipe] = pipes.emplace_back();
          auto& iu_1 = generated_ius.emplace_back(type, "");
          auto& iu_out = generated_ius.emplace_back(ExpressionOp::derive(operation, {type, type}), "");
-         auto& op = pipe.attachSuboperator(LazyExpressionSubop::build(nullptr, {&iu_out}, {&iu_1}, operation, type));
+         auto& op = pipe.attachSuboperator(RuntimeExpressionSubop::build(nullptr, {&iu_out}, {&iu_1}, operation, type));
          name = op.id();
       }
    }

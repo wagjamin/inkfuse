@@ -11,7 +11,7 @@ struct CountingState {
    uint64_t count = 0;
 };
 
-struct CountingSink : public TemplatedSuboperator<CountingState, EmptyState> {
+struct CountingSink : public TemplatedSuboperator<CountingState> {
 
    static SuboperatorArc build(const IU& input_iu);
 

@@ -8,7 +8,7 @@ std::unique_ptr<FuseChunkSourceDriver> FuseChunkSourceDriver::build()
    return std::unique_ptr<FuseChunkSourceDriver>(new FuseChunkSourceDriver());
 }
 
-FuseChunkSourceDriver::FuseChunkSourceDriver(): LoopDriver<EmptyState>(nullptr)
+FuseChunkSourceDriver::FuseChunkSourceDriver(): LoopDriver(nullptr)
 {
 }
 
@@ -44,7 +44,7 @@ std::unique_ptr<FuseChunkSourceIUProvider> FuseChunkSourceIUProvider::build(cons
 }
 
 FuseChunkSourceIUProvider::FuseChunkSourceIUProvider(const IU& driver_iu, const IU& produced_iu)
-: IndexedIUProvider<EmptyState>(nullptr, driver_iu, produced_iu)
+: IndexedIUProvider(nullptr, driver_iu, produced_iu)
 {
 }
 

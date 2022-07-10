@@ -18,8 +18,7 @@ struct LoopDriverState {
    uint64_t end;
 };
 
-template <class RuntimeParams>
-struct LoopDriver : public TemplatedSuboperator<LoopDriverState, RuntimeParams> {
+struct LoopDriver : public TemplatedSuboperator<LoopDriverState> {
    /// The LoopDriver is a source operator which picks morsel ranges from the backing storage.
    bool isSource() const override { return true; }
 
@@ -92,7 +91,7 @@ struct LoopDriver : public TemplatedSuboperator<LoopDriverState, RuntimeParams> 
 
    protected:
    LoopDriver(const RelAlgOp* source_)
-      : TemplatedSuboperator<LoopDriverState, RuntimeParams>(source_, {}, {}), loop_driver_iu(IR::UnsignedInt::build(8)) {
+      : TemplatedSuboperator<LoopDriverState>(source_, {}, {}), loop_driver_iu(IR::UnsignedInt::build(8)) {
       if (this->source && loop_driver_iu.name.empty()) {
          loop_driver_iu.name = this->source->getName() + "_idx";
       } else {

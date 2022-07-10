@@ -1,7 +1,7 @@
 #include "algebra/ExpressionOp.h"
 #include "algebra/Pipeline.h"
 #include "algebra/suboperators/expressions/ExpressionSubop.h"
-#include "algebra/suboperators/expressions/LazyExpressionSubop.h"
+#include "algebra/suboperators/expressions/RuntimeExpressionSubop.h"
 
 #include <unordered_set>
 
@@ -48,7 +48,7 @@ ExpressionOp::ComputeNode::ComputeNode(IR::TypeArc casted, Node* child)
 }
 
 ExpressionOp::ComputeNode::ComputeNode(Type code_, Node* arg_1, IR::ValuePtr arg_2)
-   : Node(derive(code_, {arg_1})), code(code_), out(output_type), children({arg_1}), opt_lazy(std::move(arg_2)) {
+   : Node(derive(code_, {arg_1})), code(code_), out(output_type), children({arg_1}), opt_runtime_param(std::move(arg_2)) {
 }
 
 void ExpressionOp::decay(PipelineDAG& dag) const {
@@ -81,16 +81,16 @@ void ExpressionOp::decayNode(Node* node, std::unordered_map<Node*, const IU*>& b
       }
       std::vector<const IU*> out_ius{&compute_node->out};
       SuboperatorArc subop;
-      if (!compute_node->opt_lazy) {
+      if (!compute_node->opt_runtime_param) {
          // Add a regular ExpressionSubop for this node.
          subop = std::make_shared<ExpressionSubop>(this, std::move(out_ius), std::move(source_ius), compute_node->code);
       } else {
-         // Add a LazyExpressionSubop for this node.
-         subop = std::make_shared<LazyExpressionSubop>(this, std::move(out_ius), std::move(source_ius), compute_node->code, (*compute_node->opt_lazy)->getType());
-         // Add the runtime parameters needed for the lazy expression.
-         LazyExpressionParams params;
-         params.dataSet((*compute_node->opt_lazy)->copy());
-         static_cast<LazyExpressionSubop&>(*subop).attachLazyParams(std::move(params));
+         // Add a RuntimeExpressionSubop for this node.
+         subop = std::make_shared<RuntimeExpressionSubop>(this, std::move(out_ius), std::move(source_ius), compute_node->code, (*compute_node->opt_runtime_param)->getType());
+         // Add the runtime parameters needed for the runtime expression.
+         RuntimeExpressionParams params;
+         params.dataSet((*compute_node->opt_runtime_param)->copy());
+         static_cast<RuntimeExpressionSubop&>(*subop).attachRuntimeParams(std::move(params));
       }
       dag.getCurrentPipeline().attachSuboperator(std::move(subop));
    }

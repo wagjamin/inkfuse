@@ -11,7 +11,7 @@ SuboperatorArc ColumnFilterScope::build(const RelAlgOp* source_, const IU& filte
 }
 
 ColumnFilterScope::ColumnFilterScope(const RelAlgOp* source_, const IU& filter_iu_, const IU& pseudo)
-: TemplatedSuboperator<EmptyState, EmptyState>(source_, std::vector<const IU*>{&pseudo}, std::vector<const IU*>{&filter_iu_})
+: TemplatedSuboperator<EmptyState>(source_, std::vector<const IU*>{&pseudo}, std::vector<const IU*>{&filter_iu_})
 {
 }
 
@@ -53,7 +53,7 @@ SuboperatorArc ColumnFilterLogic::build(const RelAlgOp* source_, const IU& pseud
 }
 
 ColumnFilterLogic::ColumnFilterLogic(const RelAlgOp* source_, const IU& pseudo, const IU& incoming, const IU& redefined)
-   : TemplatedSuboperator<EmptyState, EmptyState>(source_, std::vector<const IU*>{&redefined}, std::vector<const IU*>{&pseudo, &incoming})
+   : TemplatedSuboperator<EmptyState>(source_, std::vector<const IU*>{&redefined}, std::vector<const IU*>{&pseudo, &incoming})
 {
 }
 

@@ -20,8 +20,7 @@ struct IndexedIUProviderState {
 /// backing contiguous storage section.
 /// Examples are providing IUs from table scans and fuse chunks. The actual
 /// offset logic behaves the same, just the state setup and loop drivers are different.
-template <class RuntimeParams>
-struct IndexedIUProvider : public TemplatedSuboperator<IndexedIUProviderState, RuntimeParams> {
+struct IndexedIUProvider : public TemplatedSuboperator<IndexedIUProviderState> {
 
    /// An IndexedIUProvider has to be understood in the context of its preceding LoopDriver.
    bool incomingStrongLinks() const override { return true; }
@@ -89,7 +88,7 @@ struct IndexedIUProvider : public TemplatedSuboperator<IndexedIUProviderState, R
 
    protected:
    IndexedIUProvider(const RelAlgOp* source, const IU& driver_iu, const IU& produced_iu)
-      : TemplatedSuboperator<IndexedIUProviderState, RuntimeParams>(source, {&produced_iu}, {&driver_iu}) {}
+      : TemplatedSuboperator<IndexedIUProviderState>(source, {&produced_iu}, {&driver_iu}) {}
 
    /// Specific name of a provider needed to generate unique fragment ids.
    virtual std::string providerName() const = 0;

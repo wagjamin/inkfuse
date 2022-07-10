@@ -16,7 +16,7 @@ struct Value {
    virtual std::unique_ptr<Value> copy() = 0;
 
    /// Get a void* to the raw value that can be interpreted by the compiled code.
-   /// This is needed for suboperators like the LazyExpressionSubop.
+   /// This is needed for suboperators like the RuntimeExpressionSubop.
    virtual void* rawData() = 0;
 
    virtual ~Value() = default;
