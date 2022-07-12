@@ -12,7 +12,7 @@ namespace inkfuse {
 struct ExpressionOp : public RelAlgOp {
    struct Node {
       virtual ~Node() = default;
-      Node(IR::TypeArc output_type_): output_type(std::move(output_type_)) {};
+      Node(IR::TypeArc output_type_) : output_type(std::move(output_type_)){};
 
       const IR::TypeArc output_type;
    };
@@ -41,6 +41,7 @@ struct ExpressionOp : public RelAlgOp {
          LessEqual,
          Greater,
          GreaterEqual,
+         Constant,
       };
 
       // Constructor for regular binary operations.
@@ -76,7 +77,6 @@ struct ExpressionOp : public RelAlgOp {
    static IR::TypeArc derive(ComputeNode::Type code, const std::vector<IR::TypeArc>& types);
 
    protected:
-
    /// Helper for decaying the expression DAG without duplicate subops.
    void decayNode(
       Node* node,

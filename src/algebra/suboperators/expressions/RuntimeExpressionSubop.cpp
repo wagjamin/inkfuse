@@ -28,7 +28,7 @@ RuntimeExpressionSubop::RuntimeExpressionSubop(const RelAlgOp* source_, std::vec
 void RuntimeExpressionSubop::setUpStateImpl(const ExecutionContext& context) {
    // Runtime params have to be set up during execution and have the right type.
    if (!runtime_params.data || runtime_param_type->id() != runtime_params.data->getType()->id()) {
-      throw std::runtime_error("RuntimeParam must be set up and of the right type during execution.");
+      throw std::runtime_error("RuntimeParam of RuntimeExpressionSubop must be set up and of the right type during execution.");
    }
    // Fetch the underlying raw data from the associated runtime parameters.
    // If the value was hard-coded in the generated code already it will simply never be accessed.

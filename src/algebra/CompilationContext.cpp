@@ -1,6 +1,7 @@
 #include "algebra/CompilationContext.h"
 #include "algebra/Pipeline.h"
 #include "algebra/suboperators/Suboperator.h"
+#include <iostream>
 #include <sstream>
 
 namespace inkfuse {
@@ -89,8 +90,7 @@ void CompilationContext::declareIU(const IU& iu, const IR::Stmt& stmt) {
    iu_declarations[&iu] = &stmt;
 }
 
-std::string CompilationContext::buildIUIdentifier(const IU& iu)
-{
+std::string CompilationContext::buildIUIdentifier(const IU& iu) {
    if (!iu.name.empty()) {
       return "iu_" + iu.name;
    } else {
@@ -100,8 +100,7 @@ std::string CompilationContext::buildIUIdentifier(const IU& iu)
    }
 }
 
-const IR::Stmt & CompilationContext::getIUDeclaration(const IU& iu)
-{
+const IR::Stmt& CompilationContext::getIUDeclaration(const IU& iu) {
    return *iu_declarations.at(&iu);
 }
 
@@ -124,8 +123,7 @@ IR::ExprPtr CompilationContext::accessGlobalState(const Suboperator& op) const {
    return IR::DerefExpr::build(std::move(offset));
 }
 
-IR::FunctionArc CompilationContext::getRuntimeFunction(std::string_view name) const
-{
+IR::FunctionArc CompilationContext::getRuntimeFunction(std::string_view name) const {
    assert(program->getIncludes().size() == 1);
    auto& include = program->getIncludes()[0];
    return include->getFunction(name);

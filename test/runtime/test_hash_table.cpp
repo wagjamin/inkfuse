@@ -8,7 +8,7 @@ namespace {
 
 // Return pointer to value or null if it's not in the hash table.
 char* tryFind(HashTable& table, uint64_t value) {
-   auto hash = XXH3_64bits(&value, 8);
+   const auto hash = XXH3_64bits(&value, 8);
    auto elem = table.lookup(hash);
    while (elem && *reinterpret_cast<uint64_t*>(elem) != value) {
       elem = table.lookupNext(elem);
@@ -29,49 +29,49 @@ TEST(hash_table, simple_inserts) {
    HashTable table(8, 2048);
    for (uint64_t k = 0; k < 1024; ++k) {
       // Insert ourselves.
-      auto hash = XXH3_64bits(&k, 8);
+      const auto hash = XXH3_64bits(&k, 8);
       char* elem = table.insert(hash);
       *reinterpret_cast<uint64_t*>(elem) = k;
       // And find ourselves again.
-      char* found = tryFind(table, k);
+      const char* found = tryFind(table, k);
       EXPECT_NE(found, nullptr);
-      EXPECT_EQ(*reinterpret_cast<uint64_t*>(found), k);
+      EXPECT_EQ(*reinterpret_cast<const uint64_t*>(found), k);
    }
    // Re-find everything after all inserts.
    for (uint64_t k = 0; k < 1024; ++k) {
-      char* found = tryFind(table, k);
+      const char* found = tryFind(table, k);
       EXPECT_NE(found, nullptr);
-      EXPECT_EQ(*reinterpret_cast<uint64_t*>(found), k);
+      EXPECT_EQ(*reinterpret_cast<const uint64_t*>(found), k);
    }
    // Other values cannot be found.
    for (uint64_t k = 1025; k < 2048; ++k) {
-      char* found = tryFind(table, k);
+      const char* found = tryFind(table, k);
       EXPECT_EQ(found, nullptr);
    }
 }
 
-// 10k inserts on a table that resizes multiple times.
+// 100k inserts on a table that resizes multiple times.
 TEST(hash_table, inserts_with_resize) {
    HashTable table(8, 2048);
-   for (uint64_t k = 0; k < 10000; ++k) {
+   for (uint64_t k = 0; k < 100000; ++k) {
       // Insert ourselves.
-      auto hash = XXH3_64bits(&k, 8);
+      const auto hash = XXH3_64bits(&k, 8);
       char* elem = table.insert(hash);
       *reinterpret_cast<uint64_t*>(elem) = k;
       // And find ourselves again.
-      char* found = tryFind(table, k);
+      const const char* found = tryFind(table, k);
       EXPECT_NE(found, nullptr);
-      EXPECT_EQ(*reinterpret_cast<uint64_t*>(found), k);
+      EXPECT_EQ(*reinterpret_cast<const uint64_t*>(found), k);
    }
    // Re-find everything after all inserts.
-   for (uint64_t k = 0; k < 10000; ++k) {
-      char* found = tryFind(table, k);
+   for (uint64_t k = 0; k < 100000; ++k) {
+      const char* found = tryFind(table, k);
       EXPECT_NE(found, nullptr);
-      EXPECT_EQ(*reinterpret_cast<uint64_t*>(found), k);
+      EXPECT_EQ(*reinterpret_cast<const uint64_t*>(found), k);
    }
    // Other values cannot be found.
-   for (uint64_t k = 10001; k < 20000; ++k) {
-      char* found = tryFind(table, k);
+   for (uint64_t k = 100001; k < 200000; ++k) {
+      const char* found = tryFind(table, k);
       EXPECT_EQ(found, nullptr);
    }
 }

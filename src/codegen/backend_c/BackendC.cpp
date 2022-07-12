@@ -342,7 +342,7 @@ void BackendC::compileExpression(const IR::Expr& expr, ScopedWriter::Statement& 
             {IR::ArithmeticExpr::Opcode::LessEqual, "<="},
             {IR::ArithmeticExpr::Opcode::Greater, ">"},
             {IR::ArithmeticExpr::Opcode::GreaterEqual, ">"},
-            {IR::ArithmeticExpr::Opcode::Eq, "="},
+            {IR::ArithmeticExpr::Opcode::Eq, "=="},
          };
          compileExpression(*type.children[0], stmt);
          assert(opcode_map.count(type.code));
@@ -371,10 +371,10 @@ void BackendC::compileExpression(const IR::Expr& expr, ScopedWriter::Statement& 
          // Set up cast into target type.
          stmt.stream() << "((";
          typeDescription(*type.type, stmt);
-         stmt.stream() << ") ";
+         stmt.stream() << ") (";
          // Set up what should be casted.
          compileExpression(*type.children[0], stmt);
-         stmt.stream() << ")";
+         stmt.stream() << "))";
       }
    };
 
