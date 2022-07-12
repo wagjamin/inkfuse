@@ -3,6 +3,7 @@
 #include "algebra/suboperators/LoopDriver.h"
 #include "algebra/suboperators/HtLookupSubop.h"
 #include "algebra/suboperators/expressions/RuntimeExpressionSubop.h"
+#include "algebra/suboperators/expressions/RuntimeKeyExpressionSubop.h"
 #include "algebra/suboperators/sinks/CountingSink.h"
 #include "algebra/suboperators/sinks/FuseChunkSink.h"
 #include "runtime/HashRuntime.h"
@@ -20,6 +21,7 @@ GlobalRuntime::GlobalRuntime() : program(std::make_unique<IR::Program>("global_r
    FuseChunkSink::registerRuntime();
    CountingSink::registerRuntime();
    RuntimeExpressionSubop::registerRuntime();
+   RuntimeKeyExpressionSubop::registerRuntime();
    HtLookupSubop::registerRuntime();
    // Register the actual inkfuse runtime functions.
    HashRuntime::registerRuntime();

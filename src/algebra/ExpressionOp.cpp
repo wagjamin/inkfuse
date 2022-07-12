@@ -41,6 +41,7 @@ ExpressionOp::IURefNode::IURefNode(const IU* child_)
 
 ExpressionOp::ComputeNode::ComputeNode(Type code_, std::vector<Node*> children_)
    : Node(derive(code_, children_)), code(code_), out(output_type), children(std::move(children_)) {
+   assert(code != Type::Constant && code != Type::Cast);
 }
 
 ExpressionOp::ComputeNode::ComputeNode(IR::TypeArc casted, Node* child)
@@ -49,6 +50,7 @@ ExpressionOp::ComputeNode::ComputeNode(IR::TypeArc casted, Node* child)
 
 ExpressionOp::ComputeNode::ComputeNode(Type code_, Node* arg_1, IR::ValuePtr arg_2)
    : Node(derive(code_, {arg_1})), code(code_), out(output_type), children({arg_1}), opt_runtime_param(std::move(arg_2)) {
+   assert(code != Type::Hash && code != Type::Cast);
 }
 
 void ExpressionOp::decay(PipelineDAG& dag) const {
