@@ -1,6 +1,7 @@
 #include "runtime/Runtime.h"
 #include "algebra/suboperators/IndexedIUProvider.h"
 #include "algebra/suboperators/LoopDriver.h"
+#include "algebra/suboperators/HtLookupSubop.h"
 #include "algebra/suboperators/expressions/RuntimeExpressionSubop.h"
 #include "algebra/suboperators/sinks/CountingSink.h"
 #include "algebra/suboperators/sinks/FuseChunkSink.h"
@@ -18,9 +19,11 @@ GlobalRuntime::GlobalRuntime() : program(std::make_unique<IR::Program>("global_r
    IndexedIUProviderRuntime::registerRuntime();
    FuseChunkSink::registerRuntime();
    CountingSink::registerRuntime();
+   RuntimeExpressionSubop::registerRuntime();
+   HtLookupSubop::registerRuntime();
+   // Register the actual inkfuse runtime functions.
    HashRuntime::registerRuntime();
    HashTableRuntime::registerRuntime();
-   RuntimeExpressionSubop::registerRuntime();
 }
 
 RuntimeStructBuilder::~RuntimeStructBuilder() {
