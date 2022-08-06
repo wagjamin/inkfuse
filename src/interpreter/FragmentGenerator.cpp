@@ -3,9 +3,9 @@
 #include "interpreter/ColumnFilterFragmentizer.h"
 #include "interpreter/CopyFragmentizer.h"
 #include "interpreter/CountingSinkFragmentizer.h"
-#include "interpreter/HtLookupSubopFragmentizer.h"
 #include "interpreter/ExpressionFragmentizer.h"
 #include "interpreter/RuntimeExpressionFragmentizer.h"
+#include "interpreter/RuntimeFunctionSubopFragmentizer.h"
 #include "interpreter/RuntimeKeyExpressionFragmentizer.h"
 #include "interpreter/TScanFragmentizer.h"
 
@@ -74,7 +74,7 @@ IR::ProgramArc FragmentGenerator::build() {
    fragmentizers.push_back(std::make_unique<RuntimeKeyExpressionFragmentizer>());
    fragmentizers.push_back(std::make_unique<CountingSinkFragmentizer>());
    fragmentizers.push_back(std::make_unique<ColumnFilterFragmentizer>());
-   fragmentizers.push_back(std::make_unique<HtLookupSubopFragmentizer>());
+   fragmentizers.push_back(std::make_unique<RuntimeFunctionSubopFragmentizer>());
 
    // Create the IR program.
    auto program = std::make_shared<IR::Program>("fragments", false);
