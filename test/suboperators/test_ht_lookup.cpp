@@ -1,5 +1,5 @@
 #include "algebra/Pipeline.h"
-#include "algebra/suboperators/HtLookupSubop.h"
+#include "algebra/suboperators/RuntimeFunctionSubop.h"
 #include "codegen/Type.h"
 #include "exec/PipelineExecutor.h"
 #include "gtest/gtest.h"
@@ -13,7 +13,7 @@ namespace {
 struct HtLookupSubopTest : public ::testing::TestWithParam<PipelineExecutor::ExecutionMode> {
    HtLookupSubopTest() : hash_iu(IR::UnsignedInt::build(8)), table(8, 1024) {
       // Set up the hash table operator.
-      auto op = HtLookupSubop::build(nullptr, hash_iu, &table);
+      auto op = RuntimeFunctionSubop::htLookup(nullptr, hash_iu, &table);
       ptr_iu = op->getIUs()[0];
       // And insert keys into the backing table.
       addValuesToHashTable();
