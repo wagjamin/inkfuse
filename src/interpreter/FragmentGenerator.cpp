@@ -7,6 +7,7 @@
 #include "interpreter/RuntimeExpressionFragmentizer.h"
 #include "interpreter/RuntimeFunctionSubopFragmentizer.h"
 #include "interpreter/RuntimeKeyExpressionFragmentizer.h"
+#include "interpreter/KeyPackingFragmentizer.h"
 #include "interpreter/TScanFragmentizer.h"
 
 namespace inkfuse {
@@ -72,6 +73,7 @@ IR::ProgramArc FragmentGenerator::build() {
    fragmentizers.push_back(std::make_unique<ExpressionFragmentizer>());
    fragmentizers.push_back(std::make_unique<RuntimeExpressionFragmentizer>());
    fragmentizers.push_back(std::make_unique<RuntimeKeyExpressionFragmentizer>());
+   fragmentizers.push_back(std::make_unique<KeyPackingFragmentizer>());
    fragmentizers.push_back(std::make_unique<CountingSinkFragmentizer>());
    fragmentizers.push_back(std::make_unique<ColumnFilterFragmentizer>());
    fragmentizers.push_back(std::make_unique<RuntimeFunctionSubopFragmentizer>());

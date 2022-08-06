@@ -14,7 +14,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -rdynamic")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -rdynamic -g -O0 -fsanitize=address")
-set(CMAKE_CXX_FLAGS_RELWITHDEBINFO  "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
+set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
 
 # ---------------------------------------------------------------------------
 # Dependencies
@@ -32,12 +32,12 @@ option(WITH_COVERAGE "Build inkfuse with coverage information attached" OFF)
 if (WITH_COVERAGE)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --coverage")
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} --coverage")
-endif()
+endif ()
 
 option(JIT_CLANG_11 "Use clang-11 as the default compiler. If off, compiler that should be used is read from CUSTOM_JIT env variable" ON)
 if (JIT_CLANG_11)
     add_compile_definitions(WITH_JIT_CLANG_11)
-endif()
+endif ()
 
 # ---------------------------------------------------------------------------
 # Includes
@@ -70,6 +70,9 @@ set(INCLUDE_H
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/expressions/RuntimeExpressionSubop.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/expressions/RuntimeKeyExpressionSubop.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/properties/WithRuntimeParams.h"
+        "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/row_layout/KeyPackerSubop.h"
+        "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/row_layout/KeyPackingRuntimeState.h"
+        "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/row_layout/KeyUnpackerSubop.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/sinks/FuseChunkSink.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/sinks/CountingSink.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/sources/TableScanSource.h"
@@ -103,6 +106,7 @@ set(INCLUDE_H
         "${CMAKE_SOURCE_DIR}/src/interpreter/CountingSinkFragmentizer.h"
         "${CMAKE_SOURCE_DIR}/src/interpreter/RuntimeKeyExpressionFragmentizer.h"
         "${CMAKE_SOURCE_DIR}/src/interpreter/RuntimeFunctionSubopFragmentizer.h"
+        "${CMAKE_SOURCE_DIR}/src/interpreter/KeyPackingFragmentizer.h"
         "${CMAKE_SOURCE_DIR}/src/interpreter/TScanFragmentizer.h"
         "${CMAKE_SOURCE_DIR}/src/interpreter/CopyFragmentizer.h"
         "${CMAKE_SOURCE_DIR}/src/runtime/Runtime.h"
@@ -124,6 +128,9 @@ set(SRC_CC
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/expressions/ExpressionSubop.cpp"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/expressions/RuntimeExpressionSubop.cpp"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/expressions/RuntimeKeyExpressionSubop.cpp"
+        "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/row_layout/KeyPackerSubop.cpp"
+        "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/row_layout/KeyPackingRuntimeState.cpp"
+        "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/row_layout/KeyUnpackerSubop.cpp"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/sinks/CountingSink.cpp"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/sinks/FuseChunkSink.cpp"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/sources/TableScanSource.cpp"
@@ -159,6 +166,7 @@ set(SRC_CC
         "${CMAKE_SOURCE_DIR}/src/interpreter/RuntimeKeyExpressionFragmentizer.cpp"
         "${CMAKE_SOURCE_DIR}/src/interpreter/TScanFragmentizer.cpp"
         "${CMAKE_SOURCE_DIR}/src/interpreter/CopyFragmentizer.cpp"
+        "${CMAKE_SOURCE_DIR}/src/interpreter/KeyPackingFragmentizer.cpp"
         "${CMAKE_SOURCE_DIR}/src/runtime/HashRuntime.cpp"
         "${CMAKE_SOURCE_DIR}/src/runtime/HashTableRuntime.cpp"
         )
@@ -174,6 +182,7 @@ set(TEST_CC
         "${CMAKE_SOURCE_DIR}/test/operators/test_filter.cpp"
         "${CMAKE_SOURCE_DIR}/test/runtime/test_hash_table.cpp"
         "${CMAKE_SOURCE_DIR}/test/suboperators/test_ht_lookup.cpp"
+        "${CMAKE_SOURCE_DIR}/test/suboperators/test_key_packing.cpp"
         "${CMAKE_SOURCE_DIR}/test/suboperators/test_runtime_param.cpp"
         "${CMAKE_SOURCE_DIR}/test/suboperators/test_minimal_pipeline.cpp"
         "${CMAKE_SOURCE_DIR}/test/suboperators/test_runtime_key_expression.cpp"
@@ -182,7 +191,7 @@ set(TEST_CC
         )
 
 set(TOOLS_SRC
-    "${CMAKE_SOURCE_DIR}/tools/inkfuse_runner.cc"
+        "${CMAKE_SOURCE_DIR}/tools/inkfuse_runner.cc"
         )
 
 # ---------------------------------------------------------------------------
@@ -229,7 +238,7 @@ if (WITH_LINTING)
     add_custom_target(lint)
     list(APPEND lint_targets include_linting src_linting tools_linting test_linting)
     add_dependencies(lint ${lint_targets})
-endif()
+endif ()
 
 # ---------------------------------------------------------------------------
 # Configuration
