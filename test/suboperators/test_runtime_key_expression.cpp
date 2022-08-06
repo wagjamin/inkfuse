@@ -14,7 +14,7 @@ struct RuntimeKeyExpressionTest : public ::testing::TestWithParam<std::tuple<siz
       // Set up the key expression sub-operator.
       auto op = RuntimeKeyExpressionSubop::build(nullptr, provided_iu, src_iu, ptr_iu);
       // Set up the key equality offset based on the runtime parameters.
-      RuntimeKeyExpressionParams params;
+      KeyPackingRuntimeParams params;
       params.offsetSet(IR::UI<2>::build(std::get<0>(GetParam())));
       static_cast<RuntimeKeyExpressionSubop*>(op.get())->attachRuntimeParams(std::move(params));
       // Get ready for execution on the parametrized execution mode.

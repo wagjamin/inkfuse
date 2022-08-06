@@ -9,7 +9,7 @@ Rather, the interface to InkFuse are hand-crafted physical operator trees.
 
 ## Overview
 
-The repository effectively contains an Incremental Fusion runtime built from scratch.
+The repository contains an Incremental Fusion runtime built from scratch.
 As such, it does *not* support arbitrary relational operators at the moment. We only support some types of joins,
 aggregations and expressions. However, this prototype is deemed sufficient to prove the feasibility of this novel
 type of engine.
@@ -19,10 +19,12 @@ well-documented and tested code which should allow everyone who is interested to
 see how such an engine can be constructed.
 
 Let's take a look at the main directories:
-- `algebra`:
-- `codegen`:
-- `exec`:
-- `runtime`:
+- `algebra`: Traditional relational algebra operators, these are transformed into a suboperator IR.
+  - `suboperators`: This is where the actual suboperators are located.
+- `codegen`: Code generation stack providing the JIT infrastructure needed within `algebra`.
+- `exec`: Code that takes a suboperator DAG and executes it.
+- `interpreter`: Generates the InkFuse vectorized interpreter from the suboperators.
+- `runtime`: Runtime structs like hash tables that can be accessed from within the generated code.
 - `sotrage`: Backing storage engine containing relations of certain types. A table is effectively a collection of vectors containing raw data. This part of InkFuse probably received the least amount of love. It's all about being functional.
 
 ## Configuring Inkfuse 

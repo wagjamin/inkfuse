@@ -5,9 +5,6 @@
 namespace inkfuse {
 
 namespace {
-
-using Type = ExpressionOp::ComputeNode::Type;
-
 const std::vector<IR::TypeArc> types =
    TypeDecorator()
       .attachTypes()

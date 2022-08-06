@@ -1,23 +1,16 @@
 #include "algebra/suboperators/expressions/RuntimeKeyExpressionSubop.h"
 #include "codegen/IRBuilder.h"
-#include "runtime/Runtime.h"
 
 namespace inkfuse {
 
-const char* RuntimeKeyExpressionState::name = "RuntimeKeyExpressionState";
-
-void RuntimeKeyExpressionSubop::registerRuntime() {
-   RuntimeStructBuilder{RuntimeKeyExpressionState::name}
-      .addMember("offset", IR::UnsignedInt::build(2));
-}
-
 RuntimeKeyExpressionSubop::RuntimeKeyExpressionSubop(const RelAlgOp* source_, const IU& provided_iu_, const IU& source_iu_elem, const IU& source_iu_ptr)
-   : TemplatedSuboperator<RuntimeKeyExpressionState>(source_, {&provided_iu_}, {&source_iu_elem, &source_iu_ptr}) {
+   : TemplatedSuboperator<KeyPackingRuntimeState>(source_, {&provided_iu_}, {&source_iu_elem, &source_iu_ptr}) {
    if (!dynamic_cast<IR::Bool*>(provided_iu_.type.get())) {
       throw std::runtime_error("RuntimeKeyExpression must provide a boolean output IU.");
    }
-   if (!dynamic_cast<IR::Pointer*>(source_iu_ptr.type.get())) {
-      throw std::runtime_error("RuntimeKeyExpression must have a pointer as a first argument.");
+   auto type = dynamic_cast<IR::Pointer*>(source_iu_ptr.type.get());
+   if (!type || !dynamic_cast<IR::Char*>(type->pointed_to.get())) {
+      throw std::runtime_error("RuntimeKeyExpressionSbuop has to check equality on Ptr<Char>.");
    }
 }
 
@@ -49,12 +42,13 @@ void RuntimeKeyExpressionSubop::consumeAllChildren(CompilationContext& context) 
    // Then, compute it. Lazily resolve the offset argument.
    const IR::Stmt& ptr = context.getIUDeclaration(*source_ius[1]);
    const IR::Stmt& source = context.getIUDeclaration(*source_ius[0]);
-   // Access offset pointer.
-   auto ptr_access = IR::DerefExpr::build(IR::CastExpr::build(IR::ArithmeticExpr::build(
-                                                                 IR::VarRefExpr::build(ptr),
-                                                                 runtime_params.offsetResolve(*this, context),
-                                                                 IR::ArithmeticExpr::Opcode::Add),
-                                                              IR::Pointer::build(source_ius[0]->type)));
+   // Compute pointer location into which to pack.
+   auto ptr_loc = IR::ArithmeticExpr::build(
+      IR::VarRefExpr::build(ptr),
+      runtime_params.offsetResolve(*this, context),
+      IR::ArithmeticExpr::Opcode::Add);
+   // Cast to pointer of target type and deref for comparison.
+   auto ptr_derefed = IR::DerefExpr::build(IR::CastExpr::build(std::move(ptr_loc), IR::Pointer::build(source_ius[0]->type)));
    // Access raw data.
    auto compare = IR::VarRefExpr::build(source);
    // And compare them.
@@ -62,7 +56,7 @@ void RuntimeKeyExpressionSubop::consumeAllChildren(CompilationContext& context) 
       IR::AssignmentStmt::build(
          declare,
          IR::ArithmeticExpr::build(
-            std::move(ptr_access),
+            std::move(ptr_derefed),
             std::move(compare),
             IR::ArithmeticExpr::Opcode::Eq)));
 

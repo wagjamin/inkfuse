@@ -3,7 +3,7 @@
 #include "algebra/suboperators/LoopDriver.h"
 #include "algebra/suboperators/RuntimeFunctionSubop.h"
 #include "algebra/suboperators/expressions/RuntimeExpressionSubop.h"
-#include "algebra/suboperators/expressions/RuntimeKeyExpressionSubop.h"
+#include "algebra/suboperators/row_layout/KeyPackingRuntimeState.h"
 #include "algebra/suboperators/sinks/CountingSink.h"
 #include "algebra/suboperators/sinks/FuseChunkSink.h"
 #include "runtime/HashRuntime.h"
@@ -18,10 +18,10 @@ GlobalRuntime::GlobalRuntime() : program(std::make_unique<IR::Program>("global_r
    // Register the different runtime structs of the suboperators.
    LoopDriverRuntime::registerRuntime();
    IndexedIUProviderRuntime::registerRuntime();
+   KeyPackingRuntime::registerRuntime();
    FuseChunkSink::registerRuntime();
    CountingSink::registerRuntime();
    RuntimeExpressionSubop::registerRuntime();
-   RuntimeKeyExpressionSubop::registerRuntime();
    RuntimeFunctionSubop::registerRuntime();
    // Register the actual inkfuse runtime functions.
    HashRuntime::registerRuntime();
