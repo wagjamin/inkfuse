@@ -1,5 +1,5 @@
 # ---------------------------------------------------------------------------
-# IMLAB
+# InkFuse - An Incremental Fusion engine unifying compiled and vectorized query execution.
 # ---------------------------------------------------------------------------
 
 project(inkfuse)
@@ -9,7 +9,7 @@ cmake_minimum_required(VERSION 3.12)
 # ---------------------------------------------------------------------------
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/")
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -rdynamic")
@@ -65,6 +65,12 @@ set(INCLUDE_H
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/RuntimeFunctionSubop.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/LoopDriver.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/RuntimeParam.h"
+        "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/aggregation/AggCompute.h"
+        "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/aggregation/AggComputeCount.h"
+        "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/aggregation/AggReaderSubop.h"
+        "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/aggregation/AggregatorSubop.h"
+        "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/aggregation/AggState.h"
+        "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/aggregation/AggStateCount.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/expressions/ExpressionHelpers.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/expressions/ExpressionSubop.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/expressions/RuntimeExpressionSubop.h"
@@ -124,6 +130,12 @@ set(SRC_CC
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/IndexedIUProvider.cpp"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/LoopDriver.cpp"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/Suboperator.cpp"
+        "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/aggregation/AggCompute.cpp"
+        "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/aggregation/AggComputeCount.cpp"
+        "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/aggregation/AggReaderSubop.cpp"
+        "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/aggregation/AggregatorSubop.cpp"
+        "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/aggregation/AggState.cpp"
+        "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/aggregation/AggStateCount.cpp"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/expressions/ExpressionHelpers.cpp"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/expressions/ExpressionSubop.cpp"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/expressions/RuntimeExpressionSubop.cpp"
@@ -181,6 +193,8 @@ set(TEST_CC
         "${CMAKE_SOURCE_DIR}/test/operators/test_expression.cpp"
         "${CMAKE_SOURCE_DIR}/test/operators/test_filter.cpp"
         "${CMAKE_SOURCE_DIR}/test/runtime/test_hash_table.cpp"
+        "${CMAKE_SOURCE_DIR}/test/suboperators/aggregation/test_agg_reader_subop.cpp"
+        "${CMAKE_SOURCE_DIR}/test/suboperators/aggregation/test_aggregator_subop.cpp"
         "${CMAKE_SOURCE_DIR}/test/suboperators/test_ht_lookup.cpp"
         "${CMAKE_SOURCE_DIR}/test/suboperators/test_key_packing.cpp"
         "${CMAKE_SOURCE_DIR}/test/suboperators/test_runtime_param.cpp"

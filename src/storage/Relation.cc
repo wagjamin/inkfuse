@@ -110,4 +110,4 @@ void StoredRelation::loadRow(const std::string& str) {
 void StoredRelation::appendRow() {
 }
 
-} // namespace imlab
+} // namespace inkfuse
