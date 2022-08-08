@@ -117,7 +117,6 @@ INSTANTIATE_TEST_CASE_P(
    KeyPacking,
    KeyPackingTest,
    ::testing::Values(PipelineExecutor::ExecutionMode::Fused, PipelineExecutor::ExecutionMode::Interpreted));
-
 }
 
 }
