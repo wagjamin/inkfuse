@@ -94,9 +94,9 @@ TEST_P(KeyPackingTest, test_pack_unpack) {
    // Set up the input chunk.
    prepareInputChunk();
    // Pack the keys.
-   exec_pack->runMorsel();
+   ASSERT_NO_THROW(exec_pack->runMorsel());
    // And unpack them again in the followup pipeline.
-   exec_unpack->runMorsel();
+   ASSERT_NO_THROW(exec_unpack->runMorsel());
    // Make sure input and output are the same.
    auto& ctx_pack = exec_pack->getExecutionContext();
    auto& ctx_unpack = exec_unpack->getExecutionContext();
