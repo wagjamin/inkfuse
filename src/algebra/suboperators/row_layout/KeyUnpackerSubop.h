@@ -6,6 +6,11 @@
 
 namespace inkfuse {
 
+namespace KeyPacking {
+/// Key unpacking helper function.
+IR::StmtPtr unpackFrom(IR::ExprPtr ptr, IR::ExprPtr unpack_into, IR::ExprPtr offset);
+}
+
 /// The key unpacker takes a compound key and serializes data from the compound
 /// key at a given offset into an output IU.
 struct KeyUnpackerSubop: public TemplatedSuboperator<KeyPackingRuntimeState>, public WithRuntimeParams<KeyPackingRuntimeParams> {

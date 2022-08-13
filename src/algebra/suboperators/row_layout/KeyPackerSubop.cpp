@@ -3,6 +3,17 @@
 
 namespace inkfuse {
 
+IR::StmtPtr KeyPacking::packInto(IR::ExprPtr ptr, IR::ExprPtr to_pack, IR::ExprPtr offset) {
+   // Compute pointer location into which to pack.
+   auto ptr_loc = IR::ArithmeticExpr::build(
+      std::move(ptr), std::move(offset),
+      IR::ArithmeticExpr::Opcode::Add);
+   // Cast to the target type and prepare for assignment.
+   auto ptr_derefed = IR::DerefExpr::build(IR::CastExpr::build(std::move(ptr_loc), IR::Pointer::build(to_pack->type)));
+   // And assign.
+   return IR::AssignmentStmt::build(std::move(ptr_derefed), std::move(to_pack));
+}
+
 SuboperatorArc KeyPackerSubop::build(const RelAlgOp* source_, const IU& to_pack_, const IU& compound_key_) {
    return std::shared_ptr<KeyPackerSubop>(new KeyPackerSubop{source_, to_pack_, compound_key_});
 }
@@ -32,16 +43,9 @@ void KeyPackerSubop::consumeAllChildren(CompilationContext& context) {
    const IR::Stmt& ptr = context.getIUDeclaration(*source_ius[1]);
    const IR::Stmt& pack = context.getIUDeclaration(*source_ius[0]);
 
-   // Compute pointer location into which to pack.
-   auto ptr_loc = IR::ArithmeticExpr::build(
-      IR::VarRefExpr::build(ptr),
-      runtime_params.offsetResolve(*this, context),
-      IR::ArithmeticExpr::Opcode::Add);
-   // Cast to the target type and prepare for assignment.
-   auto ptr_derefed = IR::DerefExpr::build(IR::CastExpr::build(std::move(ptr_loc), IR::Pointer::build(source_ius[0]->type)));
-
-   // And write the source IU to the pointer.
-   builder.appendStmt(IR::AssignmentStmt::build(std::move(ptr_derefed), IR::VarRefExpr::build(pack)));
+   // Pack the key.
+   auto pack_stmt = KeyPacking::packInto(IR::VarRefExpr::build(ptr), IR::VarRefExpr::build(pack), runtime_params.offsetResolve(*this, context));
+   builder.appendStmt(std::move(pack_stmt));
 }
 
 std::string KeyPackerSubop::id() const {

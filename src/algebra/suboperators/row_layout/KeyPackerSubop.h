@@ -7,6 +7,11 @@
 
 namespace inkfuse {
 
+namespace KeyPacking {
+/// Key packing helper function.
+IR::StmtPtr packInto(IR::ExprPtr ptr, IR::ExprPtr to_pack, IR::ExprPtr offset);
+}
+
 /// The key packer takes an input IU and writes the data into
 /// a compound key at a given offset.
 struct KeyPackerSubop : public TemplatedSuboperator<KeyPackingRuntimeState>, public WithRuntimeParams<KeyPackingRuntimeParams> {
