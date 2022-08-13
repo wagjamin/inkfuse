@@ -59,7 +59,7 @@ TEST(hash_table, inserts_with_resize) {
       char* elem = table.insert(hash);
       *reinterpret_cast<uint64_t*>(elem) = k;
       // And find ourselves again.
-      const const char* found = tryFind(table, k);
+      const char* found = tryFind(table, k);
       EXPECT_NE(found, nullptr);
       EXPECT_EQ(*reinterpret_cast<const uint64_t*>(found), k);
    }

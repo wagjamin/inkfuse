@@ -65,8 +65,8 @@ struct SI : public Value {
 
    int64_t value;
 
-   static ValuePtr build(uint64_t value) {
-      return std::make_unique<SI<size>>(value);
+   static ValuePtr build(int64_t value) {
+      return ValuePtr(new SI<size>(value));
    };
 
    std::unique_ptr<Value> copy() override {
@@ -92,7 +92,7 @@ struct SI : public Value {
    }
 
    private:
-   SI(int64_t value_) : value(value_) {}
+   explicit SI(int64_t value_) : value(value_) {}
 };
 
 }

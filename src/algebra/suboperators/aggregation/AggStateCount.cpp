@@ -5,29 +5,31 @@
 namespace inkfuse {
 
 AggStateCount::AggStateCount()
- : AggState(std::move(IR::Void::build()))
-{
+   : AggState(std::move(IR::Void::build())) {
 }
 
-void AggStateCount::initState(IR::FunctionBuilder& builder, IR::ExprPtr ptr, IR::ExprPtr) const
-{
+void AggStateCount::initState(IR::FunctionBuilder& builder, const IR::Stmt& ptr, const IR::Stmt&) const {
    // Initial count after the first row was aggregated is always one.
-   builder.appendStmt(IR::AssignmentStmt::build(IR::DerefExpr::build(std::move(ptr)), IR::ConstExpr::build(IR::UI<8>::build(1))));
+   auto casted_ptr_expr = IR::CastExpr::build(IR::VarRefExpr::build(ptr), IR::Pointer::build(IR::SignedInt::build(8)));
+   builder.appendStmt(IR::AssignmentStmt::build(IR::DerefExpr::build(std::move(casted_ptr_expr)), IR::ConstExpr::build(IR::SI<8>::build(1))));
 }
 
-void AggStateCount::updateState(IR::FunctionBuilder& builder, IR::ExprPtr ptr, IR::ExprPtr) const
-{
-    // Increment count by one.
-    builder.appendStmt(IR::AssignmentStmt::build(IR::DerefExpr::build(std::move(ptr)), IR::ConstExpr::build(IR::UI<8>::build(1))));
+void AggStateCount::updateState(IR::FunctionBuilder& builder, const IR::Stmt& ptr, const IR::Stmt&) const {
+   // Increment count by one.
+   auto casted_ptr_expr_curr = IR::CastExpr::build(IR::VarRefExpr::build(ptr), IR::Pointer::build(IR::SignedInt::build(8)));
+   auto casted_ptr_expr_assign = IR::CastExpr::build(IR::VarRefExpr::build(ptr), IR::Pointer::build(IR::SignedInt::build(8)));
+   // Get new counter.
+   auto new_val = IR::ArithmeticExpr::build(
+      IR::ConstExpr::build(IR::SI<8>::build(1)), IR::DerefExpr::build(std::move(casted_ptr_expr_curr)), IR::ArithmeticExpr::Opcode::Add);
+   // And assign.
+   builder.appendStmt(IR::AssignmentStmt::build(IR::DerefExpr::build(std::move(casted_ptr_expr_assign)), std::move(new_val)));
 }
 
-size_t AggStateCount::getStateSize() const
-{
+size_t AggStateCount::getStateSize() const {
    return 8;
 }
 
-std::string AggStateCount::id() const
-{
+std::string AggStateCount::id() const {
    return "agg_state_count";
 }
 

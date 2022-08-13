@@ -7,17 +7,15 @@ namespace inkfuse {
 
 /// Counting state for aggregates, computes an 8 btye count.
 struct AggStateCount : public AggState {
-
    AggStateCount();
 
-   void initState(IR::FunctionBuilder& builder, IR::ExprPtr ptr, IR::ExprPtr val) const override;
+   void initState(IR::FunctionBuilder& builder, const IR::Stmt& ptr, const IR::Stmt& val) const override;
 
-   void updateState(IR::FunctionBuilder& builder, IR::ExprPtr ptr, IR::ExprPtr val) const override;
+   void updateState(IR::FunctionBuilder& builder, const IR::Stmt& ptr, const IR::Stmt& val) const override;
 
    size_t getStateSize() const override;
 
    std::string id() const override;
-
 };
 
 }
