@@ -1,5 +1,6 @@
 #include "interpreter/FragmentGenerator.h"
 #include "algebra/CompilationContext.h"
+#include "interpreter/AggregationFragmentizer.h"
 #include "interpreter/ColumnFilterFragmentizer.h"
 #include "interpreter/CopyFragmentizer.h"
 #include "interpreter/CountingSinkFragmentizer.h"
@@ -68,6 +69,7 @@ const std::list<std::pair<std::string, Pipeline>>& Fragmentizer::getFragments() 
 IR::ProgramArc FragmentGenerator::build() {
    // Set up the suboperator fragmentizers.
    std::vector<std::unique_ptr<Fragmentizer>> fragmentizers;
+   fragmentizers.push_back(std::make_unique<AggregationFragmentizer>());
    fragmentizers.push_back(std::make_unique<TScanFragmetizer>());
    fragmentizers.push_back(std::make_unique<CopyFragmentizer>());
    fragmentizers.push_back(std::make_unique<ExpressionFragmentizer>());

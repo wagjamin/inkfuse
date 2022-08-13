@@ -1,8 +1,0 @@
-#ifndef INKFUSE_AGGCOMPUTESUM_H
-#define INKFUSE_AGGCOMPUTESUM_H
-
-namespace inkfuse {
-
-}
-
-#endif //INKFUSE_AGGCOMPUTESUM_H
