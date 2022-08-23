@@ -18,6 +18,8 @@ struct RuntimeFunctionSubopState {
 /// An example is a hash-table lookup.
 /// TODO It would be cleaner to separate the this_object out of the suboperator state.
 struct RuntimeFunctionSubop : public TemplatedSuboperator<RuntimeFunctionSubopState> {
+   static const bool hasConsume = false;
+   static const bool hasConsumeAll = true;
 
    /// Build a hash table lookup function.
    static std::unique_ptr<RuntimeFunctionSubop> htLookup(const RelAlgOp* source, const IU& hashes_, void* hash_table_ = nullptr);
@@ -30,7 +32,7 @@ struct RuntimeFunctionSubop : public TemplatedSuboperator<RuntimeFunctionSubopSt
 
    std::string id() const override;
 
-   private:
+   protected:
    RuntimeFunctionSubop(const RelAlgOp* source, std::string fct_name_, const IU& arg, void* this_object_);
 
    /// The function name.

@@ -48,7 +48,7 @@ struct RegistryEntry {
 };
 
 /// Generate low-level computational description for the given aggregate.
-static std::optional<RegistryEntry> lookupSubops(const Description& description);
+RegistryEntry lookupSubops(const Description& description);
 
 }
 

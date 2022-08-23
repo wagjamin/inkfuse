@@ -3,10 +3,12 @@
 
 #include "algebra/suboperators/Suboperator.h"
 #include "exec/FuseChunk.h"
+#include "runtime/HashTables.h"
 #include <map>
 #include <memory>
 #include <unordered_set>
 #include <vector>
+#include <deque>
 
 namespace inkfuse {
 
@@ -71,6 +73,8 @@ struct Pipeline {
 using PipelinePtr = std::unique_ptr<Pipeline>;
 
 /// The PipelineDAG represents a query which is ready for execution.
+/// It also contains the runtime state of a query. This is not a very clean abstraction at the moment.
+/// It would be much cleaner to have this in the ExecutionContext.
 struct PipelineDAG {
    public:
    /// Get the current pipeline.
@@ -80,9 +84,17 @@ struct PipelineDAG {
 
    const std::vector<PipelinePtr>& getPipelines() const;
 
+   /// Mark a pipeline as done. Allows for the release of runtime state.
+   void markPipelineDone(size_t idx);
+
+   /// Attach a hash table to the runtime state of the PipelineDAG.
+   HashTableSimpleKey& attachHashTableSimpleKey(size_t discard_after, size_t key_size, size_t payload_size);
+
    private:
    /// Internally the PipelineDAG is represented as a vector of pipelines within a topological order.
    std::vector<PipelinePtr> pipelines;
+   /// Hash tables, ordered by pipeline after which they can be discarded.
+   std::deque<std::pair<size_t, std::unique_ptr<HashTableSimpleKey>>> hash_tables;
 };
 
 using PipelineDAGPtr = std::unique_ptr<PipelineDAG>;
