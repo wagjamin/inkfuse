@@ -15,7 +15,7 @@ void RuntimeFunctionSubop::registerRuntime() {
 }
 
 std::unique_ptr<RuntimeFunctionSubop> RuntimeFunctionSubop::htLookup(const RelAlgOp* source, const IU& hashes, void* hash_table) {
-   return std::unique_ptr<RuntimeFunctionSubop>(new RuntimeFunctionSubop(source, "ht_lookup", hashes, hash_table));
+   return std::unique_ptr<RuntimeFunctionSubop>(new RuntimeFunctionSubop(source, "ht_sk_lookup", hashes, hash_table));
 }
 
 RuntimeFunctionSubop::RuntimeFunctionSubop(const RelAlgOp* source, std::string fct_name_, const IU& arg_, void* this_object_)

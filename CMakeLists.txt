@@ -71,6 +71,7 @@ set(INCLUDE_H
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/aggregation/AggregatorSubop.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/aggregation/AggState.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/aggregation/AggStateCount.h"
+        "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/combinators/IfCombinator.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/expressions/ExpressionHelpers.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/expressions/ExpressionSubop.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/expressions/RuntimeExpressionSubop.h"
@@ -121,6 +122,7 @@ set(INCLUDE_H
         "${CMAKE_SOURCE_DIR}/src/runtime/Runtime.h"
         "${CMAKE_SOURCE_DIR}/src/runtime/HashRuntime.h"
         "${CMAKE_SOURCE_DIR}/src/runtime/HashTableRuntime.h"
+        "${CMAKE_SOURCE_DIR}/src/runtime/HashTables.h"
         "${CMAKE_SOURCE_DIR}/src/storage/Relation.h"
         )
 
@@ -187,6 +189,7 @@ set(SRC_CC
         "${CMAKE_SOURCE_DIR}/src/interpreter/KeyPackingFragmentizer.cpp"
         "${CMAKE_SOURCE_DIR}/src/runtime/HashRuntime.cpp"
         "${CMAKE_SOURCE_DIR}/src/runtime/HashTableRuntime.cpp"
+        "${CMAKE_SOURCE_DIR}/src/runtime/HashTables.cpp"
         )
 
 set(TEST_CC
@@ -242,6 +245,17 @@ target_include_directories(tester PRIVATE ${CMAKE_SOURCE_DIR}/test)
 target_link_libraries(tester PRIVATE inkfuse gtest gmock Threads::Threads)
 enable_testing()
 add_test(inkfuse tester)
+
+# ---------------------------------------------------------------------------
+# Benchmarks
+# ---------------------------------------------------------------------------
+option(WITH_BENCH "Build inkfuse with microbenchmark support" OFF)
+if (WITH_BENCH)
+    # Require gbench system installation for now. Not great, but ok.
+    find_package(benchmark REQUIRED)
+    add_executable(inkbench bench/benchmarks.cpp bench/ht_benchmark.cpp)
+    target_link_libraries(inkbench PUBLIC benchmark::benchmark inkfuse)
+endif ()
 
 # ---------------------------------------------------------------------------
 # Linting

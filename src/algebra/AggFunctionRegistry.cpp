@@ -17,15 +17,15 @@ RegistryEntry computeAsUnpack(IR::TypeArc agg_state) {
    return result;
 }
 
-}
-
 RegistryEntry resolveCount(const IU& agg_iu) {
    auto result = computeAsUnpack(IR::SignedInt::build(8));
    result.granules.push_back(std::move(std::make_unique<AggStateCount>()));
    return result;
 }
 
-std::optional<RegistryEntry> lookupSubops(const Description& description) {
+}
+
+RegistryEntry lookupSubops(const Description& description) {
    if (description.distinct) {
       throw std::runtime_error("Distinct aggregate functions not implemented.");
    } else {

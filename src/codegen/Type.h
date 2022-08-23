@@ -50,7 +50,7 @@ struct SignedInt : public SQLType {
    SignedInt(size_t size_) : size(size_){};
 
    static TypeArc build(size_t size) {
-      return std::make_unique<SignedInt>(size);
+      return std::make_shared<SignedInt>(size);
    };
 
    size_t numBytes() const override {
@@ -70,7 +70,7 @@ struct UnsignedInt : public SQLType {
    UnsignedInt(size_t size_) : size(size_){};
 
    static TypeArc build(size_t size) {
-      return std::make_unique<UnsignedInt>(size);
+      return std::make_shared<UnsignedInt>(size);
    };
 
    size_t numBytes() const override {
@@ -86,13 +86,12 @@ struct UnsignedInt : public SQLType {
 };
 
 struct Float : public SQLType {
-   Float(size_t size_): size(size_)
-   {
+   Float(size_t size_) : size(size_) {
       assert(size == 4 || size == 8);
    }
 
    static TypeArc build(size_t size) {
-      return std::make_unique<Float>(size);
+      return std::make_shared<Float>(size);
    };
 
    size_t numBytes() const override {
@@ -110,7 +109,7 @@ struct Float : public SQLType {
 /// Boolean type.
 struct Bool : public SQLType {
    static TypeArc build() {
-      return std::make_unique<Bool>();
+      return std::make_shared<Bool>();
    };
 
    size_t numBytes() const override {
@@ -125,7 +124,7 @@ struct Bool : public SQLType {
 /// Character type.
 struct Char : public SQLType {
    static TypeArc build() {
-      return std::make_unique<Char>();
+      return std::make_shared<Char>();
    };
 
    size_t numBytes() const override {
@@ -166,7 +165,7 @@ struct Struct : public Type {
    Struct(std::string name_, std::vector<Field> fields_) : name(std::move(name_)), fields(std::move(fields_)) {}
 
    static TypeArc build(std::string name_, std::vector<Field> fields_) {
-       return std::make_unique<Struct>(std::move(name_), std::move(fields_));
+      return std::make_unique<Struct>(std::move(name_), std::move(fields_));
    }
 
    /// Struct name.

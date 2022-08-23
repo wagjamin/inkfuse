@@ -3,12 +3,13 @@
 
 #include "algebra/AggFunctionRegisty.h"
 #include "algebra/RelAlgOp.h"
+#include <list>
 
 namespace inkfuse {
 
 /// Relational algebra operator for aggregations.
 struct Aggregation : public RelAlgOp {
-   Aggregation(std::vector<std::unique_ptr<RelAlgOp>> children_, std::string op_name_, std::vector<AggregateFunctions::Description> aggregates_);
+   Aggregation(std::vector<std::unique_ptr<RelAlgOp>> children_, std::string op_name_, std::vector<const IU*> group_by_, std::vector<AggregateFunctions::Description> aggregates_);
 
    void decay(PipelineDAG& dag) const override;
 
@@ -16,11 +17,28 @@ struct Aggregation : public RelAlgOp {
    /// Plan the aggregation by splitting it into granules.
    void plan(std::vector<AggregateFunctions::Description> description);
 
+   /// A planned aggregate computation.
+   struct PlannedAggCompute {
+      /// The actual computation.
+      AggComputePtr compute;
+      /// Granule offset of the arguments in the backing `granules` vector.
+      std::vector<size_t> granule_offsets;
+   };
+
+   /// By what should we aggregate?
+   std::vector<const IU*> group_by;
    /// The granules that are used to update the internal aggregate state.
    std::vector<AggStatePtr> granules;
-   /// The compute .
-   std::vector<AggComputePtr> compute;
-   std::vector<IU> out_ius;
+   /// The compute granules that will be turned into AggReaderSubops.
+   std::vector<PlannedAggCompute> compute;
+   /// The result IUs that are produced by this aggregation.
+   std::list<IU> out_ius;
+   /// The IUs needed to compute the hash values.
+   std::list<IU> hash_ius;
+   /// Size of the aggregation key.
+   size_t key_size = 0;
+   /// Size of the aggregation payload.
+   size_t payload_size = 0;
 };
 
 }
