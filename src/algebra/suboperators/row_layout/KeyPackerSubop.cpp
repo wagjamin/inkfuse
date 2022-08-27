@@ -20,9 +20,12 @@ SuboperatorArc KeyPackerSubop::build(const RelAlgOp* source_, const IU& to_pack_
 
 KeyPackerSubop::KeyPackerSubop(const RelAlgOp* source_, const IU& to_pack_, const IU& compound_key_)
    : TemplatedSuboperator<KeyPackingRuntimeState>(source_, {}, {&to_pack_, &compound_key_}) {
-   auto type = dynamic_cast<IR::Pointer*>(compound_key_.type.get());
-   if (!type || !dynamic_cast<IR::Char*>(type->pointed_to.get())) {
-      throw std::runtime_error("KeyPackerSubop has to write into Ptr<Char>.");
+   auto is_ptr = dynamic_cast<IR::Pointer*>(compound_key_.type.get());
+   if (!is_ptr || !dynamic_cast<IR::Char*>(is_ptr->pointed_to.get())) {
+      auto is_byte_array = dynamic_cast<IR::ByteArray*>(compound_key_.type.get());
+      if (!is_byte_array) {
+         throw std::runtime_error("KeyPackerSubop has to write into Ptr<Char> or ByteArray.");
+      }
    }
 }
 
@@ -50,7 +53,10 @@ void KeyPackerSubop::consumeAllChildren(CompilationContext& context) {
 
 std::string KeyPackerSubop::id() const {
    std::stringstream res;
-   res << "key_packer_" << source_ius[0]->type->id();
+   res << "key_packer";
+   for (const IU* iu: source_ius) {
+      res << "_" << iu->type->id();
+   }
    return res.str();
 }
 

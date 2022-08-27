@@ -19,9 +19,12 @@ SuboperatorArc KeyUnpackerSubop::build(const RelAlgOp* source_, const IU& compou
 
 KeyUnpackerSubop::KeyUnpackerSubop(const RelAlgOp* source_, const IU& compound_key_, const IU& target_iu_)
    : TemplatedSuboperator<KeyPackingRuntimeState>(source_, {&target_iu_}, {&compound_key_}) {
-   auto type = dynamic_cast<IR::Pointer*>(compound_key_.type.get());
-   if (!type || !dynamic_cast<IR::Char*>(type->pointed_to.get())) {
-      throw std::runtime_error("KeyUnpackerSubop has to read from Ptr<Char>.");
+   auto is_ptr = dynamic_cast<IR::Pointer*>(compound_key_.type.get());
+   if (!is_ptr || !dynamic_cast<IR::Char*>(is_ptr->pointed_to.get())) {
+      auto is_byte_array = dynamic_cast<IR::ByteArray*>(compound_key_.type.get());
+      if (!is_byte_array) {
+         throw std::runtime_error("KeyUnpackerSubop has to read from Ptr<Char> or ByteArray.");
+      }
    }
 }
 
@@ -57,7 +60,9 @@ void KeyUnpackerSubop::consumeAllChildren(CompilationContext& context) {
 
 std::string KeyUnpackerSubop::id() const {
    std::stringstream res;
-   res << "key_unpacker_" << provided_ius[0]->type->id();
+   res << "key_unpacker_";
+   res << source_ius[0]->type->id() << "_";
+   res << provided_ius[0]->type->id();
    return res.str();
 }
 

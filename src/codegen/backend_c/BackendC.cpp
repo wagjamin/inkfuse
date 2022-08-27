@@ -169,6 +169,13 @@ void BackendC::typeDescription(const IR::Type& type, ScopedWriter::Statement& st
          arg.stream() << "bool";
       }
 
+      void visitByteArray(const IR::ByteArray& /*type*/, ScopedWriter::Statement& arg) override {
+         // A byte array in the generated C code is really just a char *.
+         // The byte array hides behind this pointer. The generated code has custom
+         // offsetting logic. Check IndexedIUProvider.
+         arg.stream() << "char*";
+      }
+
       void visitVoid(const IR::Void& /*type*/, ScopedWriter::Statement& arg) override {
          arg.stream() << "void";
       }
