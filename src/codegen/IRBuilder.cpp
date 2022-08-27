@@ -130,7 +130,7 @@ FunctionBuilder::FunctionBuilder(IRBuilder& builder_, FunctionArc function_)
 
 Stmt& FunctionBuilder::appendStmt(StmtPtr stmt) {
    if (!stmt) {
-      throw std::runtime_error("cannot add emptry StmtPtr to function.");
+      throw std::runtime_error("cannot add empty StmtPtr to function.");
    }
    auto& ret = *stmt;
    // Add a statement to the current block - note that this can be re-scoped by control flow blocks

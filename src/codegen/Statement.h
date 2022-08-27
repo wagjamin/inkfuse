@@ -31,6 +31,9 @@ struct InvokeFctStmt : public Stmt {
          throw std::runtime_error("cannot wrap non invoke expression in invoke statement");
       }
    }
+   static StmtPtr build(ExprPtr invoke_fct_expr_) {
+      return std::make_unique<InvokeFctStmt>(std::move(invoke_fct_expr_));
+   }
 
    /// Backing expression for invoking the function.
    ExprPtr invoke_fct_expr;

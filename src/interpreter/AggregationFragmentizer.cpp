@@ -22,9 +22,8 @@ void AggregationFragmentizer::fragmentizeAggregators() {
    auto& [name, pipe] = pipes.emplace_back();
    auto& state = agg_states.emplace_back(std::make_unique<AggStateCount>());
    auto& ptr_iu = generated_ius.emplace_back(IU{IR::Pointer::build(IR::Char::build())});
-   auto& not_init_iu = generated_ius.emplace_back(IU{IR::Bool::build()});
    auto& agg_iu = generated_ius.emplace_back(IU{IR::SignedInt::build(8)});
-   auto& op = pipe.attachSuboperator(AggregatorSubop::build(nullptr, *state, ptr_iu, not_init_iu, agg_iu));
+   auto& op = pipe.attachSuboperator(AggregatorSubop::build(nullptr, *state, ptr_iu, agg_iu));
    name = op.id();
 }
 

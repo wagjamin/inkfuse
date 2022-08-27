@@ -47,7 +47,7 @@ void RuntimeKeyExpressionSubop::consumeAllChildren(CompilationContext& context) 
       IR::VarRefExpr::build(ptr),
       runtime_params.offsetResolve(*this, context),
       IR::ArithmeticExpr::Opcode::Add);
-   // Cast to pointer of target type and deref for comparison.
+   // Cast to pointer of target type and ref for comparison.
    auto ptr_derefed = IR::DerefExpr::build(IR::CastExpr::build(std::move(ptr_loc), IR::Pointer::build(source_ius[0]->type)));
    // Access raw data.
    auto compare = IR::VarRefExpr::build(source);

@@ -87,6 +87,8 @@ void CompilationContext::requestIU(Suboperator& op, const IU& iu) {
 }
 
 void CompilationContext::declareIU(const IU& iu, const IR::Stmt& stmt) {
+   assert(!iu_declarations.contains(&iu));
+   assert(dynamic_cast<const IR::DeclareStmt*>(&stmt));
    iu_declarations[&iu] = &stmt;
 }
 

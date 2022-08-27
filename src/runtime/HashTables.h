@@ -37,6 +37,10 @@ struct HashTableSimpleKey {
    char* lookup(const char* key);
    /// Get the pointer to a given key, creating a new group if it does not exist yet.
    char* lookupOrInsert(const char* key);
+   /// Get the pointer to a given key, creating a new group if it does not exist yet.
+   /// Updates the 'result' and 'is_new_key' arguments to give the caller
+   /// insight into whether this key was new.
+   void lookupOrInsert(char** result, bool* is_new_key, const char* key);
    /// Get the current size. Mainly used for testing.
    size_t size();
    /// Get the current capacity. Mainly used for testing.

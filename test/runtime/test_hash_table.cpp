@@ -42,8 +42,11 @@ struct HashTableTestT : public ::testing::TestWithParam<ParamT> {
       const char* key_ptr = &data.keys[idx * std::get<0>(GetParam())];
       const char* payload_ptr = &data.payloads[idx * 16];
       ASSERT_EQ(ht.lookup(key_ptr), nullptr);
-      char* slot = ht.lookupOrInsert(key_ptr);
+      char* slot;
+      bool inserted;
+      ht.lookupOrInsert(&slot, &inserted, key_ptr);
       EXPECT_NE(slot, nullptr);
+      EXPECT_TRUE(inserted);
       EXPECT_EQ(std::memcmp(slot, key_ptr, std::get<0>(GetParam())), 0);
       // Serialize the payload.
       std::memcpy(slot + std::get<0>(GetParam()), payload_ptr, 16);
@@ -59,12 +62,17 @@ struct HashTableTestT : public ::testing::TestWithParam<ParamT> {
    void checkContains(const RandomDataResult& data, size_t idx) {
       const char* key_ptr = &data.keys[idx * std::get<0>(GetParam())];
       const char* payload_ptr = &data.payloads[idx * 16];
-      auto slot = ht.lookup(key_ptr);
-      ASSERT_NE(slot, nullptr);
+      bool inserted;
+      char* slot_insert_or_lookup;
+      ht.lookupOrInsert(&slot_insert_or_lookup, &inserted, key_ptr);
+      auto slot_lookup = ht.lookup(key_ptr);
+      ASSERT_NE(slot_lookup, nullptr);
+      EXPECT_EQ(slot_lookup, slot_insert_or_lookup);
+      EXPECT_FALSE(inserted);
       // Check that key was serialized properly.
-      EXPECT_EQ(std::memcmp(slot, key_ptr, std::get<0>(GetParam())), 0);
+      EXPECT_EQ(std::memcmp(slot_lookup, key_ptr, std::get<0>(GetParam())), 0);
       // Check that the payload was serialized properly.
-      EXPECT_EQ(std::memcmp(slot + std::get<0>(GetParam()), payload_ptr, 16), 0);
+      EXPECT_EQ(std::memcmp(slot_lookup + std::get<0>(GetParam()), payload_ptr, 16), 0);
    }
 
    void checkNotContains(const RandomDataResult& data, size_t idx) {

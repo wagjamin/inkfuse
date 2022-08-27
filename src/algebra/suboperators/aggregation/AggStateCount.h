@@ -5,11 +5,10 @@
 
 namespace inkfuse {
 
-/// Counting state for aggregates, computes an 8 btye count.
-struct AggStateCount : public AggState {
+/// Counting state for aggregates, computes an 8 byte count.
+/// Starts out with zero-initialized memory.
+struct AggStateCount : public ZeroInitializedAggState {
    AggStateCount();
-
-   void initState(IR::FunctionBuilder& builder, const IR::Stmt& ptr, const IR::Stmt& val) const override;
 
    void updateState(IR::FunctionBuilder& builder, const IR::Stmt& ptr, const IR::Stmt& val) const override;
 

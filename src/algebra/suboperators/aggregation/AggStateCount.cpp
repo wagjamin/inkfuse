@@ -5,13 +5,7 @@
 namespace inkfuse {
 
 AggStateCount::AggStateCount()
-   : AggState(std::move(IR::Void::build())) {
-}
-
-void AggStateCount::initState(IR::FunctionBuilder& builder, const IR::Stmt& ptr, const IR::Stmt&) const {
-   // Initial count after the first row was aggregated is always one.
-   auto casted_ptr_expr = IR::CastExpr::build(IR::VarRefExpr::build(ptr), IR::Pointer::build(IR::SignedInt::build(8)));
-   builder.appendStmt(IR::AssignmentStmt::build(IR::DerefExpr::build(std::move(casted_ptr_expr)), IR::ConstExpr::build(IR::SI<8>::build(1))));
+   : ZeroInitializedAggState(std::move(IR::Void::build())) {
 }
 
 void AggStateCount::updateState(IR::FunctionBuilder& builder, const IR::Stmt& ptr, const IR::Stmt&) const {
