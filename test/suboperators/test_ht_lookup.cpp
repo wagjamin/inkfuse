@@ -10,10 +10,9 @@ namespace inkfuse {
 namespace {
 
 struct HtLookupSubopTest : public ::testing::TestWithParam<PipelineExecutor::ExecutionMode> {
-   HtLookupSubopTest() : key_iu(IR::UnsignedInt::build(8)), table(8, 12) {
+   HtLookupSubopTest() : key_iu(IR::Pointer::build(IR::Char::build())), ptr_iu(IR::Pointer::build(IR::Char::build())), table(8, 12) {
       // Set up the hash table operator.
-      auto op = RuntimeFunctionSubop::htLookup(nullptr, key_iu, &table);
-      ptr_iu = op->getIUs()[0];
+      auto op = RuntimeFunctionSubop::htLookup(nullptr, ptr_iu, key_iu, &table);
       // And insert keys into the backing table.
       addValuesToHashTable();
 
@@ -38,7 +37,7 @@ struct HtLookupSubopTest : public ::testing::TestWithParam<PipelineExecutor::Exe
    }
 
    IU key_iu;
-   const IU* ptr_iu;
+   IU ptr_iu;
    HashTableSimpleKey table;
    std::unique_ptr<Pipeline> pipe;
    std::optional<PipelineExecutor> exec;
@@ -56,7 +55,7 @@ TEST_P(HtLookupSubopTest, lookup_existing) {
    // Run the morsel doing the has table lookups.
    exec->runMorsel();
 
-   auto& pointers = ctx.getColumn(*ptr_iu);
+   auto& pointers = ctx.getColumn(ptr_iu);
    for (uint64_t k = 0; k < 1000; ++k) {
       // Check that the output pointers are valid.
       char* ptr = table.lookup(reinterpret_cast<char*>(&k));
@@ -79,22 +78,19 @@ TEST_P(HtLookupSubopTest, lookup_nonexisting) {
    // Run the morsel doing the has table lookups.
    exec->runMorsel();
 
-   auto& pointers = ctx.getColumn(*ptr_iu);
+   auto& pointers = ctx.getColumn(ptr_iu);
    for (uint64_t k = 0; k < 1000; ++k) {
       // All the outputs should be nullptrs.
       EXPECT_EQ(nullptr, reinterpret_cast<char**>(pointers.raw_data)[k]);
    }
 }
 
-/*
- * TODO(benjamin): FIXME
 INSTANTIATE_TEST_CASE_P(
    HtLookupSubop,
    HtLookupSubopTest,
    ::testing::Values(PipelineExecutor::ExecutionMode::Fused,
                      PipelineExecutor::ExecutionMode::Interpreted));
 
- */
 }
 
 }

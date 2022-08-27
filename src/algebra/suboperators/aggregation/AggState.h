@@ -19,6 +19,10 @@ struct AggState {
 
    AggState(IR::TypeArc type_);
 
+   /// Does this aggregate need extra state initialization, or can it it work on
+   /// zero initialized memory?
+   virtual bool needsStateInit() const = 0;
+
    /// Initialize the aggregate state. Materialized the first value into the
    /// aggregation state. This is important as for a minimum aggregation we
    /// might not be able to discern the initial state after the group was allocated
@@ -36,6 +40,19 @@ struct AggState {
    protected:
    /// Type on which the aggregation state update is computed.
    IR::TypeArc type;
+};
+
+struct ZeroInitializedAggState : public AggState {
+
+   ZeroInitializedAggState(IR::TypeArc type_) : AggState(std::move(type_)) {
+   }
+
+   bool needsStateInit() const override final { return false; };
+
+   void initState(IR::FunctionBuilder& builder, const IR::Stmt& ptr, const IR::Stmt& val) const override final {
+      throw std::runtime_error(id() + " does not support state initialization.");
+   };
+
 };
 
 using AggStatePtr = std::unique_ptr<AggState>;

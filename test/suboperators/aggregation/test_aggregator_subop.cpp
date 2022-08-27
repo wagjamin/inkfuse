@@ -38,7 +38,9 @@ struct AggregatorSubopTest {
       for (size_t k = 0; k < block_size; ++k) {
          // Fill the chunk with random but deterministic data.
          reinterpret_cast<char**>(cols[0]->raw_data)[k] = &data[32 * k];
-         reinterpret_cast<bool*>(cols[1]->raw_data)[k] = not_init_fct(k);
+         if (cols[1]) {
+            reinterpret_cast<bool*>(cols[1]->raw_data)[k] = not_init_fct(k);
+         }
          if (cols[2]) {
             reinterpret_cast<int32_t*>(cols[2]->raw_data)[k] = dist_i4(gen);
          }
@@ -72,7 +74,7 @@ struct AggregatorSubopTestCount : public AggregatorSubopTest, public ::testing::
    AggregatorSubopTestCount() {
       dag.buildNewPipeline();
       auto& pipe = dag.getCurrentPipeline();
-      auto& op = pipe.attachSuboperator(AggregatorSubop::build(nullptr, count_state, src_ius[0], src_ius[1], src_ius[2]));
+      auto& op = pipe.attachSuboperator(AggregatorSubop::build(nullptr, count_state, src_ius[0], src_ius[2]));
       KeyPackingRuntimeParams params;
       params.offsetSet(IR::UI<2>::build(std::get<1>(GetParam())));
       static_cast<AggregatorSubop&>(op).attachRuntimeParams(std::move(params));
@@ -99,8 +101,8 @@ struct AggregatorSubopTestCount : public AggregatorSubopTest, public ::testing::
       }
    }
 
-   void genChunkImpl(const ExecutionContext& ctx, size_t start, const std::function<bool(size_t)>& not_init_fct) {
-      return genChunk(ctx, {0, 1, 2}, start, not_init_fct);
+   void genChunkImpl(const ExecutionContext& ctx, size_t start) {
+      return genChunk(ctx, {0, 2}, start, [](size_t) { return false; });
    }
 
    AggStateCount count_state;
@@ -109,44 +111,46 @@ struct AggregatorSubopTestCount : public AggregatorSubopTest, public ::testing::
    std::optional<PipelineExecutor> exec;
 };
 
-/// Test only state initialization.
-TEST_P(AggregatorSubopTestCount, test_only_init) {
+/// Test count update starting with zero counts.
+TEST_P(AggregatorSubopTestCount, test_update_from_zero) {
    // Set up chunk where no row is initialized.
-   genChunkImpl(exec->getExecutionContext(), 0, [](size_t) { return true; });
+   genChunkImpl(exec->getExecutionContext(), 0);
+   // Counts should be zero before the first update.
+   checkCountState([](size_t) { return 0; });
    // Run the block.
    ASSERT_NO_THROW(exec->runMorsel());
-   // Check that every count is set to zero.
+   // Counts should be one everywhere.
    checkCountState([](size_t) { return 1; });
 }
 
-/// Test only state update.
-TEST_P(AggregatorSubopTestCount, test_only_update) {
+/// Test count update with higher counts.
+TEST_P(AggregatorSubopTestCount, test_update_higher) {
    // Set up chunk where no row is initialized.
-   genChunkImpl(exec->getExecutionContext(), 0, [](size_t) { return false; });
+   genChunkImpl(exec->getExecutionContext(), 0);
    setCountState([](size_t idx) { return 2 * idx; });
    // Run the block.
    ASSERT_NO_THROW(exec->runMorsel());
    // Count should be updated by one.
    checkCountState([](size_t idx) { return 2 * idx + 1; });
    // Run another chunk on the same values.
-   genChunkImpl(exec->getExecutionContext(), 0, [](size_t) { return false; });
+   genChunkImpl(exec->getExecutionContext(), 0);
    ASSERT_NO_THROW(exec->runMorsel());
    checkCountState([](size_t idx) { return 2 * idx + 2; });
 }
 
 /// Test mixed init and update.
-TEST_P(AggregatorSubopTestCount, test_mixed_init_update) {
+TEST_P(AggregatorSubopTestCount, test_update_mixed) {
    // Initial init chunk.
-   genChunkImpl(exec->getExecutionContext(), 0, [](size_t idx) { return idx % 2 == 0; });
-   setCountState([](size_t idx) { return 2 * idx; });
+   genChunkImpl(exec->getExecutionContext(), 0);
+   setCountState([](size_t idx) { return idx % 2 == 0 ? 0 : 2 * idx; });
    // Run the block.
    ASSERT_NO_THROW(exec->runMorsel());
-   // Count should be set to one on every init row and incremented by one on every update row.
+   // Count should be updated by one everywhere.
    checkCountState([](size_t idx) { return idx % 2 == 0 ? 1 : 2 * idx + 1; });
-   // Run another chunk on the same values, but this time increment values that were initialized before.
-   genChunkImpl(exec->getExecutionContext(), 0, [](size_t idx) { return idx % 2 == 1; });
+   // Run another chunk on the same values.
+   genChunkImpl(exec->getExecutionContext(), 0);
    ASSERT_NO_THROW(exec->runMorsel());
-   checkCountState([](size_t idx) { return idx % 2 == 0 ? 2 : 1; });
+   checkCountState([](size_t idx) { return idx % 2 == 0 ? 2 : 2 * idx + 2; });
 }
 
 INSTANTIATE_TEST_CASE_P(

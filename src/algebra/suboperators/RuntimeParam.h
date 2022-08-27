@@ -35,7 +35,7 @@ namespace inkfuse {
          auto casted_state = IR::CastExpr::build(                                                                  \
             std::move(state_expr),                                                                                 \
             IR::Pointer::build(program.getStruct(gstate::name)));                                                  \
-         /* As there is no type erasure, get the struct member directly value and deref. */                                                                                                          \
+         /* As there is no type erasure, get the struct member directly value and ref. */                                                                                                          \
          return IR::StructAccessExpr::build(std::move(casted_state), #pname);                                      \
       } else {                                                                                                     \
          return IR::ConstExpr::build(pname->copy());                                                               \
@@ -49,7 +49,7 @@ namespace inkfuse {
          auto casted_state = IR::CastExpr::build(                                                                  \
             std::move(state_expr),                                                                                 \
             IR::Pointer::build(program.getStruct(gstate::name)));                                                  \
-         /* Get the void pointer to the erased type, cast as pointer to value and deref. */                                                                                                          \
+         /* Get the void pointer to the erased type, cast as pointer to value and ref. */                                                                                                          \
          return IR::DerefExpr::build(                                                                              \
             IR::CastExpr::build(                                                                                   \
                IR::StructAccessExpr::build(std::move(casted_state), #pname "_erased"),                             \

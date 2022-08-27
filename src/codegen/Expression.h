@@ -179,7 +179,7 @@ struct StructAccessExpr : public UnaryExpr {
    static TypeArc deriveType(const Expr& child, const std::string& field);
 
    /// Build a struct access expression. Accepts a child expression of type struct or pointer
-   /// to struct. Note that if the child is a pointer type, we add a deref expression below
+   /// to struct. Note that if the child is a pointer type, we add a ref expression below
    /// the struct access expression.
    static ExprPtr build(ExprPtr child_, std::string field_);
 

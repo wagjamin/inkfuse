@@ -11,6 +11,7 @@ namespace HashTableRuntime {
 
 extern "C" char* ht_sk_lookup(void* table, char* key);
 extern "C" char* ht_sk_lookup_or_insert(void* table, char* key);
+extern "C" void ht_sk_lookup_or_insert_with_init(void* table, char** result, bool* is_new_key, char* key);
 
 void registerRuntime();
 };

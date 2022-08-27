@@ -53,6 +53,14 @@ char* HashTableSimpleKey::lookup(const char* key) {
 }
 
 char* HashTableSimpleKey::lookupOrInsert(const char* key) {
+   char* result;
+   bool is_new_key;
+   lookupOrInsert(&result, &is_new_key, key);
+   return result;
+}
+
+void HashTableSimpleKey::lookupOrInsert(char** result, bool* is_new_key, const char* key)
+{
    // Double the hash table if we don't have enough space.
    // Strictly speaking a bit too passive, as we might not need the
    // slot of the key already exists. But this is a border-case.
@@ -67,8 +75,11 @@ char* HashTableSimpleKey::lookupOrInsert(const char* key) {
       // Copy over the key.
       std::memcpy(slot.elem, key, simple_key_size);
       state.inserted++;
+      *is_new_key = true;
+   } else {
+      *is_new_key = false;
    }
-   return slot.elem;
+   *result = slot.elem;
 }
 
 size_t HashTableSimpleKey::size()

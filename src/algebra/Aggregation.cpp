@@ -78,14 +78,14 @@ void Aggregation::decay(PipelineDAG& dag) const {
 
    // Set up the backing aggregation hash table. We can drop it after the
    // pipeline which reads from the aggregation is done.
-   auto& hash_table = dag.attachHashTableSimpleKey(dag.getPipelines().size(), key_size, payload_size);
+   // auto& hash_table = dag.attachHashTableSimpleKey(dag.getPipelines().size(), key_size, payload_size);
 
-   auto& curr_pipe = dag.getCurrentPipeline();
+   // auto& curr_pipe = dag.getCurrentPipeline();
    // Step 1: Hash the aggregation columns.
-   curr_pipe.attachSuboperator(ExpressionSubop::build(this, {&hash_ius.front()}, {group_by.front()}, ExpressionOp::ComputeNode::Type::Hash));
+   // curr_pipe.attachSuboperator(ExpressionSubop::build(this, {&hash_ius.front()}, {group_by.front()}, ExpressionOp::ComputeNode::Type::Hash));
 
    // Step 2: Lookup the hash values in the aggregation hash table
-   auto& ht_lookup_subop = curr_pipe.attachSuboperator(RuntimeFunctionSubop::htLookup(this, hash_ius.front(), &hash_table));
+   // auto& ht_lookup_subop = curr_pipe.attachSuboperator(RuntimeFunctionSubop::htLookup(this, hash_ius.front(), &hash_table));
 
    // Step 3: Resolve the hash collisions.
    // TODO(Benjamin)
@@ -96,7 +96,7 @@ void Aggregation::decay(PipelineDAG& dag) const {
    // Step 5: Update existing groups.
 
    // Step 6: Set up the new pipeline and readers.
-   auto& new_pipe = dag.buildNewPipeline();
+   // auto& new_pipe = dag.buildNewPipeline();
 }
 
 }
