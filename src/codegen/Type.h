@@ -151,6 +151,26 @@ struct Void : public Type {
    }
 };
 
+/// A statically sized byte array. Can be used e.g. as intermediate state for key packing.
+struct ByteArray : public Type {
+   static TypeArc build(size_t size_) {
+      return std::make_shared<ByteArray>(size_);
+   }
+   ByteArray(size_t size_) : size(size_) {}
+
+   size_t numBytes() const override {
+      return size;
+   }
+
+   std::string id() const override {
+      // Width is not part of type id as we want one primitive for all sizes.
+      return "ByteArray";
+   }
+
+   private:
+   size_t size;
+};
+
 /// Custom struct type, this is needed to make the IR aware of C-style structs
 /// containing operator state.
 struct Struct : public Type {
@@ -231,6 +251,8 @@ struct TypeVisitor {
          visitBool(*elem, arg);
       } else if (auto elem = dynamic_cast<const IR::Char*>(&type)) {
          visitChar(*elem, arg);
+      } else if (auto elem = dynamic_cast<const IR::ByteArray*>(&type)) {
+         visitByteArray(*elem, arg);
       } else if (auto elem = dynamic_cast<const IR::Void*>(&type)) {
          visitVoid(*elem, arg);
       } else if (auto elem = dynamic_cast<const IR::Struct*>(&type)) {
@@ -252,6 +274,8 @@ struct TypeVisitor {
    virtual void visitBool(const Bool& type, Arg arg) {}
 
    virtual void visitChar(const Char& type, Arg arg) {}
+
+   virtual void visitByteArray(const ByteArray& type, Arg arg) {}
 
    virtual void visitVoid(const Void& type, Arg arg) {}
 
