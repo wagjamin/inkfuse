@@ -6,6 +6,7 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 /// This file contains the central building blocks for the backing types within the InkFuse IR.
 namespace inkfuse {
