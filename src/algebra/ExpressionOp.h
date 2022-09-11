@@ -4,7 +4,9 @@
 #include "algebra/RelAlgOp.h"
 #include "codegen/Value.h"
 #include <unordered_set>
+#include <optional>
 #include <vector>
+#include <unordered_map>
 
 namespace inkfuse {
 

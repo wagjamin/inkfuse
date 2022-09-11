@@ -94,7 +94,7 @@ void FuseChunkSink::setUpState(const ExecutionContext& context) {
    state = std::make_unique<FuseChunkSinkState>();
    auto& col = context.getColumn(**source_ius.begin());
    state->raw_data = col.raw_data;
-   state->size = &col.size;
+   state->size = reinterpret_cast<uint64_t*>(&col.size);
 }
 
 void FuseChunkSink::tearDownState() {

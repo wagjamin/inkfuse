@@ -3,6 +3,7 @@
 #include "algebra/RelAlgOp.h"
 #include "codegen/Type.h"
 #include "exec/FuseChunk.h"
+#include <algorithm>
 #include <functional>
 
 namespace inkfuse {
@@ -26,7 +27,7 @@ bool TScanDriver::pickMorsel() {
    }
 
    // Go up to the maximum chunk size of the intermediate results or the total relation size.
-   state->end = std::min(state->start + DEFAULT_CHUNK_SIZE, rel_size);
+   state->end = std::min(state->start + DEFAULT_CHUNK_SIZE, static_cast<uint64_t>(rel_size));
 
    // If the starting point advanced to the end, then we know there are no more morsels to pick.
    return state->start != rel_size;
