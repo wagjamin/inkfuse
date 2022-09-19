@@ -84,6 +84,7 @@ set(INCLUDE_H
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/sinks/CountingSink.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/sources/TableScanSource.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/sources/FuseChunkSource.h"
+        "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/sources/ScratchPadIUProvider.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/Pipeline.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/RelAlgOp.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/ExpressionOp.h"
@@ -123,6 +124,7 @@ set(INCLUDE_H
         "${CMAKE_SOURCE_DIR}/src/runtime/HashRuntime.h"
         "${CMAKE_SOURCE_DIR}/src/runtime/HashTableRuntime.h"
         "${CMAKE_SOURCE_DIR}/src/runtime/HashTables.h"
+        "${CMAKE_SOURCE_DIR}/src/runtime/MemoryRuntime.h"
         "${CMAKE_SOURCE_DIR}/src/storage/Relation.h"
         )
 
@@ -154,6 +156,7 @@ set(SRC_CC
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/sinks/FuseChunkSink.cpp"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/sources/TableScanSource.cpp"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/sources/FuseChunkSource.cpp"
+        "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/sources/ScratchPadIUProvider.cpp"
         "${CMAKE_SOURCE_DIR}/src/algebra/TableScan.cpp"
         "${CMAKE_SOURCE_DIR}/src/algebra/ExpressionOp.cpp"
         "${CMAKE_SOURCE_DIR}/src/algebra/Filter.cpp"
@@ -190,6 +193,7 @@ set(SRC_CC
         "${CMAKE_SOURCE_DIR}/src/runtime/HashRuntime.cpp"
         "${CMAKE_SOURCE_DIR}/src/runtime/HashTableRuntime.cpp"
         "${CMAKE_SOURCE_DIR}/src/runtime/HashTables.cpp"
+        "${CMAKE_SOURCE_DIR}/src/runtime/MemoryRuntime.cpp"
         )
 
 set(TEST_CC

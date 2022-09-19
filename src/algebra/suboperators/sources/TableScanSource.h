@@ -8,7 +8,6 @@
 /// This file contains the necessary sub-operators for reading from a base table.
 namespace inkfuse {
 
-
 /// Loop driver for reading a morsel from an underlying table.
 struct TScanDriver final : public LoopDriver {
    static std::unique_ptr<TScanDriver> build(const RelAlgOp* source, size_t rel_size_ = 0);
