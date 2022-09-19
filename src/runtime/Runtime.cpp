@@ -8,6 +8,7 @@
 #include "algebra/suboperators/sinks/FuseChunkSink.h"
 #include "runtime/HashRuntime.h"
 #include "runtime/HashTableRuntime.h"
+#include "runtime/MemoryRuntime.h"
 
 namespace inkfuse {
 
@@ -26,6 +27,7 @@ GlobalRuntime::GlobalRuntime() : program(std::make_unique<IR::Program>("global_r
    // Register the actual inkfuse runtime functions.
    HashRuntime::registerRuntime();
    HashTableRuntime::registerRuntime();
+   MemoryRuntime::registerRuntime();
 }
 
 RuntimeStructBuilder::~RuntimeStructBuilder() {

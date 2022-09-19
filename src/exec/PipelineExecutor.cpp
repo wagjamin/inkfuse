@@ -4,6 +4,7 @@
 #include "exec/InterruptableJob.h"
 #include "exec/runners/CompiledRunner.h"
 #include "exec/runners/InterpretedRunner.h"
+#include "runtime/MemoryRuntime.h"
 
 namespace inkfuse {
 
@@ -27,7 +28,8 @@ const ExecutionContext& PipelineExecutor::getExecutionContext() const {
 }
 
 void PipelineExecutor::runPipeline() {
-   auto start = std::chrono::steady_clock::now();
+   // Scope guard for pipeline-level memory allocations.
+   MemoryRuntime::PipelineMemoryContext mem_ctx;
    if (mode == ExecutionMode::Fused) {
       while (runFusedMorsel()) {}
    } else if (mode == ExecutionMode::Interpreted) {
