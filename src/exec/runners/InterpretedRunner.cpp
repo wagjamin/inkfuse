@@ -10,16 +10,15 @@ InterpretedRunner::InterpretedRunner(const Pipeline& backing_pipeline, size_t id
    auto id = op->id();
    // Get the function we have to interpret.
    auto& cache = FragmentCache::instance();
-   fct = reinterpret_cast<uint8_t (*)(void**, void**, void*)>(cache.getFragment(id));
+   fct = reinterpret_cast<uint8_t (*)(void**)>(cache.getFragment(id));
    if (!fct) {
       throw std::runtime_error("No fragment found for interpreted runner.");
    }
 }
 
 // static
-PipelinePtr InterpretedRunner::getRepiped(const Pipeline& backing_pipeline, size_t idx)
-{
-   auto res = backing_pipeline.repipeAll(idx, idx+1);
+PipelinePtr InterpretedRunner::getRepiped(const Pipeline& backing_pipeline, size_t idx) {
+   auto res = backing_pipeline.repipeAll(idx, idx + 1);
    return res;
 }
 

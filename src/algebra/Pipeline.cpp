@@ -135,7 +135,10 @@ std::unique_ptr<Pipeline> Pipeline::repipe(size_t start, size_t end, const std::
          auto& driver_iu = **driver.getIUs().begin();
          // And the IU providers.
          for (auto iu : in_required_ordered) {
-            new_pipe->attachSuboperator(FuseChunkSourceIUProvider::build(driver_iu, *iu));
+            if (!dynamic_cast<IR::Void*>(iu->type.get())) {
+               // Ignore pseudo-IUs that are only used for proper codegen ordering.
+               auto& provider = new_pipe->attachSuboperator(FuseChunkSourceIUProvider::build(driver_iu, *iu));
+            }
          }
       }
    }

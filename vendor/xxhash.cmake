@@ -9,7 +9,7 @@ ExternalProject_Add(
         INSTALL_DIR "vendor/xxhash/src/xxhash_src"
         BINARY_DIR "vendor/xxhash/src/xxhash_src"
         CONFIGURE_COMMAND ""
-        BUILD_COMMAND "make"
+        BUILD_COMMAND "$(MAKE)"
         INSTALL_COMMAND ""
         GIT_TAG v0.8.1
         TIMEOUT 10

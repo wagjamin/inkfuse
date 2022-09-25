@@ -144,12 +144,9 @@ CompilationContext::Builder::Builder(IR::Program& program, std::string fct_name)
 }
 
 IR::FunctionBuilder CompilationContext::createFctBuilder(IR::IRBuilder& program, std::string fct_name) {
-   // Generated functions for execution have two void** arguments for state
-   // and a void* for the resumption state.
+   // Generated functions for execution have a void** arguments for operator state.
    static const std::vector<std::pair<std::string, IR::TypeArc>> arg_names{
-      {"global_state", IR::Pointer::build(IR::Pointer::build(IR::Void::build()))},
-      {"params", IR::Pointer::build(IR::Pointer::build(IR::Void::build()))},
-      {"resumption_state", IR::Pointer::build(IR::Void::build())},
+      {"global_state", IR::Pointer::build(IR::Pointer::build(IR::Void::build()))}
    };
    std::vector<IR::StmtPtr> args;
    for (const auto& [arg, type] : arg_names) {

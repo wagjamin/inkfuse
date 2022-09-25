@@ -9,9 +9,9 @@ struct RelAlgOp;
 /// This is useful in cases where the IU is not read from storage, but rather transient and used for intermediate state.
 /// This is most commonly used for key packing/unpacking, where we don't need to allocate a complete column
 /// in the context of a compiled pipeline.
-struct ScratchPadIUProvider : public TemplatedSuboperator<EmptyState>, public WithRuntimeParams<IndexedIUProviderRuntimeParam> {
+struct ScratchPadIUProvider : public TemplatedSuboperator<EmptyState> {
 
-   ScratchPadIUProvider(RelAlgOp* source_, const IU& provided_iu);
+   static SuboperatorArc build(RelAlgOp* source_, const IU& provided_iu);
 
    /// The ScratchPadIUProvider does not have to be interpreted.
    /// For operators which consume this in an interpreted context,
@@ -32,7 +32,14 @@ struct ScratchPadIUProvider : public TemplatedSuboperator<EmptyState>, public Wi
       return "ScratchPadIUProvider";
    };
 
-   void consume(const IU& iu, CompilationContext& context) override;
+   /// As the ScratchPadIUProvider has no source, the code generation has to happen in 'open'.
+   void open(CompilationContext& context) override;
+
+   /// Custom 'close' as we don't need to look for IU producers to also close.
+   void close(CompilationContext& context) override {};
+
+   private:
+   ScratchPadIUProvider(RelAlgOp* source_, const IU& provided_iu);
 
 };
 

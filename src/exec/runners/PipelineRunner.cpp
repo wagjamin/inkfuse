@@ -7,13 +7,26 @@ PipelineRunner::PipelineRunner(PipelinePtr pipe_, ExecutionContext& context_)
 : pipe(std::move(pipe_)), context(context_.recontextualize(*pipe))
 {
    assert(pipe->getSubops()[0]->isSource());
-   assert(pipe->getSubops().back()->isSink());
+   // We either run a pipeline with a sink in the end, or interpret a pipeline that
+   // ends in an operator with a pseudo-IU. In other words: the last suboperator must have some observabile side-effects.
+   assert(pipe->getSubops().back()->isSink() || dynamic_cast<IR::Void*>(pipe->getSubops().back()->getIUs().front()->type.get()));
    fuseChunkSource = (dynamic_cast<const FuseChunkSourceDriver*>(pipe->getSubops()[0].get()) != nullptr);
    setUpState();
 }
 
 void PipelineRunner::setUpState()
 {
+   for (auto& elem : pipe->getSubops()) {
+      auto provider = dynamic_cast<FuseChunkSourceIUProvider*>(elem.get());
+      if (provider) {
+         // The IU providers have an attached runtime parameter containing the type width.
+         // Set it up here, as this is needed to properly use iterators in the vectorized primitives for variable-size types.
+         const auto& iu = provider->getIUs().front();
+         IndexedIUProviderRuntimeParam param;
+         param.type_paramSet(IR::UI<2>::build(iu->type.get()->numBytes()));
+         provider->attachRuntimeParams(std::move(param));
+      }
+   }
    states.reserve(pipe->getSubops().size());
    for (const auto& op: pipe->getSubops()) {
       op->setUpState(context);
@@ -30,7 +43,7 @@ bool PipelineRunner::runMorsel(bool force_pick)
       pick_result = pipe->suboperators[0]->pickMorsel();
    }
    if (pick_result) {
-      fct(states.data(), nullptr, nullptr);
+      fct(states.data());
    }
    return pick_result;
 }

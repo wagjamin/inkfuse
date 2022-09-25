@@ -32,7 +32,7 @@ bool CompiledRunner::prepare(InterruptableJob& interrupt)
    program->compileToMachinecode(interrupt);
    if (interrupt.getResult() == InterruptableJob::Change::JobDone) {
       // If we finished successfully without interrupt we can fetch the generated function.
-      fct = reinterpret_cast<uint8_t(*)(void**, void**, void*)>(program->getFunction("execute"));
+      fct = reinterpret_cast<uint8_t(*)(void**)>(program->getFunction("execute"));
       assert(fct);
       prepared = true;
    }
