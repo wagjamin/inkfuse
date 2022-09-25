@@ -38,7 +38,7 @@ struct PipelineRunner {
 
    /// The compiled function. Either a fragment received from the backing cache,
    /// or a new function.
-   std::function<uint8_t(void**, void**, void*)> fct;
+   std::function<uint8_t(void**)> fct;
    /// Operator states for this specific pipeline.
    std::vector<void*> states;
    /// The backing pipeline.

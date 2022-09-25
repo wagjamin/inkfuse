@@ -117,12 +117,6 @@ struct IndexedIUProvider : public TemplatedSuboperator<IndexedIUProviderState>, 
       return providerName() + (*this->provided_ius.begin())->type->id();
    };
 
-   void setUpStateImpl(const ExecutionContext& context) override {
-      // Fetch the underlying raw data from the associated runtime parameters.
-      // If the value was hard-coded in the generated code already it will simply never be accessed.
-      state->type_param = *reinterpret_cast<uint16_t*>(runtime_params.type_param->rawData());
-   };
-
    protected:
    IndexedIUProvider(const RelAlgOp* source, const IU& driver_iu, const IU& produced_iu)
       : TemplatedSuboperator<IndexedIUProviderState>(source, {&produced_iu}, {&driver_iu}) {}

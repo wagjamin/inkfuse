@@ -27,13 +27,13 @@ void* PipelineMemoryContext::alloc(uint64_t size) {
    assert(size < REGION_SIZE);
    // How many slots in the array do I need? (division by 8 byte slots size, with round up)
    uint64_t slots = (size + 8 - 1) / 8;
-   if (regions.empty() || region_offset + slots > REGION_ARRAY_SIZE) [[unlikely]] {
+   if (regions.empty() || (region_offset + slots > REGION_ARRAY_SIZE)) [[unlikely]] {
       // We need to allocate need a new region.
       regions.push_back(std::make_unique<uint64_t[]>(REGION_ARRAY_SIZE));
       region_offset = 0;
    }
    // Fetch the pointer to the reserved slot for this allocation.
-   void* result = &regions[region_offset];
+   void* result = &regions.back()[region_offset];
    // Apply the slot offset so that next allocation comes after this one.
    region_offset += slots;
    return result;

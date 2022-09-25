@@ -3,10 +3,14 @@
 
 namespace inkfuse {
 
+SuboperatorArc ScratchPadIUProvider::build(RelAlgOp* source_, const IU& provided_iu) {
+   return SuboperatorArc{new ScratchPadIUProvider(source_, provided_iu)};
+}
+
 ScratchPadIUProvider::ScratchPadIUProvider(RelAlgOp* source_, const IU& provided_iu)
    : TemplatedSuboperator<EmptyState>(source_, {&provided_iu}, {}) {}
 
-void ScratchPadIUProvider::consume(const IU& iu, CompilationContext& context) {
+void ScratchPadIUProvider::open(CompilationContext& context) {
    auto& builder = context.getFctBuilder();
    const IU& out_iu = *provided_ius.front();
    // We attach all statements to the function preamble.

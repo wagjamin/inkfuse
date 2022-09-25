@@ -3,17 +3,14 @@
 
 namespace inkfuse {
 
-std::unique_ptr<FuseChunkSourceDriver> FuseChunkSourceDriver::build()
-{
+std::unique_ptr<FuseChunkSourceDriver> FuseChunkSourceDriver::build() {
    return std::unique_ptr<FuseChunkSourceDriver>(new FuseChunkSourceDriver());
 }
 
-FuseChunkSourceDriver::FuseChunkSourceDriver(): LoopDriver(nullptr)
-{
+FuseChunkSourceDriver::FuseChunkSourceDriver() : LoopDriver(nullptr) {
 }
 
-bool FuseChunkSourceDriver::pickMorsel()
-{
+bool FuseChunkSourceDriver::pickMorsel() {
    assert(col);
    state->start = 0;
    state->end = col->size;
@@ -22,13 +19,11 @@ bool FuseChunkSourceDriver::pickMorsel()
    return true;
 }
 
-std::string FuseChunkSourceDriver::id() const
-{
+std::string FuseChunkSourceDriver::id() const {
    return "FuseChunkSourceDriver";
 }
 
-void FuseChunkSourceDriver::setUpStateImpl(const ExecutionContext& context_)
-{
+void FuseChunkSourceDriver::setUpStateImpl(const ExecutionContext& context_) {
    assert(!context_.getPipe().getConsumers(*this).empty());
    // Figure out which columns we are actually driving.
    const auto& consumer = context_.getPipe().getConsumers(*this)[0];
@@ -38,25 +33,27 @@ void FuseChunkSourceDriver::setUpStateImpl(const ExecutionContext& context_)
    col = &context_.getColumn(driving);
 }
 
-std::unique_ptr<FuseChunkSourceIUProvider> FuseChunkSourceIUProvider::build(const IU& driver_iu, const IU& produced_iu)
-{
+std::unique_ptr<FuseChunkSourceIUProvider> FuseChunkSourceIUProvider::build(const IU& driver_iu, const IU& produced_iu) {
    return std::unique_ptr<FuseChunkSourceIUProvider>(new FuseChunkSourceIUProvider(driver_iu, produced_iu));
 }
 
 FuseChunkSourceIUProvider::FuseChunkSourceIUProvider(const IU& driver_iu, const IU& produced_iu)
-: IndexedIUProvider(nullptr, driver_iu, produced_iu)
-{
+   : IndexedIUProvider(nullptr, driver_iu, produced_iu) {
 }
 
-void FuseChunkSourceIUProvider::setUpStateImpl(const ExecutionContext& context)
-{
+void FuseChunkSourceIUProvider::setUpStateImpl(const ExecutionContext& context) {
    // Extract the raw data from which to read within the backing chunk.
    auto& col = context.getColumn(**provided_ius.begin());
    state->raw_data = col.raw_data;
+   if (runtime_params.type_param) {
+   // Fetch the underlying raw data from the associated runtime parameters.
+   // If the value was hard-coded in the generated code already it will simply never be accessed.
+   // Should only not be set in tests which manually create a FuseChunkSourceIUProvider.
+   state->type_param = *reinterpret_cast<uint16_t*>(runtime_params.type_param->rawData());
+   }
 }
 
-std::string FuseChunkSourceIUProvider::providerName() const
-{
+std::string FuseChunkSourceIUProvider::providerName() const {
    return "FuseChunkSourceIUProvider";
 }
 

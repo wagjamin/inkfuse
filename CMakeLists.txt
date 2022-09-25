@@ -210,6 +210,7 @@ set(TEST_CC
         "${CMAKE_SOURCE_DIR}/test/suboperators/aggregation/test_aggregator_subop.cpp"
         "${CMAKE_SOURCE_DIR}/test/suboperators/test_ht_lookup.cpp"
         "${CMAKE_SOURCE_DIR}/test/suboperators/test_key_packing.cpp"
+        "${CMAKE_SOURCE_DIR}/test/suboperators/test_scratch_pad_ius.cpp"
         "${CMAKE_SOURCE_DIR}/test/suboperators/test_runtime_param.cpp"
         "${CMAKE_SOURCE_DIR}/test/suboperators/test_minimal_pipeline.cpp"
         "${CMAKE_SOURCE_DIR}/test/suboperators/test_runtime_key_expression.cpp"
