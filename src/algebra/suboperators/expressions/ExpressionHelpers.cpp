@@ -15,7 +15,8 @@ const std::unordered_map<Type, std::string> expr_names{
    {Type::GreaterEqual, "ge"},
    {Type::Less, "lt"},
    {Type::LessEqual, "le"},
-   {Type::Eq, "eq"}};
+   {Type::Eq, "eq"},
+   {Type::Neq, "neq"}};
 
 /// Map from algebra expression types to IR expressions in the jitted code.
 const std::unordered_map<Type, IR::ArithmeticExpr::Opcode> code_map{
@@ -28,6 +29,7 @@ const std::unordered_map<Type, IR::ArithmeticExpr::Opcode> code_map{
    {Type::Less, IR::ArithmeticExpr::Opcode::Less},
    {Type::LessEqual, IR::ArithmeticExpr::Opcode::LessEqual},
    {Type::Eq, IR::ArithmeticExpr::Opcode::Eq},
+   {Type::Neq, IR::ArithmeticExpr::Opcode::Neq},
 };
 
 }

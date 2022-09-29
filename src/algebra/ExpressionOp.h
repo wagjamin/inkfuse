@@ -39,6 +39,7 @@ struct ExpressionOp : public RelAlgOp {
          Multiply,
          Divide,
          Eq,
+         Neq,
          Less,
          LessEqual,
          Greater,

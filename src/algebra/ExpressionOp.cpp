@@ -19,7 +19,7 @@ IR::TypeArc ExpressionOp::derive(ComputeNode::Type code, const std::vector<IR::T
    if (code == ComputeNode::Type::Hash) {
       return IR::UnsignedInt::build(8);
    }
-   if (code == ComputeNode::Type::Eq || code == ComputeNode::Type::Less || code == ComputeNode::Type::LessEqual || code == ComputeNode::Type::Greater || code == ComputeNode::Type::GreaterEqual) {
+   if (code == ComputeNode::Type::Eq || code == ComputeNode::Type::Neq || code == ComputeNode::Type::Less || code == ComputeNode::Type::LessEqual || code == ComputeNode::Type::Greater || code == ComputeNode::Type::GreaterEqual) {
       return IR::Bool::build();
    }
    // TODO Unify type derivation rules with the raw codegen::Expression.

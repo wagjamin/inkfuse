@@ -24,6 +24,10 @@ extern "C" void HashTableRuntime::ht_sk_lookup_or_insert_with_init(void* table, 
    reinterpret_cast<HashTableSimpleKey*>(table)->lookupOrInsert(result, is_new_key, key);
 }
 
+extern "C" void HashTableRuntime::ht_sk_it_advance(void* table, char** it_data, uint64_t* it_idx) {
+   reinterpret_cast<HashTableSimpleKey*>(table)->iteratorAdvance(it_data, it_idx);
+}
+
 void HashTableRuntime::registerRuntime() {
    RuntimeFunctionBuilder("ht_sk_lookup", IR::Pointer::build(IR::Char::build()))
       .addArg("table", IR::Pointer::build(IR::Void::build()))
@@ -34,9 +38,16 @@ void HashTableRuntime::registerRuntime() {
       .addArg("key", IR::Pointer::build(IR::Char::build()));
 
    RuntimeFunctionBuilder("ht_sk_lookup_or_insert_with_init", IR::Void::build())
+      .addArg("table", IR::Pointer::build(IR::Void::build()))
       .addArg("result", IR::Pointer::build(IR::Pointer::build(IR::Char::build())))
       .addArg("is_new_key", IR::Pointer::build(IR::Bool::build()))
       .addArg("key", IR::Pointer::build(IR::Char::build()));
+
+   RuntimeFunctionBuilder("ht_sk_it_advance", IR::Pointer::build(IR::Char::build()))
+      .addArg("table", IR::Pointer::build(IR::Void::build()))
+      .addArg("it_data", IR::Pointer::build(IR::Pointer::build(IR::Char::build())))
+      .addArg("it_idx", IR::Pointer::build(IR::UnsignedInt::build(8)));
+
 }
 
 }

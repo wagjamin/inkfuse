@@ -2,15 +2,18 @@
 #include "algebra/AggFunctionRegisty.h"
 #include "algebra/Pipeline.h"
 #include "algebra/suboperators/RuntimeFunctionSubop.h"
-#include "algebra/suboperators/combinators/IfCombinator.h"
+#include "algebra/suboperators/aggregation/AggReaderSubop.h"
+#include "algebra/suboperators/aggregation/AggregatorSubop.h"
 #include "algebra/suboperators/expressions/ExpressionSubop.h"
+#include "algebra/suboperators/sources/HashTableSource.h"
 #include <map>
 
 namespace inkfuse {
 
 Aggregation::Aggregation(std::vector<std::unique_ptr<RelAlgOp>> children_, std::string op_name_, std::vector<const IU*> group_by_, std::vector<AggregateFunctions::Description> aggregates_)
-   : RelAlgOp(std::move(children_), std::move(op_name_)), group_by(std::move(group_by_)) {
-   if (group_by_.size() != 1) {
+   : RelAlgOp(std::move(children_), std::move(op_name_)), group_by(std::move(group_by_)),
+     agg_pointer_result(IR::Pointer::build(IR::Char::build())), ht_scan_result(IR::Pointer::build(IR::Char::build())) {
+   if (group_by.size() != 1) {
       // TODO(benjamin): Support aggregation by more keys and empty keys.
       throw std::runtime_error("Only single-column aggregation supported at the moment.");
    }
@@ -19,7 +22,6 @@ Aggregation::Aggregation(std::vector<std::unique_ptr<RelAlgOp>> children_, std::
 
 void Aggregation::plan(std::vector<AggregateFunctions::Description> description) {
    if (group_by.size() <= 1) {
-      hash_ius.emplace_back(IR::UnsignedInt::build(8));
       key_size += group_by.front()->type->numBytes();
    } else {
       // TODO(benjamin): Multi-agg
@@ -30,16 +32,16 @@ void Aggregation::plan(std::vector<AggregateFunctions::Description> description)
    // The granules on a given IU that were computed already mapping to the offset in the 'granules' vector.
    std::map<std::pair<const IU*, std::string>, size_t> computed_granules;
    for (auto& func : description) {
-      // Get the suboperators which make up this aggregate function.
+      // Get the suboperators that make up this aggregate function.
       auto ops = AggregateFunctions::lookupSubops(func);
       std::vector<size_t> granule_offsets;
       granule_offsets.reserve(granules.size());
-      for (auto& granule : granules) {
+      for (auto& granule : ops.granules) {
          std::pair<const IU*, std::string> granule_id = {&func.agg_iu, granule->id()};
          if (computed_granules.count(granule_id) == 0) {
             // First time we see this granule, add it to the total set of granules.
             payload_size += granule->getStateSize();
-            granules.push_back(std::move(granule));
+            granules.emplace_back(&func.agg_iu, std::move(granule));
             computed_granules.emplace(granule_id, granules.size() - 1);
          } else {
             // We already computed this granule, reuse it.
@@ -63,40 +65,61 @@ void Aggregation::decay(PipelineDAG& dag) const {
       child->decay(dag);
    }
 
-   // Decay the full aggregation operation into a DAG of suboperators.
-   // This proceeds as-follows:
-   // Current Pipeline:
-   // 1. Hash the aggregation key
-   // 2. Lookup the hash values in the aggregation hash table
-   // 3. Resolve the hash collisions
-   // 4. For new groups:
-   //    4.1 Allocate a new group in the hash table
-   //    4.2 Initialize the aggregate state
-   // 5. For existing groups: update the aggregate state.
+   // Decay the full aggregation operation into a DAG of suboperators. This proceeds as-follows:
+   // Original pipeline:
+   // 1. Pack the aggregation key (if it needs to be packed)
+   // 2. Lookup or insert the key in the aggregation hash table
+   // 3. Update the aggregate state.
    // New Pipeline:
-   // 6. Attach readers on a new pipeline.
+   // 4. Attach readers on a new pipeline.
 
    // Set up the backing aggregation hash table. We can drop it after the
    // pipeline which reads from the aggregation is done.
-   // auto& hash_table = dag.attachHashTableSimpleKey(dag.getPipelines().size(), key_size, payload_size);
+   auto& hash_table = dag.attachHashTableSimpleKey(dag.getPipelines().size(), key_size, payload_size);
 
-   // auto& curr_pipe = dag.getCurrentPipeline();
-   // Step 1: Hash the aggregation columns.
-   // curr_pipe.attachSuboperator(ExpressionSubop::build(this, {&hash_ius.front()}, {group_by.front()}, ExpressionOp::ComputeNode::Type::Hash));
+   auto& curr_pipe = dag.getCurrentPipeline();
+   // Step 1: Pack the aggregation key (if it needs to be packed)
+   const IU* key_iu;
+   if (group_by.size() > 1) {
+      // Pack the aggregation key.
+      // TODO(benjamin)
+   } else {
+      // There is only a single key, we can use that directly.
+      key_iu = group_by[0];
+   }
 
-   // Step 2: Lookup the hash values in the aggregation hash table
-   // auto& ht_lookup_subop = curr_pipe.attachSuboperator(RuntimeFunctionSubop::htLookup(this, hash_ius.front(), &hash_table));
+   // Step 2: Lookup or insert the key in the aggregation hash table
+   auto& ht_lookup_subop = curr_pipe.attachSuboperator(RuntimeFunctionSubop::htLookupOrInsert(this, agg_pointer_result, *key_iu, {}, &hash_table));
 
-   // Step 3: Resolve the hash collisions.
-   // TODO(Benjamin)
+   // Step 3: Update the aggregation state.
+   // The current offset into the serialized aggregate state.
+   size_t curr_offset = 0;
+   for (const auto& [agg_iu, agg_state] : granules) {
+      // Create the aggregator which will compute the granule.
+      auto& aggregator = curr_pipe.attachSuboperator(AggregatorSubop::build(this, *agg_state, agg_pointer_result, *agg_iu));
+      // Attach the runtime parameter that represents the state offset.
+      KeyPackingRuntimeParams param;
+      param.offsetSet(IR::UI<2>::build(curr_offset));
+      reinterpret_cast<AggregatorSubop&>(aggregator).attachRuntimeParams(std::move(param));
+      // Update the offset - the next aggregation state granule lives next to this one.
+      curr_offset += agg_state->getStateSize();
+   }
 
-   // Step 4: Set up new groups where we did not find a key.
-   // curr_pipe.attachSuboperator(IfCombinator<RuntimeFunctionSubop>::build({&ht_lookup_subop.getIUs().front()}, this, "ht_insert", hash_ius.front(), &hash_table));
-
-   // Step 5: Update existing groups.
-
-   // Step 6: Set up the new pipeline and readers.
-   // auto& new_pipe = dag.buildNewPipeline();
+   // Step 4: Attach readers on a new pipeline.
+   auto& read_pipe = dag.buildNewPipeline();
+   // First, build a reader on the aggregate hash table.
+   read_pipe.attachSuboperator(HashTableSource::build(this, ht_scan_result, hash_table));
+   auto out_compute = compute.cbegin();
+   for (const auto& out_iu : out_ius) {
+      // Next, produce the actual operator that computes the aggregate.
+      auto& reader = read_pipe.attachSuboperator(AggReaderSubop::build(this, ht_scan_result, out_iu, *out_compute->compute));
+      // Attach the runtime parameter that represents the state offset.
+      KeyPackingRuntimeParams param;
+      // TODO(benjamin) fix offset calculation.
+      param.offsetSet(IR::UI<2>::build(0));
+      reinterpret_cast<AggReaderSubop&>(reader).attachRuntimeParams(std::move(param));
+      out_compute++;
+   }
 }
 
 }

@@ -13,6 +13,8 @@ struct SharedHashTableState {
 
    /// Advance an iterator within the hash table.
    inline void advance(size_t& idx, char*& curr, uint8_t*& tag) const;
+   /// Advance an iterator within the hash table. Sets the pointer to nullptr when the end of the hash table is reached.
+   inline void advanceNoWrap(size_t& idx, char*& curr, uint8_t*& tag) const;
 
    /// Occupied tags containing parts of the key hash.
    /// Similar approach as in folly f14 (just less fast and generic).
@@ -41,6 +43,12 @@ struct HashTableSimpleKey {
    /// Updates the 'result' and 'is_new_key' arguments to give the caller
    /// insight into whether this key was new.
    void lookupOrInsert(char** result, bool* is_new_key, const char* key);
+   /// Get an iterator to the first non-empty element of the hash table.
+   /// Sets it_data to nullptr if the iterator is exhausted.
+   void iteratorStart(char** it_data, uint64_t* it_idx);
+   /// Advance an iterator to the next non-empty element in the hash table.
+   /// Sets it_data to nullptr if the iterator is exhausted.
+   void iteratorAdvance(char** it_data, uint64_t* it_idx);
    /// Get the current size. Mainly used for testing.
    size_t size();
    /// Get the current capacity. Mainly used for testing.
