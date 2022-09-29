@@ -351,6 +351,7 @@ void BackendC::compileExpression(const IR::Expr& expr, ScopedWriter::Statement& 
             {IR::ArithmeticExpr::Opcode::Greater, ">"},
             {IR::ArithmeticExpr::Opcode::GreaterEqual, ">"},
             {IR::ArithmeticExpr::Opcode::Eq, "=="},
+            {IR::ArithmeticExpr::Opcode::Neq, "!="},
          };
          compileExpression(*type.children[0], stmt);
          assert(opcode_map.count(type.code));

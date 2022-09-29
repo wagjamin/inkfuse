@@ -39,6 +39,20 @@ void SharedHashTableState::advance(size_t& idx, char*& data_ptr, uint8_t*& tag_p
    }
 }
 
+void SharedHashTableState::advanceNoWrap(size_t& idx, char*& data_ptr, uint8_t*& tag_ptr) const {
+   // Should not be called after it returned a nullptr.
+   assert(data_ptr != nullptr && tag_ptr != nullptr);
+   if (idx == mod_mask) [[unlikely]] {
+      // Reached end. Set the data to null.
+      data_ptr = nullptr;
+   } else [[likely]] {
+      // Regular advance.
+      data_ptr += total_slot_size;
+      tag_ptr++;
+      idx++;
+   }
+}
+
 HashTableSimpleKey::HashTableSimpleKey(uint16_t key_size_, uint16_t payload_size_, size_t start_slots_)
    : state(key_size_ + payload_size_, start_slots_), simple_key_size(key_size_) {
 }
@@ -81,6 +95,30 @@ void HashTableSimpleKey::lookupOrInsert(char** result, bool* is_new_key, const c
    }
    *result = slot.elem;
 }
+
+void HashTableSimpleKey::iteratorStart(char** it_data, size_t* it_idx)
+{
+   *it_idx = 0;
+   *it_data = &state.data[0];
+   uint8_t* tag_ptr = &state.tags[0];
+   while (((*tag_ptr & tag_fill_mask) == 0) && *it_data != nullptr) {
+      // Advance iterator to the first occupied slot.
+      state.advanceNoWrap(*it_idx, *it_data, tag_ptr);
+   }
+}
+
+void HashTableSimpleKey::iteratorAdvance(char** it_data, size_t* it_idx)
+{
+   assert(*it_data != nullptr);
+   uint8_t* tag_ptr = &state.tags[*it_idx];
+   // Advance once to the next slot.
+   state.advanceNoWrap(*it_idx, *it_data, tag_ptr);
+   while (((*tag_ptr & tag_fill_mask) == 0) && *it_data != nullptr) {
+      // Advance until a free slot was found.
+      state.advanceNoWrap(*it_idx, *it_data, tag_ptr);
+   }
+}
+
 
 size_t HashTableSimpleKey::size()
 {

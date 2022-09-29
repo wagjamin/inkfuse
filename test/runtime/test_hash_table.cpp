@@ -111,6 +111,30 @@ TEST_P(HashTableTestT, inserts_lookups) {
    }
 }
 
+TEST_P(HashTableTestT, iterator) {
+   // Iterator should have 0 entries.
+   char* curr_it;
+   uint64_t curr_slot;
+   ht.iteratorStart(&curr_it, &curr_slot);
+   EXPECT_EQ(curr_it, nullptr);
+
+   auto num_vals = std::get<1>(GetParam());
+   auto data = buildRandomData(num_vals);
+   for (uint64_t k = 0; k < num_vals; ++k) {
+      // Insert ourselves.
+      insertAt(data, k);
+   }
+   // Iterator should have `num_vals` entries.
+   ht.iteratorStart(&curr_it, &curr_slot);
+   for (size_t k = 0; k < num_vals; ++k) {
+      // Current iterator is not null.
+      EXPECT_NE(curr_it, nullptr);
+      ht.iteratorAdvance(&curr_it, &curr_slot);
+   }
+   // Exhausted the iterator - should be nullptr now.
+   EXPECT_EQ(curr_it, nullptr);
+}
+
 // Tests on large key sizes.
 INSTANTIATE_TEST_CASE_P(
    HashTableTestsLargeKeys,

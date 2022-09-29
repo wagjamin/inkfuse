@@ -112,6 +112,7 @@ struct ArithmeticExpr : public BinaryExpr {
       Multiply,
       Divide,
       Eq,
+      Neq,
       Less,
       LessEqual,
       Greater,

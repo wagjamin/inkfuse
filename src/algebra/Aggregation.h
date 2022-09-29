@@ -28,13 +28,17 @@ struct Aggregation : public RelAlgOp {
    /// By what should we aggregate?
    std::vector<const IU*> group_by;
    /// The granules that are used to update the internal aggregate state.
-   std::vector<AggStatePtr> granules;
+   std::vector<std::pair<const IU*, AggStatePtr>> granules;
    /// The compute granules that will be turned into AggReaderSubops.
    std::vector<PlannedAggCompute> compute;
    /// The result IUs that are produced by this aggregation.
    std::list<IU> out_ius;
-   /// The IUs needed to compute the hash values.
-   std::list<IU> hash_ius;
+   /// Void-typed pseudo-IUs that connect the key packing operators with the hash table insert. 
+   std::list<IU> pseudo_ius;
+   /// Char*-typed IU to get the result of a hash table lookup/insert.
+   IU agg_pointer_result;
+   /// Char*-typed IU produced by reading from the hash table.
+   IU ht_scan_result;
    /// Size of the aggregation key.
    size_t key_size = 0;
    /// Size of the aggregation payload.

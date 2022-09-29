@@ -83,7 +83,7 @@ std::unique_ptr<Pipeline> Pipeline::repipe(size_t start, size_t end, const std::
       const auto& input = graph.incoming_edges.at(first.get());
       assert(input.size() >= 1);
       auto strong_op = std::find_if(suboperators.begin(), suboperators.end(), [&](const SuboperatorArc& elem) {
-        return elem.get() == input[0];
+         return elem.get() == input[0];
       });
       assert(strong_op != suboperators.end());
       incoming_strong = *strong_op;
@@ -100,7 +100,7 @@ std::unique_ptr<Pipeline> Pipeline::repipe(size_t start, size_t end, const std::
       // Note that at the moment, the length of this chain can be at most one hop.
       const auto& output = graph.outgoing_edges.at(last.get());
       auto strong_op = std::find_if(suboperators.begin(), suboperators.end(), [&](const SuboperatorArc& elem) {
-        return elem.get() == output[0];
+         return elem.get() == output[0];
       });
       assert(strong_op != suboperators.end());
       outgoing_strong = *strong_op;
@@ -210,6 +210,11 @@ Suboperator& Pipeline::attachSuboperator(SuboperatorArc subop) {
 
 const std::vector<SuboperatorArc>& Pipeline::getSubops() const {
    return suboperators;
+}
+
+HashTableSimpleKey& PipelineDAG::attachHashTableSimpleKey(size_t discard_after, size_t key_size, size_t payload_size) {
+   hash_tables.push_back({discard_after, std::make_unique<HashTableSimpleKey>(key_size, payload_size)});
+   return *hash_tables.back().second;
 }
 
 Pipeline& PipelineDAG::getCurrentPipeline() const {

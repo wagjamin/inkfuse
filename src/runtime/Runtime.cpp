@@ -6,6 +6,7 @@
 #include "algebra/suboperators/row_layout/KeyPackingRuntimeState.h"
 #include "algebra/suboperators/sinks/CountingSink.h"
 #include "algebra/suboperators/sinks/FuseChunkSink.h"
+#include "algebra/suboperators/sources/HashTableSource.h"
 #include "runtime/HashRuntime.h"
 #include "runtime/HashTableRuntime.h"
 #include "runtime/MemoryRuntime.h"
@@ -28,6 +29,7 @@ GlobalRuntime::GlobalRuntime() : program(std::make_unique<IR::Program>("global_r
    HashRuntime::registerRuntime();
    HashTableRuntime::registerRuntime();
    MemoryRuntime::registerRuntime();
+   HashTableSource::registerRuntime();
 }
 
 RuntimeStructBuilder::~RuntimeStructBuilder() {

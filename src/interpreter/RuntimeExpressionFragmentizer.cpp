@@ -18,6 +18,7 @@ const std::vector<Type> op_types {
    Type::Multiply,
    Type::Divide,
    Type::Eq,
+   Type::Neq,
    Type::Less,
    Type::LessEqual,
    Type::Greater,

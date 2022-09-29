@@ -40,6 +40,7 @@ ExprPtr InvokeFctExpr::build(const Function& fct_, std::vector<ExprPtr> args)
 bool ArithmeticExpr::isComparison(Opcode code)
 {
    if (code == Opcode::Eq
+       || code == Opcode::Neq
        || code == Opcode::Less
        || code == Opcode::LessEqual
        || code == Opcode::Greater

@@ -34,6 +34,7 @@ struct LoopDriver : public TemplatedSuboperator<LoopDriverState> {
       IR::Stmt* decl_start_ptr;
       IR::Stmt* decl_end_ptr;
       {
+         // TODO(benjamin) not very clean - do in similar way as HashTableSource::open
          // In a first step we get the start and end value from the picked morsel and extract them into the root scope.
          auto state_expr_1 = context.accessGlobalState(*this);
          auto state_expr_2 = context.accessGlobalState(*this);
