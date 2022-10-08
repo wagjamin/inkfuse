@@ -61,6 +61,9 @@ TEST_P(AggregationTestT, simple_sum) {
 INSTANTIATE_TEST_CASE_P(
    AggregationTest,
    AggregationTestT,
-   ::testing::Values(PipelineExecutor::ExecutionMode::Fused, PipelineExecutor::ExecutionMode::Interpreted));
+   ::testing::Values(
+      PipelineExecutor::ExecutionMode::Fused, 
+      PipelineExecutor::ExecutionMode::Interpreted, 
+      PipelineExecutor::ExecutionMode::Hybrid));
 
 }
