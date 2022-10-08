@@ -61,15 +61,21 @@ struct Suboperator {
    virtual void consumeAllChildren(CompilationContext& context){};
 
    /// Is this a sink sub-operator which has no further descendants?
-   virtual bool isSink() const { return false; }
+   bool isSink() const { return provided_ius.empty(); }
    /// Is this a source sub-operator driving execution?
-   virtual bool isSource() const { return false; }
+   bool isSource() const { return source_ius.empty(); }
+
    /// Are the incoming edges to nodes of this sub-operator strong?
    /// This means that the sub-operator will retain all incoming sub-operators during a repipe.
    /// The incoming strong link is always defined on the first input IU.
    virtual bool incomingStrongLinks() const { return false; }
    /// Are the outgoing edges to nodes of this sub-operator strong?
    /// This means that the sub-operator does not have to be interpreted.
+   /// This is done for scans from managed tables. Here, we have the initial IU provider
+   /// that gets interpreted. We don't want to first create the loop index containing an offset
+   /// into the base table within a first interpreted operation, and then read from those loop indexes.
+   /// Rather, we want to fuse the IndexedIUProvider from the table scan with the IU provider directly
+   /// to generate more efficient code.
    virtual bool outgoingStrongLinks() const { return false; }
 
    /// Set up the state needed by this operator. In an IncrementalFusion engine it's easiest to actually

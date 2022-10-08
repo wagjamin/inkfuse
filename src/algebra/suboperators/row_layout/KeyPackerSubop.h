@@ -24,9 +24,6 @@ struct KeyPackerSubop : public TemplatedSuboperator<KeyPackingRuntimeState>, pub
 
    void consumeAllChildren(CompilationContext& context) override;
 
-   // The KeyPacker is only a sink if it does not have pseudo-IUs that are requested elsewhere.
-   bool isSink() const override { return provided_ius.empty(); };
-
    std::string id() const override;
 
    private:

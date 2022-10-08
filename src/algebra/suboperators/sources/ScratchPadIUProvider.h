@@ -20,14 +20,6 @@ struct ScratchPadIUProvider : public TemplatedSuboperator<EmptyState> {
       return true;
    }
 
-   /// The ScratchPadIUProvider is _not_ a source. This is because it should not
-   /// be retained during a repipe operation.
-   /// While we e.g. need to retain the loop driver of a table scan, the scratch pad scan
-   /// should be turned into a regular fuse chunk operation.
-   bool isSource() const override {
-      return false;
-   }
-
    std::string id() const override {
       return "ScratchPadIUProvider";
    };

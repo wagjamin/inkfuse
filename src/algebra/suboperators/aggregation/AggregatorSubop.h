@@ -21,8 +21,6 @@ struct AggregatorSubop : public TemplatedSuboperator<KeyPackingRuntimeState>, pu
 
    void consumeAllChildren(CompilationContext& context) override;
 
-   bool isSink() const override { return true; };
-
    std::string id() const override;
 
    protected:

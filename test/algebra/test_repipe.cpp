@@ -9,13 +9,11 @@ namespace inkfuse {
 
 namespace {
 
-template <bool source = false, bool sink = false, bool incoming_strong = false, bool outgoing_strong = false>
+template <bool incoming_strong = false, bool outgoing_strong = false>
 struct DynamicSuboperator : Suboperator {
 
    std::deque<IU> out_ius;
 
-   bool isSink() const override { return sink; }
-   bool isSource() const override { return source; }
    bool incomingStrongLinks() const override { return incoming_strong; }
    bool outgoingStrongLinks() const override { return outgoing_strong; }
 
@@ -37,12 +35,10 @@ SuboperatorArc build(std::vector<const IU*> incoming, size_t outgoing) {
 };
 
 
-/// Types of operators depending on source/sink and link property.
-using ComputeDyn = DynamicSuboperator<false, false, false, false>;
-using SourceDyn = DynamicSuboperator<true, false, false, true>;
-using SinkDyn = DynamicSuboperator<false, true, false, false>;
-using ScopeDyn = DynamicSuboperator<false, false, false, true>;
-using ScopeConsumerDyn = DynamicSuboperator<false, false, true, false>;
+/// Types of operators depending on link property.
+using ComputeDyn = DynamicSuboperator<false, false>;
+using ScopeDyn = DynamicSuboperator<false, true>;
+using ScopeConsumerDyn = DynamicSuboperator<true, false>;
 
 struct RepipeF : public ::testing::Test {
 
@@ -56,21 +52,22 @@ struct RepipeF : public ::testing::Test {
    Pipeline pipe;
 };
 
-TEST_F(RepipeF, simpe_repipe_closed) {
-   // Single source.
-   auto source = build<SourceDyn>({}, 1);
+/// Simple repipe test mirroring scanning from a managed table.
+TEST_F(RepipeF, simpe_repipe_table_scan) {
+   // Single source with outgoing strong link.
+   auto source = build<ScopeDyn>({}, 1);
    auto& source_ius = source->getIUs();
    // One consumer.
    auto op = build<ComputeDyn>({source_ius[0]}, 1);
    auto& op_ius = op->getIUs();
    // One sink.
-   auto sink = build<SinkDyn>({op_ius[0]}, 0);
+   auto sink = build<ComputeDyn>({op_ius[0]}, 0);
 
    pipe.attachSuboperator(source);
    pipe.attachSuboperator(op);
    pipe.attachSuboperator(sink);
 
-   // We should have a fourth sink consuming source_ius[0].
+   // There should be an extra sink materializing op_ius[0].
    auto repiped_all = pipe.repipeAll(0, 3);
    EXPECT_EQ(repiped_all->getSubops().size(), 4);
    // We should materialize op_ius twice now.
@@ -78,13 +75,49 @@ TEST_F(RepipeF, simpe_repipe_closed) {
    EXPECT_EQ(repiped_all_sources.size(), 1);
    EXPECT_EQ(repiped_all_sources[0], op_ius[0]);
 
+   // As there are no downstream consumers that actually need the op_iu, it should
+   // not be retained during repipeRequired.
+   auto repiped_req = pipe.repipeRequired(0, 3);
+   EXPECT_EQ(repiped_req->getSubops().size(), 3);
+}
+
+/// Simple repipe test mirroring scanning from a hash table.
+TEST_F(RepipeF, simpe_repipe_ht_scan) {
+   // Single source without outgoing strong link.
+   auto source = build<ComputeDyn>({}, 1);
+   auto& source_ius = source->getIUs();
+   // One consumer.
+   auto op = build<ComputeDyn>({source_ius[0]}, 1);
+   auto& op_ius = op->getIUs();
+   // One sink.
+   auto sink = build<ComputeDyn>({op_ius[0]}, 0);
+
+   pipe.attachSuboperator(source);
+   pipe.attachSuboperator(op);
+   pipe.attachSuboperator(sink);
+
+   // There should be two extra sinks - one materializing source_ius[0] and one materializing op_ius[0].
+   auto repiped_all = pipe.repipeAll(0, 3);
+   EXPECT_EQ(repiped_all->getSubops().size(), 5);
+   std::unordered_set<const IU*> materialized;
+   const auto& sources_source_materializer = repiped_all->getSubops()[3]->getSourceIUs();
+   EXPECT_EQ(sources_source_materializer.size(), 1);
+   materialized.emplace(sources_source_materializer[0]);
+   const auto& sources_op_materializer = repiped_all->getSubops()[4]->getSourceIUs();
+   EXPECT_EQ(sources_op_materializer.size(), 1);
+   materialized.emplace(sources_op_materializer[0]);
+   EXPECT_TRUE(materialized.contains(source_ius[0]));
+   EXPECT_TRUE(materialized.contains(op_ius[0]));
+
+   // As there are no downstream consumers that actually need any IU, it should
+   // not be retained during repipeRequired.
    auto repiped_req = pipe.repipeRequired(0, 3);
    EXPECT_EQ(repiped_req->getSubops().size(), 3);
 }
 
 TEST_F(RepipeF, deep_repipe_open) {
-   // Single source.
-   auto source = build<SourceDyn>({}, 1);
+   // Single table-scan style source (does not get materialized).
+   auto source = build<ScopeDyn>({}, 1);
    auto& source_ius = source->getIUs();
    pipe.attachSuboperator(source);
 

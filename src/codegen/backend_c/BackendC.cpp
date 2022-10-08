@@ -42,7 +42,7 @@ void BackendProgramC::compileToMachinecode(InterruptableJob& interrupt) {
       command << env << " ";
 #endif
       command << path(program_name);
-      command << " -g -O3 -fPIC";
+      command << " -g -O0 -fPIC";
       command << " -shared";
       command << " -o ";
       command << so_path(program_name);
@@ -293,6 +293,11 @@ void BackendC::compileStatement(const IR::Stmt& statement, ScopedWriter& writer)
       bool visitDeclare(const IR::DeclareStmt& stmt, ScopedWriter::Statement& writer) override {
          typeDescription(*stmt.type, writer);
          writer.stream() << " " << stmt.name;
+         return true;
+      }
+
+      bool visitInvokeFct(const IR::InvokeFctStmt& stmt, ScopedWriter::Statement& writer) override {
+         compileExpression(*stmt.invoke_fct_expr, writer);
          return true;
       }
 

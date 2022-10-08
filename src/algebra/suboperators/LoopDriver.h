@@ -19,8 +19,6 @@ struct LoopDriverState {
 };
 
 struct LoopDriver : public TemplatedSuboperator<LoopDriverState> {
-   /// The LoopDriver is a source operator which picks morsel ranges from the backing storage.
-   bool isSource() const override { return true; }
 
    /// A raw LoopDriver should never be interpreted. It only makes sense connected to the
    /// followup IU provider.

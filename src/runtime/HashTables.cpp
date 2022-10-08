@@ -42,6 +42,7 @@ void SharedHashTableState::advance(size_t& idx, char*& data_ptr, uint8_t*& tag_p
 void SharedHashTableState::advanceNoWrap(size_t& idx, char*& data_ptr, uint8_t*& tag_ptr) const {
    // Should not be called after it returned a nullptr.
    assert(data_ptr != nullptr && tag_ptr != nullptr);
+   assert(idx <= mod_mask);
    if (idx == mod_mask) [[unlikely]] {
       // Reached end. Set the data to null.
       data_ptr = nullptr;

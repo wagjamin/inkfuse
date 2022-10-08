@@ -1,11 +1,13 @@
 #include "algebra/Aggregation.h"
 #include "algebra/Pipeline.h"
 #include "algebra/TableScan.h"
+#include "algebra/suboperators/sinks/CountingSink.h"
+#include "exec/QueryExecutor.h"
 #include "gtest/gtest.h"
 
 namespace inkfuse {
 
-struct AggregationTestT : ::testing::Test {
+struct AggregationTestT : ::testing::TestWithParam<PipelineExecutor::ExecutionMode> {
    AggregationTestT() {
       // col_1 has distinct values 0 to 10_000
       auto& col_1 = rel.attachTypedColumn<uint64_t>("col_1");
@@ -33,7 +35,8 @@ struct AggregationTestT : ::testing::Test {
 };
 
 // SELECT col_1, count(col_2) FROM t GROUP BY col_1
-TEST_F(AggregationTestT, simple_count) {
+TEST_P(AggregationTestT, simple_count) {
+   // Set up the query.
    std::vector<AggregateFunctions::Description> agg_fct{{
       .agg_iu = *iu_col_2,
       .code = AggregateFunctions::Opcode::Count,
@@ -43,11 +46,21 @@ TEST_F(AggregationTestT, simple_count) {
    children.push_back(std::move(*scan));
    Aggregation agg({std::move(children)}, "aggregator", std::vector<const IU*>{iu_col_1}, std::move(agg_fct));
    agg.decay(dag);
+   // Count the number of result rows, counting both output columns separately.
+   dag.getPipelines()[1]->attachSuboperator(CountingSink::build(*agg.getOutput()[0]));
+   dag.getPipelines()[1]->attachSuboperator(CountingSink::build(*agg.getOutput()[1]));
    ASSERT_EQ(dag.getPipelines().size(), 2);
+   // Run the query.
+   QueryExecutor::runQuery(dag, GetParam(), "agg_q_1");
 }
 
 // SELECT col_1, sum(col_2) FROM t GROUP BY col_1
-TEST_F(AggregationTestT, simple_sum) {
+TEST_P(AggregationTestT, simple_sum) {
 }
+
+INSTANTIATE_TEST_CASE_P(
+   AggregationTest,
+   AggregationTestT,
+   ::testing::Values(PipelineExecutor::ExecutionMode::Fused, PipelineExecutor::ExecutionMode::Interpreted));
 
 }

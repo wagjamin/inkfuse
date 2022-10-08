@@ -53,6 +53,10 @@ std::string CountingSink::id() const
    return "CountingSink";
 }
 
+size_t CountingSink::getCount() const {
+   return state->count;
+}
+
 void CountingSink::registerRuntime()
 {
    RuntimeStructBuilder{CountingState::name}

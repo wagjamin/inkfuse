@@ -12,7 +12,7 @@ InterpretedRunner::InterpretedRunner(const Pipeline& backing_pipeline, size_t id
    auto& cache = FragmentCache::instance();
    fct = reinterpret_cast<uint8_t (*)(void**)>(cache.getFragment(id));
    if (!fct) {
-      throw std::runtime_error("No fragment found for interpreted runner.");
+      throw std::runtime_error("No fragment " + id + " found for interpreted runner.");
    }
 }
 

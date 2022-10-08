@@ -30,9 +30,7 @@ struct HashTableSourceState {
 /// DEFAULT_CHUNK_SIZE elements.
 struct HashTableSource : public TemplatedSuboperator<HashTableSourceState> {
 
-   static std::unique_ptr<HashTableSource> build(const RelAlgOp* source, const IU& produced_iu, HashTableSimpleKey& hash_table_);
-
-   bool isSource() const override { return true; }
+   static SuboperatorArc build(const RelAlgOp* source, const IU& produced_iu, HashTableSimpleKey* hash_table_);
 
    /// Keep running as long as we have cells to read from in the backing hash table.
    bool pickMorsel() override;
@@ -47,7 +45,7 @@ struct HashTableSource : public TemplatedSuboperator<HashTableSourceState> {
    static void registerRuntime();
 
    protected:
-   HashTableSource(const RelAlgOp* source, const IU& produced_iu, HashTableSimpleKey& hash_table_);
+   HashTableSource(const RelAlgOp* source, const IU& produced_iu, HashTableSimpleKey* hash_table_);
 
    void setUpStateImpl(const ExecutionContext& context) override;
 
@@ -59,7 +57,7 @@ private:
    IR::Stmt* decl_it_idx;
    /// The hash table we are reading from.
    // TODO(benjamin) it's not clean to have the actual object as a suboperator member.
-   HashTableSimpleKey& hash_table;
+   HashTableSimpleKey* hash_table;
 };
 
 }

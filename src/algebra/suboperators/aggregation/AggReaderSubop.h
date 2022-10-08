@@ -18,8 +18,6 @@ struct AggReaderSubop : public TemplatedSuboperator<KeyPackingRuntimeState>, pub
 
    void consumeAllChildren(CompilationContext& context) override;
 
-   bool isSource() const override { return true; };
-
    std::string id() const override;
 
    private:

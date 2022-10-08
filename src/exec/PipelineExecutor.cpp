@@ -133,11 +133,15 @@ bool PipelineExecutor::runInterpretedMorsel() {
    if (!interpreted_set_up) {
       setUpInterpreted();
    }
+   // Only the first interpreter is allowed to pick a morsel - the morsel of that source is then
+   // fixed for all remaining interpreters in the pipeline.
    bool pickResult = interpreters[0]->runMorsel(true);
-   for (auto interpreter = interpreters.begin() + 1; interpreter < interpreters.end(); ++interpreter) {
-      (*interpreter)->runMorsel(false);
+   if (pickResult) {
+      for (auto interpreter = interpreters.begin() + 1; interpreter < interpreters.end(); ++interpreter) {
+         (*interpreter)->runMorsel(false);
+      }
+      cleanUp();
    }
-   cleanUp();
    return pickResult;
 }
 

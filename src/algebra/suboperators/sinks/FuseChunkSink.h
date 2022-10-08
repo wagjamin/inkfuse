@@ -27,8 +27,6 @@ struct FuseChunkSink : public Suboperator {
 
    void consume(const IU& iu, CompilationContext& context) override;
 
-   bool isSink() const override { return true;}
-
    void setUpState(const ExecutionContext& context) override;
    void tearDownState() override;
    void* accessState() const override;

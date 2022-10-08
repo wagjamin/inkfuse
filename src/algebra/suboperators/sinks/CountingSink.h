@@ -17,13 +17,14 @@ struct CountingSink : public TemplatedSuboperator<CountingState> {
 
    CountingSink(const IU& input_iu);
 
-   bool isSink() const override { return true; }
-
    void consume(const IU& iu, CompilationContext& context) override;
 
    void setUpStateImpl(const ExecutionContext& context) override;
 
    std::string id() const override;
+
+   /// Get the current count stored within the runtime state.
+   size_t getCount() const;
 
    /// Register runtime structs and functions.
    static void registerRuntime();
