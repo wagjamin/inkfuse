@@ -5,6 +5,7 @@
 #include "interpreter/CopyFragmentizer.h"
 #include "interpreter/CountingSinkFragmentizer.h"
 #include "interpreter/ExpressionFragmentizer.h"
+#include "interpreter/HashTableSourceFragmentizer.h"
 #include "interpreter/RuntimeExpressionFragmentizer.h"
 #include "interpreter/RuntimeFunctionSubopFragmentizer.h"
 #include "interpreter/RuntimeKeyExpressionFragmentizer.h"
@@ -62,6 +63,12 @@ TypeDecorator& TypeDecorator::attachTypes() {
    return *this;
 }
 
+TypeDecorator& TypeDecorator::attachPackedKeyTypes() {
+   types.push_back(IR::ByteArray::build(0));
+   types.push_back(IR::Pointer::build(IR::Char::build()));
+   return *this;
+}
+
 const std::list<std::pair<std::string, Pipeline>>& Fragmentizer::getFragments() const {
    return pipes;
 }
@@ -73,6 +80,7 @@ IR::ProgramArc FragmentGenerator::build() {
    fragmentizers.push_back(std::make_unique<TScanFragmetizer>());
    fragmentizers.push_back(std::make_unique<CopyFragmentizer>());
    fragmentizers.push_back(std::make_unique<ExpressionFragmentizer>());
+   fragmentizers.push_back(std::make_unique<HashTableSourceFragmentizer>());
    fragmentizers.push_back(std::make_unique<RuntimeExpressionFragmentizer>());
    fragmentizers.push_back(std::make_unique<RuntimeKeyExpressionFragmentizer>());
    fragmentizers.push_back(std::make_unique<KeyPackingFragmentizer>());

@@ -43,11 +43,6 @@ TEST(test_sources, table_scan) {
    program->compileToMachinecode(interrupt);
 }
 
-/// Test execution of a fuse chunk source.
-TEST(test_sources, fuse_chunk_source) {
-
-}
-
 }
 
 }

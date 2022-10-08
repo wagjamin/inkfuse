@@ -5,6 +5,7 @@
 #include "algebra/suboperators/aggregation/AggReaderSubop.h"
 #include "algebra/suboperators/aggregation/AggregatorSubop.h"
 #include "algebra/suboperators/expressions/ExpressionSubop.h"
+#include "algebra/suboperators/row_layout/KeyUnpackerSubop.h"
 #include "algebra/suboperators/sources/HashTableSource.h"
 #include <map>
 
@@ -26,6 +27,12 @@ void Aggregation::plan(std::vector<AggregateFunctions::Description> description)
    } else {
       // TODO(benjamin): Multi-agg
    }
+
+   for (const auto& out_key_iu : group_by) {
+      const auto& out = out_key_ius.emplace_back(out_key_iu->type);
+      output_ius.push_back(&out);
+   }
+
    // TODO(benjamin): Easy performance improvements:
    // - Compute granule layout ordered by IU
    // - Proper aligned state
@@ -55,7 +62,8 @@ void Aggregation::plan(std::vector<AggregateFunctions::Description> description)
          .granule_offsets = std::move(granule_offsets),
       });
       // And set up the output iu.
-      auto& out_iu = out_ius.emplace_back(ops.result_type);
+      assert(ops.result_type.get());
+      auto& out_iu = out_aggregate_ius.emplace_back(ops.result_type);
       output_ius.push_back(&out_iu);
    }
 }
@@ -107,16 +115,27 @@ void Aggregation::decay(PipelineDAG& dag) const {
 
    // Step 4: Attach readers on a new pipeline.
    auto& read_pipe = dag.buildNewPipeline();
-   // First, build a reader on the aggregate hash table.
-   read_pipe.attachSuboperator(HashTableSource::build(this, ht_scan_result, hash_table));
+   // First, build a reader on the aggregate hash table returning pointers to the elements.
+   read_pipe.attachSuboperator(HashTableSource::build(this, ht_scan_result, &hash_table));
    auto out_compute = compute.cbegin();
-   for (const auto& out_iu : out_ius) {
-      // Next, produce the actual operator that computes the aggregate.
-      auto& reader = read_pipe.attachSuboperator(AggReaderSubop::build(this, ht_scan_result, out_iu, *out_compute->compute));
+
+   // Produce the readers for the materialized keys.
+   for (const auto& out_key_iu : out_key_ius) {
+      auto& unpacker = read_pipe.attachSuboperator(KeyUnpackerSubop::build(this, ht_scan_result, out_key_iu));
       // Attach the runtime parameter that represents the state offset.
       KeyPackingRuntimeParams param;
       // TODO(benjamin) fix offset calculation.
       param.offsetSet(IR::UI<2>::build(0));
+      reinterpret_cast<KeyUnpackerSubop&>(unpacker).attachRuntimeParams(std::move(param));
+   }
+
+   // Produce the actual operators that computes the aggregate functions.
+   for (const auto& out_agg_iu : out_aggregate_ius) {
+      auto& reader = read_pipe.attachSuboperator(AggReaderSubop::build(this, ht_scan_result, out_agg_iu, *out_compute->compute));
+      // Attach the runtime parameter that represents the state offset.
+      KeyPackingRuntimeParams param;
+      // TODO(benjamin) fix offset calculation.
+      param.offsetSet(IR::UI<2>::build(key_size));
       reinterpret_cast<AggReaderSubop&>(reader).attachRuntimeParams(std::move(param));
       out_compute++;
    }

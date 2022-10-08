@@ -6,7 +6,7 @@ namespace inkfuse {
 
 const char* HashTableSourceState::name = "HashTableSourceState";
 
-HashTableSource::HashTableSource(const RelAlgOp* source, const IU& produced_iu, HashTableSimpleKey& hash_table_)
+HashTableSource::HashTableSource(const RelAlgOp* source, const IU& produced_iu, HashTableSimpleKey* hash_table_)
    : TemplatedSuboperator<HashTableSourceState>(source, {&produced_iu}, {}), hash_table(hash_table_) {
 }
 
@@ -19,7 +19,7 @@ void HashTableSource::registerRuntime() {
       .addMember("it_idx_end", IR::UnsignedInt::build(8));
 }
 
-std::unique_ptr<HashTableSource> HashTableSource::build(const RelAlgOp* source, const IU& produced_iu, HashTableSimpleKey& hash_table_) {
+SuboperatorArc HashTableSource::build(const RelAlgOp* source, const IU& produced_iu, HashTableSimpleKey* hash_table_) {
    return std::unique_ptr<HashTableSource>{new HashTableSource(source, produced_iu, hash_table_)};
 }
 
@@ -33,7 +33,7 @@ bool HashTableSource::pickMorsel() {
    state->it_idx_start = state->it_idx_end;
    // Advance the end iterator by one morsel.
    for (size_t k = 0; k < DEFAULT_CHUNK_SIZE && (state->it_ptr_end != nullptr); ++k) {
-      hash_table.iteratorAdvance(&state->it_ptr_end, &state->it_idx_end);
+      hash_table->iteratorAdvance(&state->it_ptr_end, &state->it_idx_end);
    }
    return true;
 }
@@ -69,7 +69,7 @@ void HashTableSource::open(CompilationContext& context) {
       };
       gstate_extract_into("it_ptr_start", *iu_decl);
       gstate_extract_into("it_ptr_end", *decl_it_end_ptr);
-      gstate_extract_into("it_idx", *decl_it_idx);
+      gstate_extract_into("it_idx_start", *decl_it_idx);
       gstate_extract_into("hash_table", *decl_ht);
       builder.getRootBlock().appendStmts(std::move(preamble_stmts));
    }
@@ -95,7 +95,9 @@ void HashTableSource::close(CompilationContext& context) {
    auto runtime_fct = context.getRuntimeFunction("ht_sk_it_advance").get();
    std::vector<IR::ExprPtr> args_exprs;
    args_exprs.reserve(3);
-   args_exprs.push_back(IR::RefExpr::build(IR::VarRefExpr::build(*decl_ht)));
+   // Hash table gets passed as-is.
+   args_exprs.push_back(IR::VarRefExpr::build(*decl_ht));
+   // Other arguments get referenced, as they actually get updated.
    args_exprs.push_back(IR::RefExpr::build(IR::VarRefExpr::build(iu_decl)));
    args_exprs.push_back(IR::RefExpr::build(IR::VarRefExpr::build(*decl_it_idx)));
    IR::ExprPtr invoke_expr =
@@ -108,9 +110,10 @@ void HashTableSource::close(CompilationContext& context) {
 }
 
 void HashTableSource::setUpStateImpl(const ExecutionContext& context) {
-   state->hash_table = &hash_table;
+   assert(hash_table);
+   state->hash_table = hash_table;
    // Initialize start to point to the first slot of the hash table.
-   hash_table.iteratorStart(&(state->it_ptr_start), &(state->it_idx_start));
+   hash_table->iteratorStart(&(state->it_ptr_start), &(state->it_idx_start));
    // Set the end iterator to the same value. This way the first pickMorsel will work.
    state->it_ptr_end = state->it_ptr_start;
    state->it_idx_end = state->it_idx_start;

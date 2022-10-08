@@ -33,6 +33,9 @@ struct TypeDecorator {
    /// Add all types.
    TypeDecorator& attachTypes();
 
+   /// Add types for packed keys.
+   TypeDecorator& attachPackedKeyTypes();
+
    private:
    std::vector<IR::TypeArc> types;
 };

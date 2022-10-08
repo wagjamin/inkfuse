@@ -96,7 +96,7 @@ std::unique_ptr<Pipeline> Pipeline::repipe(size_t start, size_t end, const std::
 
    if (last->outgoingStrongLinks()) {
       // The suboperator has outgoing strong links, meaning it cannot be separated from its consuming
-      // suboperator. We have move the end to contain all consumers.
+      // suboperator. We have to move the end to contain all consumers.
       // Note that at the moment, the length of this chain can be at most one hop.
       const auto& output = graph.outgoing_edges.at(last.get());
       auto strong_op = std::find_if(suboperators.begin(), suboperators.end(), [&](const SuboperatorArc& elem) {
@@ -123,22 +123,15 @@ std::unique_ptr<Pipeline> Pipeline::repipe(size_t start, size_t end, const std::
       });
 
    if (!in_required.empty()) {
-      // Attach the IU proving operators.
-      auto try_provider = tryGetProvider(**in_required_ordered.begin());
-      if (try_provider && try_provider->isSource()) {
-         // If the provider was actually a source, it has to be at index zero. Retain it.
-         new_pipe->attachSuboperator(suboperators[0]);
-      } else {
-         // Otherwise, build a FuseChunkSource for those that are not driven by an existing provider.
-         // First we build the driver.
-         auto& driver = new_pipe->attachSuboperator(FuseChunkSourceDriver::build());
-         auto& driver_iu = **driver.getIUs().begin();
-         // And the IU providers.
-         for (auto iu : in_required_ordered) {
-            if (!dynamic_cast<IR::Void*>(iu->type.get())) {
-               // Ignore pseudo-IUs that are only used for proper codegen ordering.
-               auto& provider = new_pipe->attachSuboperator(FuseChunkSourceIUProvider::build(driver_iu, *iu));
-            }
+      // Build a FuseChunkSource for those that are not driven by an existing provider.
+      // First we build the driver.
+      auto& driver = new_pipe->attachSuboperator(FuseChunkSourceDriver::build());
+      auto& driver_iu = **driver.getIUs().begin();
+      // And the IU providers.
+      for (auto iu : in_required_ordered) {
+         if (!dynamic_cast<IR::Void*>(iu->type.get())) {
+            // Ignore pseudo-IUs that are only used for proper codegen ordering.
+            auto& provider = new_pipe->attachSuboperator(FuseChunkSourceIUProvider::build(driver_iu, *iu));
          }
       }
    }

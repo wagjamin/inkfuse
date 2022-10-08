@@ -13,6 +13,7 @@ namespace {
 /// state is the same as the aggregation result (count, min, max, sum).
 RegistryEntry computeAsUnpack(IR::TypeArc agg_state) {
    RegistryEntry result;
+   result.result_type = agg_state;
    result.agg_reader = std::make_unique<AggComputeUnpack>(std::move(agg_state));
    return result;
 }

@@ -4,8 +4,9 @@
 namespace inkfuse {
 
 RuntimeFunctionSubopFragmentizer::RuntimeFunctionSubopFragmentizer() {
-   // Hash tables operations are defined on char* and ByteArrays.
-   std::vector<IR::TypeArc> in_types = {IR::Pointer::build(IR::Char::build()), IR::ByteArray::build(8)};
+   // Hash tables operations are defined on all types.
+   // For char* and ByteArrays, the input IU is not dereferenced, for all other types it is.
+   auto in_types = TypeDecorator().attachTypes().attachPackedKeyTypes().produce();
    for (auto& in_type : in_types) {
       // Fragmentize hash table lookup.
       {
