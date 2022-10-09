@@ -1,25 +1,18 @@
 #include "runtime/MemoryRuntime.h"
 #include "runtime/Runtime.h"
+#include "exec/ExecutionContext.h"
 #include <cassert>
 
 namespace inkfuse::MemoryRuntime {
 
 namespace {
-/// Pointer to the currently attached memory context.
-thread_local PipelineMemoryContext* context = nullptr;
-
 /// We currently allocate 4kb regions.
 const uint64_t REGION_ARRAY_SIZE = 512;
 const uint64_t REGION_SIZE = 8 * REGION_ARRAY_SIZE;
 }
 
 PipelineMemoryContext::PipelineMemoryContext() {
-   context = this;
    regions.reserve(100);
-}
-
-PipelineMemoryContext::~PipelineMemoryContext() {
-   context = nullptr;
 }
 
 void* PipelineMemoryContext::alloc(uint64_t size) {
@@ -40,8 +33,8 @@ void* PipelineMemoryContext::alloc(uint64_t size) {
 }
 
 extern "C" void* inkfuse_malloc(uint64_t size) {
-   assert(context);
-   return context->alloc(size);
+   auto& context = ExecutionContext::getInstalledMemoryContext();
+   return context.alloc(size);
 }
 
 void registerRuntime() {

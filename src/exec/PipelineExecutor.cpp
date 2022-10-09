@@ -28,8 +28,8 @@ const ExecutionContext& PipelineExecutor::getExecutionContext() const {
 }
 
 void PipelineExecutor::runPipeline() {
-   // Scope guard for pipeline-level memory allocations.
-   MemoryRuntime::PipelineMemoryContext mem_ctx;
+   // Scope guard for memory context and flags.
+   ExecutionContext::RuntimeGuard guard{context};
    if (mode == ExecutionMode::Fused) {
       while (runFusedMorsel()) {}
    } else if (mode == ExecutionMode::Interpreted) {
@@ -58,6 +58,8 @@ void PipelineExecutor::runPipeline() {
 }
 
 bool PipelineExecutor::runMorsel() {
+   // Scope guard for memory context and flags.
+   ExecutionContext::RuntimeGuard guard{context};
    if (mode == ExecutionMode::Fused || (mode == ExecutionMode::Hybrid)) {
       return runFusedMorsel();
    } else {
@@ -114,6 +116,8 @@ void PipelineExecutor::setUpFused() {
 
 void PipelineExecutor::cleanUp() {
    context.clear();
+   // Reset the restart flag to have a clean slate for the next morsel.
+   ExecutionContext::getInstalledRestartFlag() = false;
 }
 
 bool PipelineExecutor::runFusedMorsel() {
@@ -133,12 +137,33 @@ bool PipelineExecutor::runInterpretedMorsel() {
    if (!interpreted_set_up) {
       setUpInterpreted();
    }
+
+   // Run a morsel and retry it if the `restart_flag` gets set to true.
+   // This is needed to defend against e.g. hash table resizes without
+   // massively complicating the generated code. 
+   auto runMorselWithRetry = [&](PipelineRunner& runner, bool force_pick) {
+      // The resart flag was installed by the current context in `runPipeline` or `runMorsel`.
+      bool& restart_flag = ExecutionContext::getInstalledRestartFlag();
+      assert(!restart_flag);
+
+      // Run the morsel until the flag is not set. The flag can be set multiple times if e.g.
+      // multiple hash table resizes happen for the same chunk.
+      bool pickResult = runner.runMorsel(force_pick);
+      while (restart_flag) {
+         restart_flag = false;
+         runner.prepareForRerun();
+         runner.runMorsel(false);
+      }
+
+      return pickResult;
+   };
+
    // Only the first interpreter is allowed to pick a morsel - the morsel of that source is then
    // fixed for all remaining interpreters in the pipeline.
-   bool pickResult = interpreters[0]->runMorsel(true);
+   bool pickResult = runMorselWithRetry(*interpreters[0], true);
    if (pickResult) {
       for (auto interpreter = interpreters.begin() + 1; interpreter < interpreters.end(); ++interpreter) {
-         (*interpreter)->runMorsel(false);
+         runMorselWithRetry(**interpreter, false);
       }
       cleanUp();
    }

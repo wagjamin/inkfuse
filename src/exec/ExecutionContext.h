@@ -3,22 +3,14 @@
 
 #include "algebra/IU.h"
 #include "exec/FuseChunk.h"
-#include <unordered_map>
+#include "runtime/MemoryRuntime.h"
 #include <memory>
+#include <unordered_map>
 
 namespace inkfuse {
 
 struct Pipeline;
 struct Suboperator;
-
-/// Runtime context needed for a given operator to initialize
-/// the operator local state. This is irrelevant during actual
-/// code generation, but important down the line when executing.
-struct RuntimeContext {
-   virtual ~RuntimeContext() = default;
-};
-
-using RuntimeContextPtr = std::unique_ptr<RuntimeContext>;
 
 /// The execution context for a single pipeline.
 /// Takes the compile-time context of a pipeline and creates the runtime
@@ -38,6 +30,18 @@ struct ExecutionContext {
 
    const Pipeline& getPipe() const;
 
+   /// Scope guard which installs the necessary thread-local context for this ExecutionContext.
+   /// Needs to be installed when running morsels to e.g. enable proper memory allocation from
+   /// within the generated code.
+   struct RuntimeGuard {
+      RuntimeGuard(ExecutionContext& ctx);
+      ~RuntimeGuard();
+   };
+
+   static MemoryRuntime::PipelineMemoryContext& getInstalledMemoryContext();
+   static bool& getInstalledRestartFlag();
+   static bool* tryGetInstalledRestartFlag();
+
    private:
    ExecutionContext(FuseChunkArc chunk_, const Pipeline& pipe_);
 
@@ -45,6 +49,14 @@ struct ExecutionContext {
    FuseChunkArc chunk;
    /// The pipeline.
    const Pipeline& pipe;
+   /// The memory context of this pipeline.
+   MemoryRuntime::PipelineMemoryContext memory_context;
+   /// The restart flag indicates whether the last vectorized primitive needs to be restarted
+   /// during interpretation. Primitives that can set this flag need to be idempotent.
+   /// This flag is used by hash tables when they grow in the middle of a morsel. As this invalidates
+   /// previously accessed pointers, we need to restart the previous lookups in order to ensure that
+   /// we don't access deallocated memory of the older (smaller) hash table.
+   bool restart_flag = false;
 };
 
 }

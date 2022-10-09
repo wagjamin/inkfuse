@@ -48,4 +48,19 @@ bool PipelineRunner::runMorsel(bool force_pick)
    return pick_result;
 }
 
+void PipelineRunner::prepareForRerun() {
+   // When re-running a morsel, we need to clear the sinks from any intermediate "bad" state.
+   // The previous (failed) run of the morsel could have written partial data into the output
+   // column taht now needs to get purged.
+   for (const auto& subop: pipe->getSubops()) {
+      if (subop->isSink()) {
+         for (const IU* sinked_iu: subop->getSourceIUs()) {
+            auto& col = context.getColumn(*sinked_iu);
+            col.size = 0;
+         }
+      }
+   }
+}
+
+
 }

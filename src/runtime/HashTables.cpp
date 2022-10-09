@@ -1,4 +1,5 @@
 #include "runtime/HashTables.h"
+#include "exec/ExecutionContext.h"
 #include "xxhash.h"
 #include <cassert>
 #include <cstring>
@@ -167,6 +168,14 @@ void HashTableSimpleKey::reserveSlot()
    if (state.inserted < state.max_fill) [[likely]] {
       return;
    }
+
+   // We need to resize. Indicate that this happened to the currently installed execution context.
+   // This will force the driver of the query to rerun the primitive if this used the interpreted path. 
+   bool* try_restart_flag = ExecutionContext::tryGetInstalledRestartFlag();
+   if (try_restart_flag) {
+      *try_restart_flag = true;
+   }
+
    char* curr_slot = &state.data[0];
    uint8_t* curr_tag = &state.tags[0];
    size_t old_max_slot = state.mod_mask;

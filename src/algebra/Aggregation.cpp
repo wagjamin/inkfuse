@@ -100,8 +100,8 @@ void Aggregation::decay(PipelineDAG& dag) const {
    auto& ht_lookup_subop = curr_pipe.attachSuboperator(RuntimeFunctionSubop::htLookupOrInsert(this, agg_pointer_result, *key_iu, {}, &hash_table));
 
    // Step 3: Update the aggregation state.
-   // The current offset into the serialized aggregate state.
-   size_t curr_offset = 0;
+   // The current offset into the serialized aggregate state. The aggregate state starts after the serialized key.
+   size_t curr_offset = key_size;
    for (const auto& [agg_iu, agg_state] : granules) {
       // Create the aggregator which will compute the granule.
       auto& aggregator = curr_pipe.attachSuboperator(AggregatorSubop::build(this, *agg_state, agg_pointer_result, *agg_iu));

@@ -3,6 +3,10 @@
 
 namespace inkfuse {
 
+namespace {
+thread_local ExecutionContext* installed_context = nullptr;
+}
+
 ExecutionContext::ExecutionContext(const Pipeline& pipe_)
    : pipe(pipe_), chunk(std::make_shared<FuseChunk>()) {
    for (const auto& [iu, _] : pipe.iu_providers) {
@@ -17,8 +21,7 @@ ExecutionContext ExecutionContext::recontextualize(const Pipeline& new_pipe_) co
    return ExecutionContext(chunk, new_pipe_);
 }
 
-Column & ExecutionContext::getColumn(const IU& iu) const
-{
+Column& ExecutionContext::getColumn(const IU& iu) const {
    return chunk->getColumn(iu);
 }
 
@@ -32,6 +35,28 @@ const Pipeline& ExecutionContext::getPipe() const {
 
 ExecutionContext::ExecutionContext(FuseChunkArc chunk_, const Pipeline& pipe_)
    : chunk(std::move(chunk_)), pipe(pipe_) {
+}
+
+ExecutionContext::RuntimeGuard::RuntimeGuard(ExecutionContext& ctx) {
+   installed_context = &ctx;
+}
+
+ExecutionContext::RuntimeGuard::~RuntimeGuard() {
+   installed_context = nullptr;
+}
+
+MemoryRuntime::PipelineMemoryContext& ExecutionContext::getInstalledMemoryContext() {
+   assert(installed_context);
+   return installed_context->memory_context;
+}
+
+bool& ExecutionContext::getInstalledRestartFlag() {
+   assert(installed_context);
+   return installed_context->restart_flag;
+}
+
+bool* ExecutionContext::tryGetInstalledRestartFlag() {
+   return installed_context ? &installed_context->restart_flag : nullptr;
 }
 
 }
