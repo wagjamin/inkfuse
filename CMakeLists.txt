@@ -216,6 +216,7 @@ set(TEST_CC
         "${CMAKE_SOURCE_DIR}/test/suboperators/test_hash_table_source.cpp"
         "${CMAKE_SOURCE_DIR}/test/suboperators/aggregation/test_agg_reader_subop.cpp"
         "${CMAKE_SOURCE_DIR}/test/suboperators/aggregation/test_aggregator_subop.cpp"
+        "${CMAKE_SOURCE_DIR}/test/suboperators/test_ht_inserts.cpp"
         "${CMAKE_SOURCE_DIR}/test/suboperators/test_ht_lookup.cpp"
         "${CMAKE_SOURCE_DIR}/test/suboperators/test_key_packing.cpp"
         "${CMAKE_SOURCE_DIR}/test/suboperators/test_scratch_pad_ius.cpp"

@@ -105,7 +105,7 @@ void RuntimeFunctionSubop::consumeAllChildren(CompilationContext& context) {
       auto& declaration = context.getIUDeclaration(*arg);
       IR::ExprPtr arg_expr = IR::VarRefExpr::build(declaration);
       if (ref[idx]) {
-         arg_expr = IR::RefExpr::build(std::move(arg_expr));
+         arg_expr = IR::CastExpr::build(IR::RefExpr::build(std::move(arg_expr)), IR::Pointer::build(IR::Char::build()));
       }
       if (provided.contains(arg)) {
          // The function actually wants a pointer to this argument to be able

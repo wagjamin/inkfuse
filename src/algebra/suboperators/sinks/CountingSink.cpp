@@ -7,13 +7,13 @@ namespace inkfuse {
 const char* CountingState::name = "CountingState";
 
 // static
-SuboperatorArc CountingSink::build(const IU& iu)
+SuboperatorArc CountingSink::build(const IU& iu, std::function<void(size_t)> callback_)
 {
-   return std::make_shared<CountingSink>(iu);
+   return std::make_shared<CountingSink>(iu, std::move(callback_));
 }
 
-CountingSink::CountingSink(const IU& input_iu)
-: TemplatedSuboperator<CountingState>(nullptr, {}, {&input_iu})
+CountingSink::CountingSink(const IU& input_iu, std::function<void(size_t)> callback_)
+: TemplatedSuboperator<CountingState>(nullptr, {}, {&input_iu}), callback(std::move(callback_))
 {
 }
 
@@ -61,6 +61,10 @@ void CountingSink::registerRuntime()
 {
    RuntimeStructBuilder{CountingState::name}
       .addMember("count", IR::UnsignedInt::build(8));
+}
+
+void CountingSink::tearDownStateImpl() {
+   callback(state->count);
 }
 
 }

@@ -31,11 +31,11 @@ extern "C" void HashTableRuntime::ht_sk_it_advance(void* table, char** it_data, 
 void HashTableRuntime::registerRuntime() {
    RuntimeFunctionBuilder("ht_sk_lookup", IR::Pointer::build(IR::Char::build()))
       .addArg("table", IR::Pointer::build(IR::Void::build()))
-      .addArg("key", IR::Pointer::build(IR::Void::build()));
+      .addArg("key", IR::Pointer::build(IR::Char::build()));
 
    RuntimeFunctionBuilder("ht_sk_lookup_or_insert", IR::Pointer::build(IR::Char::build()))
       .addArg("table", IR::Pointer::build(IR::Void::build()))
-      .addArg("key", IR::Pointer::build(IR::Void::build()));
+      .addArg("key", IR::Pointer::build(IR::Char::build()));
 
    RuntimeFunctionBuilder("ht_sk_lookup_or_insert_with_init", IR::Void::build())
       .addArg("table", IR::Pointer::build(IR::Void::build()))

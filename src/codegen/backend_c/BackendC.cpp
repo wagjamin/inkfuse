@@ -42,7 +42,7 @@ void BackendProgramC::compileToMachinecode(InterruptableJob& interrupt) {
       command << env << " ";
 #endif
       command << path(program_name);
-      command << " -g -O0 -fPIC";
+      command << " -g -O3 -fPIC";
       command << " -shared";
       command << " -o ";
       command << so_path(program_name);

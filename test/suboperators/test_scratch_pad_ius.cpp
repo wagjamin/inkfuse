@@ -67,13 +67,8 @@ TEST_P(ScratchPadIUTestT, readAndMaterialize) {
    col_in2.size = 500;
    col_packed.size = 500;
 
-   {
-      // Run the block.
-      // We need an explicit pipeline memory context, as this is not set up in runMorsel.
-      // For regular query execution, this gets set up in the outer 'runPipeline' call.
-      MemoryRuntime::PipelineMemoryContext mem_ctx;
-      ASSERT_NO_THROW(exec.runMorsel());
-   }
+   // Run the block.
+   ASSERT_NO_THROW(exec.runMorsel());
    // Check that the hash table entries were created as expected.
    EXPECT_EQ(ht.size(), 500);
    for (size_t k = 0; k < 500; ++k) {
@@ -83,13 +78,6 @@ TEST_P(ScratchPadIUTestT, readAndMaterialize) {
       EXPECT_NE(ht.lookup(reinterpret_cast<char*>(&expected)), nullptr);
    }
 }
-
-/*
-* ScratchPadIUProvider -> KeyPacker 1 -> HashTableInsert
-*                      -> KeyPacker 2 ->
-*
-*/
-
 
 INSTANTIATE_TEST_CASE_P(
    ScratchPadIUProviderTest,

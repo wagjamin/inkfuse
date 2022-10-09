@@ -29,6 +29,11 @@ struct PipelineRunner {
    /// @return whether there are more morsels to execute.
    bool runMorsel(bool force_pick);
 
+   /// Clean up the intermediate morsel state from a previous failure.
+   /// Purges the morsel size of the sinks to make sure we get a fresh
+   /// column to write into.
+   void prepareForRerun();
+
    /// Prepare the runner, this can include steps like code generation.
    virtual void prepare() { prepared = true; };
 

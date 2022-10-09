@@ -47,8 +47,13 @@ TEST_P(AggregationTestT, simple_count) {
    Aggregation agg({std::move(children)}, "aggregator", std::vector<const IU*>{iu_col_1}, std::move(agg_fct));
    agg.decay(dag);
    // Count the number of result rows, counting both output columns separately.
-   dag.getPipelines()[1]->attachSuboperator(CountingSink::build(*agg.getOutput()[0]));
-   dag.getPipelines()[1]->attachSuboperator(CountingSink::build(*agg.getOutput()[1]));
+   // The aggregation should produce 10k rows.
+   dag.getPipelines()[1]->attachSuboperator(CountingSink::build(*agg.getOutput()[0], [](size_t count) {
+      EXPECT_EQ(count, 10000);
+   }));
+   dag.getPipelines()[1]->attachSuboperator(CountingSink::build(*agg.getOutput()[1], [](size_t count) {
+      EXPECT_EQ(count, 10000);
+   }));
    ASSERT_EQ(dag.getPipelines().size(), 2);
    // Run the query.
    QueryExecutor::runQuery(dag, GetParam(), "agg_q_1");

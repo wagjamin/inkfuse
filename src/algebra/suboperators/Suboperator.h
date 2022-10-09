@@ -131,6 +131,7 @@ struct TemplatedSuboperator : public Suboperator {
    };
 
    void tearDownState() override {
+      tearDownStateImpl();
       state.reset();
    };
 
@@ -145,6 +146,9 @@ struct TemplatedSuboperator : public Suboperator {
    /// Set up the state given that the precondition that both params and state
    /// are non-empty is satisfied.
    virtual void setUpStateImpl(const ExecutionContext& context) {};
+
+   /// Tear down the state - allows to run custom cleanup logic when a query is done.
+   virtual void tearDownStateImpl() {};
 
    /// Global state of the respective operator.
    std::unique_ptr<GlobalState> state;
