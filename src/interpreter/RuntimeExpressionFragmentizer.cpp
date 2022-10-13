@@ -38,6 +38,15 @@ RuntimeExpressionFragmentizer::RuntimeExpressionFragmentizer()
          name = op.id();
       }
    }
+   {
+      // strcmp
+      auto type = IR::String::build();
+      auto& [name, pipe] = pipes.emplace_back();
+      auto& iu_1 = generated_ius.emplace_back(type, "");
+      auto& iu_out = generated_ius.emplace_back(ExpressionOp::derive(Type::StrEquals, {type, type}), "");
+      auto& op = pipe.attachSuboperator(RuntimeExpressionSubop::build(nullptr, {&iu_out}, {&iu_1}, Type::StrEquals, type));
+      name = op.id();
+   }
 }
 
 }

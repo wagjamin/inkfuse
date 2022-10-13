@@ -136,6 +136,36 @@ struct Char : public SQLType {
    }
 };
 
+/// Text type. In the engine it is represented as a char* to a 0-terminated string.
+struct String : public SQLType {
+   static TypeArc build() {
+      return std::make_shared<String>();
+   }
+
+   size_t numBytes() const override {
+      return 8;
+   }
+
+   std::string id() const override {
+      return "String";
+   }
+};
+
+/// Date type.
+struct Date : public SQLType {
+   static TypeArc build() {
+      return std::make_shared<Date>();
+   }
+
+   size_t numBytes() const override {
+      return 4;
+   }
+
+   std::string id() const override {
+      return "Date";
+   }
+};
+
 /// Void type which is usually wrapped into pointers for a lack of better options.
 struct Void : public Type {
    static TypeArc build() {
@@ -251,6 +281,10 @@ struct TypeVisitor {
          visitBool(*elem, arg);
       } else if (auto elem = dynamic_cast<const IR::Char*>(&type)) {
          visitChar(*elem, arg);
+      } else if (auto elem = dynamic_cast<const IR::String*>(&type)) {
+         visitString(*elem, arg);
+      } else if (auto elem = dynamic_cast<const IR::Date*>(&type)) {
+         visitDate(*elem, arg);
       } else if (auto elem = dynamic_cast<const IR::ByteArray*>(&type)) {
          visitByteArray(*elem, arg);
       } else if (auto elem = dynamic_cast<const IR::Void*>(&type)) {
@@ -274,6 +308,10 @@ struct TypeVisitor {
    virtual void visitBool(const Bool& type, Arg arg) {}
 
    virtual void visitChar(const Char& type, Arg arg) {}
+
+   virtual void visitString(const String& type, Arg arg) {}
+
+   virtual void visitDate(const Date& type, Arg arg) {}
 
    virtual void visitByteArray(const ByteArray& type, Arg arg) {}
 

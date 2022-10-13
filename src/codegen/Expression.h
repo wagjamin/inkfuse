@@ -118,6 +118,8 @@ struct ArithmeticExpr : public BinaryExpr {
       Greater,
       GreaterEqual,
       HashCombine,
+      /// String equals - not really an arithmethic function, but easiest to put here for now.
+      StrEquals,
    };
 
    /// Opcode of this expression.
