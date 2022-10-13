@@ -103,6 +103,7 @@ set(INCLUDE_H
         "${CMAKE_SOURCE_DIR}/src/codegen/IRBuilder.h"
         "${CMAKE_SOURCE_DIR}/src/codegen/Type.h"
         "${CMAKE_SOURCE_DIR}/src/common/Helpers.h"
+        "${CMAKE_SOURCE_DIR}/src/common/QueriesTPCH.h"
         "${CMAKE_SOURCE_DIR}/src/exec/FuseChunk.h"
         "${CMAKE_SOURCE_DIR}/src/exec/PipelineExecutor.h"
         "${CMAKE_SOURCE_DIR}/src/exec/QueryExecutor.h"
@@ -225,6 +226,7 @@ set(TEST_CC
         "${CMAKE_SOURCE_DIR}/test/suboperators/test_minimal_pipeline.cpp"
         "${CMAKE_SOURCE_DIR}/test/suboperators/test_runtime_key_expression.cpp"
         "${CMAKE_SOURCE_DIR}/test/suboperators/test_tscan_source.cpp"
+        "${CMAKE_SOURCE_DIR}/test/tpch/test_ingest.cpp"
         "${CMAKE_SOURCE_DIR}/test/test_fragmentizors.cpp"
         )
 

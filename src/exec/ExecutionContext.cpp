@@ -45,7 +45,7 @@ ExecutionContext::RuntimeGuard::~RuntimeGuard() {
    installed_context = nullptr;
 }
 
-MemoryRuntime::PipelineMemoryContext& ExecutionContext::getInstalledMemoryContext() {
+MemoryRuntime::MemoryRegion& ExecutionContext::getInstalledMemoryContext() {
    assert(installed_context);
    return installed_context->memory_context;
 }
