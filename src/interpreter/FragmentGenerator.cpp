@@ -53,6 +53,9 @@ TypeDecorator& TypeDecorator::attachFloatingPoints() {
 TypeDecorator& TypeDecorator::attachNumeric() {
    attachIntegers();
    attachFloatingPoints();
+   // We also count dates as numeric types. This is because a date internally 
+   // is represented as a 4 byte signed integer (day offset to the epoch).
+   types.push_back(IR::Date::build());
    return *this;
 }
 

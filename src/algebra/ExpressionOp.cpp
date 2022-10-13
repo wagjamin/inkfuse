@@ -16,13 +16,20 @@ IR::TypeArc ExpressionOp::derive(ComputeNode::Type code, const std::vector<Node*
 }
 
 IR::TypeArc ExpressionOp::derive(ComputeNode::Type code, const std::vector<IR::TypeArc>& types) {
+   // Operations that return a boolean as result.
+   static std::unordered_set<ComputeNode::Type> bool_returning {
+      ComputeNode::Type::Eq, ComputeNode::Type::Neq, 
+      ComputeNode::Type::Less, ComputeNode::Type::LessEqual, 
+      ComputeNode::Type::Greater, ComputeNode::Type::GreaterEqual,
+      ComputeNode::Type::StrEquals
+   };
    if (code == ComputeNode::Type::Hash) {
       return IR::UnsignedInt::build(8);
    }
-   if (code == ComputeNode::Type::Eq || code == ComputeNode::Type::Neq || code == ComputeNode::Type::Less || code == ComputeNode::Type::LessEqual || code == ComputeNode::Type::Greater || code == ComputeNode::Type::GreaterEqual) {
+   if (bool_returning.contains(code)) {
       return IR::Bool::build();
    }
-   // TODO Unify type derivation rules with the raw codegen::Expression.
+   // TODO(benjamin) Unify type derivation rules with the raw codegen::Expression.
    return types[0];
 }
 

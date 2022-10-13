@@ -102,6 +102,7 @@ set(INCLUDE_H
         "${CMAKE_SOURCE_DIR}/src/codegen/IR.h"
         "${CMAKE_SOURCE_DIR}/src/codegen/IRBuilder.h"
         "${CMAKE_SOURCE_DIR}/src/codegen/Type.h"
+        "${CMAKE_SOURCE_DIR}/src/common/Helpers.h"
         "${CMAKE_SOURCE_DIR}/src/exec/FuseChunk.h"
         "${CMAKE_SOURCE_DIR}/src/exec/PipelineExecutor.h"
         "${CMAKE_SOURCE_DIR}/src/exec/QueryExecutor.h"

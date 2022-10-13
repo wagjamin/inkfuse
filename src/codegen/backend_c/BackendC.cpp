@@ -130,6 +130,8 @@ std::unique_ptr<IR::BackendProgram> BackendC::generate(const IR::Program& progra
 void BackendC::createPreamble(ScopedWriter& writer) {
    // Include the integer types needed.
    writer.stmt(false).stream() << "#include <stdint.h>";
+   // We need to access strcmp.
+   writer.stmt(false).stream() << "#include <string.h>";
    writer.stmt(false).stream() << "#include <stdbool.h>\n";
 }
 
@@ -163,6 +165,14 @@ void BackendC::typeDescription(const IR::Type& type, ScopedWriter::Statement& st
 
       void visitChar(const IR::Char& type, ScopedWriter::Statement& arg) override {
          arg.stream() << "char";
+      }
+
+      void visitString(const IR::String& type, ScopedWriter::Statement& arg) override {
+         arg.stream() << "char*";
+      }
+
+      void visitDate(const IR::Date& type, ScopedWriter::Statement& arg) override {
+         arg.stream() << "int32_t";
       }
 
       void visitBool(const IR::Bool& type, ScopedWriter::Statement& arg) override {
@@ -358,10 +368,20 @@ void BackendC::compileExpression(const IR::Expr& expr, ScopedWriter::Statement& 
             {IR::ArithmeticExpr::Opcode::Eq, "=="},
             {IR::ArithmeticExpr::Opcode::Neq, "!="},
          };
-         compileExpression(*type.children[0], stmt);
-         assert(opcode_map.count(type.code));
-         stmt.stream() << " " << opcode_map.at(type.code) << " ";
-         compileExpression(*type.children[1], stmt);
+         if (type.code == IR::ArithmeticExpr::Opcode::StrEquals) {
+            // Strcmp needs to return 0 for two strings to be equal.
+            stmt.stream() << "(strcmp(";
+            compileExpression(*type.children[0], stmt);
+            stmt.stream() << ", ";
+            compileExpression(*type.children[1], stmt);
+            stmt.stream() << ") == 0)";
+         } else {
+            // Regular arithmethic operation that's directly supported by C.
+            assert(opcode_map.count(type.code));
+            compileExpression(*type.children[0], stmt);
+            stmt.stream() << " " << opcode_map.at(type.code) << " ";
+            compileExpression(*type.children[1], stmt);
+         }
       }
 
       void visitDeref(const IR::DerefExpr& type, ScopedWriter::Statement& stmt) override {

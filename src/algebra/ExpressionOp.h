@@ -45,6 +45,7 @@ struct ExpressionOp : public RelAlgOp {
          Greater,
          GreaterEqual,
          Constant,
+         StrEquals,
       };
 
       // Constructor for regular binary operations.

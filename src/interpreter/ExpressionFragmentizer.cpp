@@ -66,11 +66,26 @@ void ExpressionFragmentizer::fragmentizeHashes()
    }
 }
 
+void ExpressionFragmentizer::fragmentizeFunctions()
+{
+   {
+      // strcmp
+      auto type = IR::String::build();
+      auto& [name, pipe] = pipes.emplace_back();
+      auto& iu_1 = generated_ius.emplace_back(type, "");
+      auto& iu_2 = generated_ius.emplace_back(type, "");
+      auto& iu_out = generated_ius.emplace_back(ExpressionOp::derive(Type::StrEquals, {type, type}), "");
+      auto& op = pipe.attachSuboperator(ExpressionSubop::build(nullptr, {&iu_out}, {&iu_1, &iu_2}, Type::StrEquals));
+      name = op.id();
+   }  
+}
+
 ExpressionFragmentizer::ExpressionFragmentizer()
 {
    fragmentizeBinary();
    fragmentizeCasts();
    fragmentizeHashes();
+   fragmentizeFunctions();
 }
 
 
