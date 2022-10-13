@@ -1,4 +1,5 @@
 #include "storage/Relation.h"
+#include <cstring>
 
 namespace inkfuse {
 
@@ -48,6 +49,16 @@ IR::TypeArc TypedColumn<int8_t>::getType() const {
 
 bool BaseColumn::isNullable() {
    return nullable;
+}
+
+void StringColumn::loadValue(const char* str, uint32_t strLen) {
+   // Need the zero byte at the end of the string - this is not part of the input file.
+   auto elem = reinterpret_cast<char*>(storage.alloc(strLen + 1));
+   // Copy over the string.
+   std::memcpy(elem, str, strLen);
+   elem[strLen] = 0;
+   // Store the offset - this is the actual pointer later read by inkfuse.
+   offsets.push_back(elem);
 }
 
 BaseColumn& StoredRelation::getColumn(std::string_view name) const {

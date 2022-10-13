@@ -8,9 +8,9 @@
 namespace inkfuse::MemoryRuntime {
 
 // Memory context for a pipeline which can be attached to a thread.
-struct PipelineMemoryContext {
+struct MemoryRegion {
 
-    PipelineMemoryContext();
+    MemoryRegion();
 
     /// Allocate a given amount of memory within the arena of this memory context.
     void* alloc(uint64_t size);

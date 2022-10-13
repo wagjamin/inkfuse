@@ -2,6 +2,7 @@
 #define INKFUSE_COLUMN_H
 
 #include "codegen/Type.h"
+#include "runtime/MemoryRuntime.h"
 #include <cstddef>
 #include <istream>
 #include <memory>
@@ -40,12 +41,40 @@ class BaseColumn {
    bool nullable;
 };
 
+class StringColumn final : public BaseColumn {
+   public:
+   explicit StringColumn(bool nullable_) : BaseColumn(nullable_) {
+      offsets.reserve(1'000'000);
+   }
+
+   /// Get number of rows within the column.
+   size_t length() const override {
+      return offsets.size();
+   };
+
+   void* getRawData() override {
+      return offsets.data();
+   }
+
+   IR::TypeArc getType() const override {
+      return IR::String::build();
+   };
+
+   void loadValue(const char* str, uint32_t strLen) override;
+
+   private:
+   /// Actual vector of data that stores the char* that are passed through the runtime.
+   std::vector<char*> offsets;
+   /// Backing storage for the strings. `offsets` points into this allocator.
+   MemoryRuntime::MemoryRegion storage;
+};
+
 /// Specific column over a certain type.
 template <typename T>
 class TypedColumn final : public BaseColumn {
    public:
    explicit TypedColumn(bool nullable_) : BaseColumn(nullable_) {
-      storage.reserve(10'000'000);
+      storage.reserve(1'000'000);
    };
 
    /// Get number of rows within the column.
@@ -59,8 +88,8 @@ class TypedColumn final : public BaseColumn {
    };
 
    void loadValue(const char* str, uint32_t strLen) override {
-      /*storage.push_back(std::move(T::castString(str, strLen)));*/
-      // TODO
+      auto val = std::stoll(str);
+      getStorage().push_back(val);
    };
 
    void* getRawData() override {
@@ -106,10 +135,10 @@ class StoredRelation {
       return reinterpret_cast<TypedColumn<T>&>(*res.second);
    }
 
-   /// Load TSV rows into the table until the table is exhausted.
+   /// Load .tbl rows into the table until the table is exhausted.
    void loadRows(std::istream& stream);
 
-   /// Load a single TSV row into the table, advancing the ifstream past the next newline.
+   /// Load a single .tbl row into the table, advancing the ifstream past the next newline.
    void loadRow(const std::string& str);
 
    /// Add a row to the back of the active bitvector.

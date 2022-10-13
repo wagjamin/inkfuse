@@ -38,7 +38,7 @@ struct ExecutionContext {
       ~RuntimeGuard();
    };
 
-   static MemoryRuntime::PipelineMemoryContext& getInstalledMemoryContext();
+   static MemoryRuntime::MemoryRegion& getInstalledMemoryContext();
    static bool& getInstalledRestartFlag();
    static bool* tryGetInstalledRestartFlag();
 
@@ -50,7 +50,7 @@ struct ExecutionContext {
    /// The pipeline.
    const Pipeline& pipe;
    /// The memory context of this pipeline.
-   MemoryRuntime::PipelineMemoryContext memory_context;
+   MemoryRuntime::MemoryRegion memory_context;
    /// The restart flag indicates whether the last vectorized primitive needs to be restarted
    /// during interpretation. Primitives that can set this flag need to be idempotent.
    /// This flag is used by hash tables when they grow in the middle of a morsel. As this invalidates

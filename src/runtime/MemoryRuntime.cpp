@@ -11,11 +11,11 @@ const uint64_t REGION_ARRAY_SIZE = 512;
 const uint64_t REGION_SIZE = 8 * REGION_ARRAY_SIZE;
 }
 
-PipelineMemoryContext::PipelineMemoryContext() {
+MemoryRegion::MemoryRegion() {
    regions.reserve(100);
 }
 
-void* PipelineMemoryContext::alloc(uint64_t size) {
+void* MemoryRegion::alloc(uint64_t size) {
    // We do not support (for now) pipeline allocations larger than a single region.
    assert(size < REGION_SIZE);
    // How many slots in the array do I need? (division by 8 byte slots size, with round up)
