@@ -9,7 +9,7 @@ const char* FuseChunkSinkState::name = "FuseChunkSinkState";
 
 void FuseChunkSink::registerRuntime() {
    RuntimeStructBuilder(FuseChunkSinkState::name)
-      .addMember("raw_data", IR::Pointer::build(IR::Void::build()))
+      .addMember("start", IR::Pointer::build(IR::Void::build()))
       .addMember("size", IR::Pointer::build(IR::UnsignedInt::build(8)));
 }
 
@@ -47,7 +47,7 @@ void FuseChunkSink::consume(const IU& iu, CompilationContext& context) {
       auto assign_data = IR::AssignmentStmt::build(
          *decl_data,
          IR::CastExpr::build(
-            IR::StructAccessExpr::build(std::move(data_cast_expr), "raw_data"),
+            IR::StructAccessExpr::build(std::move(data_cast_expr), "start"),
             target_ptr_type));
       // Build the size variable.
       auto size_var_name = getVarIdentifier();

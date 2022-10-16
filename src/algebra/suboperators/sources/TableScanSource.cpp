@@ -39,18 +39,18 @@ std::string TScanDriver::id() const
 }
 
 void TScanIUProvider::setUpStateImpl(const ExecutionContext& context) {
-   state->raw_data = raw_data;
+   state->start = raw_data;
 }
 
 std::string TScanIUProvider::providerName() const {
    return "TScanIUProvider";
 }
 
-std::unique_ptr<TScanIUProvider> TScanIUProvider::build(const RelAlgOp* source, const IU& driver_iu, const IU& produced_iu, void* raw_data_) {
+std::unique_ptr<TScanIUProvider> TScanIUProvider::build(const RelAlgOp* source, const IU& driver_iu, const IU& produced_iu, char* raw_data_) {
    return std::unique_ptr<TScanIUProvider>(new TScanIUProvider{source, driver_iu, produced_iu, raw_data_});
 }
 
-TScanIUProvider::TScanIUProvider(const RelAlgOp* source, const IU& driver_iu, const IU& produced_iu, void* raw_data_)
+TScanIUProvider::TScanIUProvider(const RelAlgOp* source, const IU& driver_iu, const IU& produced_iu, char* raw_data_)
    : IndexedIUProvider(source, driver_iu, produced_iu), raw_data(raw_data_) {
 }
 

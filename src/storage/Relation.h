@@ -31,11 +31,10 @@ class BaseColumn {
    virtual void loadValue(const char* str, uint32_t strLen) = 0;
 
    /// Get a pointer to the backing raw data.
-   virtual void* getRawData() = 0;
+   virtual char* getRawData() = 0;
 
    /// Get the type of this .
    virtual IR::TypeArc getType() const = 0;
-
 
    protected:
    bool nullable;
@@ -52,8 +51,8 @@ class StringColumn final : public BaseColumn {
       return offsets.size();
    };
 
-   void* getRawData() override {
-      return offsets.data();
+   char* getRawData() override {
+      return reinterpret_cast<char*>(offsets.data());
    }
 
    IR::TypeArc getType() const override {
@@ -69,38 +68,37 @@ class StringColumn final : public BaseColumn {
    MemoryRuntime::MemoryRegion storage;
 };
 
-/// Specific column over a certain type.
-template <typename T>
-class TypedColumn final : public BaseColumn {
+/// Column over a fixed-size InkFuse type that can be represented
+/// in a contiguous memory region.
+class PODColumn final : public BaseColumn {
    public:
-   explicit TypedColumn(bool nullable_) : BaseColumn(nullable_) {
-      storage.reserve(1'000'000);
-   };
+   explicit PODColumn(IR::TypeArc type_, bool nullable_);
 
-   /// Get number of rows within the column.
-   size_t length() const override {
-      return storage.size();
-   };
+   size_t length() const override;
 
-   /// Get backing storage. May be modified.
-   std::vector<T>& getStorage() {
-      return storage;
-   };
+   void loadValue(const char* str, uint32_t strlen) override;
 
-   void loadValue(const char* str, uint32_t strLen) override {
-      auto val = std::stoll(str);
-      getStorage().push_back(val);
-   };
-
-   void* getRawData() override {
+   char* getRawData() override {
       return storage.data();
    }
 
-   IR::TypeArc getType() const override;
+   std::vector<char>& getStorage() {
+      return storage;
+   }
+
+   IR::TypeArc getType() const override {
+      return type;
+   };
 
    private:
+   /// Function to load a value. Depends on the nested type.
+   std::function<void(char* data ,const char* str)> load_val;
    /// Backing storage.
-   std::vector<T> storage;
+   std::vector<char> storage;
+   /// Offset within the backing storage.
+   size_t storage_offset = 0;
+   /// InkFuse type of this table.
+   IR::TypeArc type;
 };
 
 using BaseColumnPtr = std::unique_ptr<BaseColumn>;
@@ -123,17 +121,11 @@ class StoredRelation {
    /// Get the number of columns.
    size_t columnCount() const;
 
-   /// Emplace a new column into a relation.
-   template <typename T>
-   TypedColumn<T>& attachTypedColumn(std::string_view name, bool nullable = false) {
-      for (const auto& [n, _] : columns) {
-         if (n == name) {
-            throw std::runtime_error("Column name in StoredRelation must be unique");
-         }
-      }
-      auto& res = columns.template emplace_back(name, std::make_unique<TypedColumn<T>>(nullable));
-      return reinterpret_cast<TypedColumn<T>&>(*res.second);
-   }
+   /// Add a new primitive data type column to the relation.
+   PODColumn& attachPODColumn(std::string_view name, IR::TypeArc type, bool nullable = false);
+
+   /// Add a new string column to the relation.
+   StringColumn& attachStringColumn(std::string_view name, bool nullable = false);
 
    /// Load .tbl rows into the table until the table is exhausted.
    void loadRows(std::istream& stream);
@@ -149,6 +141,10 @@ class StoredRelation {
    /// We use a vector to exploit ordering during the scan.
    std::vector<std::pair<std::string, std::unique_ptr<BaseColumn>>> columns;
 };
+
+using StoredRelationPtr = std::unique_ptr<StoredRelation>;
+/// A database schema is simply represented by a set of tables.
+using Schema = std::unordered_map<std::string, StoredRelationPtr>;
 
 } // namespace inkfuse
 

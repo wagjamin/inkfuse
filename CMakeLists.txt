@@ -103,7 +103,7 @@ set(INCLUDE_H
         "${CMAKE_SOURCE_DIR}/src/codegen/IRBuilder.h"
         "${CMAKE_SOURCE_DIR}/src/codegen/Type.h"
         "${CMAKE_SOURCE_DIR}/src/common/Helpers.h"
-        "${CMAKE_SOURCE_DIR}/src/common/QueriesTPCH.h"
+        "${CMAKE_SOURCE_DIR}/src/common/TPCH.h"
         "${CMAKE_SOURCE_DIR}/src/exec/FuseChunk.h"
         "${CMAKE_SOURCE_DIR}/src/exec/PipelineExecutor.h"
         "${CMAKE_SOURCE_DIR}/src/exec/QueryExecutor.h"
@@ -173,7 +173,7 @@ set(SRC_CC
         "${CMAKE_SOURCE_DIR}/src/exec/runners/CompiledRunner.cpp"
         "${CMAKE_SOURCE_DIR}/src/exec/runners/InterpretedRunner.cpp"
         "${CMAKE_SOURCE_DIR}/src/exec/InterruptableJob.cpp"
-        "${CMAKE_SOURCE_DIR}/src/storage/Relation.cc"
+        "${CMAKE_SOURCE_DIR}/src/storage/Relation.cpp"
         "${CMAKE_SOURCE_DIR}/src/codegen/Expression.cpp"
         "${CMAKE_SOURCE_DIR}/src/codegen/IR.cpp"
         "${CMAKE_SOURCE_DIR}/src/codegen/IRBuilder.cpp"
@@ -185,6 +185,8 @@ set(SRC_CC
         "${CMAKE_SOURCE_DIR}/src/runtime/Runtime.cpp"
         "${CMAKE_SOURCE_DIR}/src/exec/ExecutionContext.cpp"
         "${CMAKE_SOURCE_DIR}/src/exec/FuseChunk.cpp"
+        "${CMAKE_SOURCE_DIR}/src/common/Helpers.cpp"
+        "${CMAKE_SOURCE_DIR}/src/common/TPCH.cpp"
         "${CMAKE_SOURCE_DIR}/src/interpreter/AggregationFragmentizer.cpp"
         "${CMAKE_SOURCE_DIR}/src/interpreter/ColumnFilterFragmentizer.cpp"
         "${CMAKE_SOURCE_DIR}/src/interpreter/FragmentCache.cpp"
@@ -202,7 +204,7 @@ set(SRC_CC
         "${CMAKE_SOURCE_DIR}/src/runtime/HashTableRuntime.cpp"
         "${CMAKE_SOURCE_DIR}/src/runtime/HashTables.cpp"
         "${CMAKE_SOURCE_DIR}/src/runtime/MemoryRuntime.cpp"
-        )
+        src/common/TPCH.cpp src/common/Helpers.cpp)
 
 set(TEST_CC
         "${CMAKE_SOURCE_DIR}/test/test_ir.cpp"
@@ -228,7 +230,7 @@ set(TEST_CC
         "${CMAKE_SOURCE_DIR}/test/suboperators/test_tscan_source.cpp"
         "${CMAKE_SOURCE_DIR}/test/tpch/test_ingest.cpp"
         "${CMAKE_SOURCE_DIR}/test/test_fragmentizors.cpp"
-        )
+        test/test_storage.cpp)
 
 set(TOOLS_SRC
         "${CMAKE_SOURCE_DIR}/tools/inkfuse_runner.cc"
