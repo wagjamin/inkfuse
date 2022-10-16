@@ -46,7 +46,7 @@ int main(int argc, char* argv[]) {
       std::vector<std::string> colnames{"a", "b", "c"};
       for (size_t col_id = 0; col_id < colnames.size(); ++col_id) {
          // Create column.
-         auto& col = rel.attachTypedColumn<int64_t>(colnames[col_id]);
+         auto& col = rel.attachPODColumn<int64_t>(colnames[col_id]);
          col.getStorage().reserve(rows);
 
          // And fill it up.

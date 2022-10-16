@@ -14,7 +14,7 @@ struct IndexedIUProviderState {
    static const char* name;
 
    /// Pointer to the raw data of the underlying column to be read.
-   void* raw_data;
+   char* start;
    /// Runtime parameter if we are providing a parametrized type.
    uint64_t type_param;
 };

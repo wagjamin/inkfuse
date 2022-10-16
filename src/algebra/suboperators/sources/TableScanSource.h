@@ -29,7 +29,7 @@ struct TScanDriver final : public LoopDriver {
 
 /// IU provider when reading from a table scan.
 struct TScanIUProvider final : public IndexedIUProvider {
-   static std::unique_ptr<TScanIUProvider> build(const RelAlgOp* source, const IU& driver_iu, const IU& produced_iu, void* raw_data_ = nullptr);
+   static std::unique_ptr<TScanIUProvider> build(const RelAlgOp* source, const IU& driver_iu, const IU& produced_iu, char* raw_data_ = nullptr);
 
    protected:
    void setUpStateImpl(const ExecutionContext& context) override;
@@ -37,10 +37,10 @@ struct TScanIUProvider final : public IndexedIUProvider {
    std::string providerName() const override;
 
    private:
-   TScanIUProvider(const RelAlgOp* source, const IU& driver_iu, const IU& produced_iu, void* raw_data_);
+   TScanIUProvider(const RelAlgOp* source, const IU& driver_iu, const IU& produced_iu, char* raw_data_);
 
    /// Pointer to the start of the backing stored column.
-   void* raw_data;
+   char* raw_data;
 };
 
 }

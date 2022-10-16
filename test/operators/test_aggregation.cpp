@@ -7,16 +7,25 @@
 
 namespace inkfuse {
 
+namespace {
+
+const size_t REL_SIZE = 100'000;
+
 struct AggregationTestT : ::testing::TestWithParam<PipelineExecutor::ExecutionMode> {
    AggregationTestT() {
       // col_1 has distinct values 0 to 10_000
-      auto& col_1 = rel.attachTypedColumn<uint64_t>("col_1");
+      auto& col_1 = rel.attachPODColumn("col_1", IR::UnsignedInt::build(8));
       // col_2 is constant 42
-      auto& col_2 = rel.attachTypedColumn<int64_t>("col_2");
+      auto& col_2 = rel.attachPODColumn("col_2", IR::SignedInt::build(4));
 
-      for (size_t k = 0; k < 100000; ++k) {
-         col_1.getStorage().push_back(k % 10000);
-         col_2.getStorage().push_back(42);
+      auto& storage_col_1 = col_1.getStorage();
+      auto& storage_col_2 = col_2.getStorage();
+      storage_col_1.resize(8 * REL_SIZE);
+      storage_col_2.resize(4 * REL_SIZE);
+
+      for (size_t k = 0; k < REL_SIZE; ++k) {
+         reinterpret_cast<uint64_t*>(storage_col_1.data())[k] = k % 10000;
+         reinterpret_cast<int32_t*>(storage_col_2.data())[k] = 42;
       }
 
       scan.emplace(std::make_unique<TableScan>(rel, std::vector<std::string>{"col_1", "col_2"}, "scan"));
@@ -38,10 +47,10 @@ struct AggregationTestT : ::testing::TestWithParam<PipelineExecutor::ExecutionMo
 TEST_P(AggregationTestT, simple_count) {
    // Set up the query.
    std::vector<AggregateFunctions::Description> agg_fct{{
-      .agg_iu = *iu_col_2,
-      .code = AggregateFunctions::Opcode::Count,
-      .distinct = false,
-   }};
+                                                           .agg_iu = *iu_col_2,
+                                                           .code = AggregateFunctions::Opcode::Count,
+                                                           .distinct = false,
+                                                        }};
    std::vector<RelAlgOpPtr> children;
    children.push_back(std::move(*scan));
    Aggregation agg({std::move(children)}, "aggregator", std::vector<const IU*>{iu_col_1}, std::move(agg_fct));
@@ -49,10 +58,10 @@ TEST_P(AggregationTestT, simple_count) {
    // Count the number of result rows, counting both output columns separately.
    // The aggregation should produce 10k rows.
    dag.getPipelines()[1]->attachSuboperator(CountingSink::build(*agg.getOutput()[0], [](size_t count) {
-      EXPECT_EQ(count, 10000);
+     EXPECT_EQ(count, 10000);
    }));
    dag.getPipelines()[1]->attachSuboperator(CountingSink::build(*agg.getOutput()[1], [](size_t count) {
-      EXPECT_EQ(count, 10000);
+     EXPECT_EQ(count, 10000);
    }));
    ASSERT_EQ(dag.getPipelines().size(), 2);
    // Run the query.
@@ -67,8 +76,10 @@ INSTANTIATE_TEST_CASE_P(
    AggregationTest,
    AggregationTestT,
    ::testing::Values(
-      PipelineExecutor::ExecutionMode::Fused, 
-      PipelineExecutor::ExecutionMode::Interpreted, 
+      PipelineExecutor::ExecutionMode::Fused,
+      PipelineExecutor::ExecutionMode::Interpreted,
       PipelineExecutor::ExecutionMode::Hybrid));
+
+}
 
 }
