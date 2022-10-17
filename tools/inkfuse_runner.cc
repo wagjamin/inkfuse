@@ -46,15 +46,16 @@ int main(int argc, char* argv[]) {
       std::vector<std::string> colnames{"a", "b", "c"};
       for (size_t col_id = 0; col_id < colnames.size(); ++col_id) {
          // Create column.
-         auto& col = rel.attachPODColumn<int64_t>(colnames[col_id]);
-         col.getStorage().reserve(rows);
+         auto& col = rel.attachPODColumn(colnames[col_id], IR::SignedInt::build(8));
+         auto& storage = col.getStorage();
+         storage.resize(8 * rows);
 
          // And fill it up.
          // std::random_device rd;
          std::mt19937 gen(41088322222);
          std::uniform_int_distribution<> distr(0, max[col_id]);
          for (uint64_t k = 0; k < rows; ++k) {
-            col.getStorage().push_back(distr(gen));
+            reinterpret_cast<int64_t*>(storage.data())[k] = distr(gen);
          }
       }
 
