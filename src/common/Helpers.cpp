@@ -2,6 +2,7 @@
 #include "date.h"
 #include <chrono>
 #include <iostream>
+#include <fstream>
 
 namespace inkfuse::helpers {
 
@@ -12,8 +13,16 @@ int32_t dateStrToInt(const char* str) {
    return time.time_since_epoch().count();
 }
 
-void loadDataInto(Schema& schema, std::string path) {
-
+void loadDataInto(Schema& schema, const std::string& path, bool force) {
+   for (auto& [tbl_name, tbl]: schema) {
+      std::ifstream input;
+      if (force) {
+         input.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+      }
+      input.open(path + "/" + tbl_name + ".tbl");
+      tbl->loadRows(input);
+      input.close();
+   }
 }
 
 }

@@ -190,7 +190,7 @@ void StoredRelation::loadRows(std::istream& stream) {
 
 void StoredRelation::loadRow(const std::string& str) {
    size_t currPos = 0;
-   for (auto& [_, c] : columns) {
+   for (auto& [c_name, c] : columns) {
       if (currPos == str.length()) {
          throw std::runtime_error("Not enough columns in TSV");
       }
@@ -203,7 +203,8 @@ void StoredRelation::loadRow(const std::string& str) {
    }
    // Row is active.
    appendRow();
-   if (currPos != str.length() + 1) {
+   if (currPos != str.length()) {
+      // There should be a final closing | in the files.
       throw std::runtime_error("Too many columns in TSV");
    }
 }

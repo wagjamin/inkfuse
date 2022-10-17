@@ -14,7 +14,7 @@ int32_t dateStrToInt(const char* str);
 
 /// Load data into the backing columns of a schema.
 /// Looks for '|' separated .tbl files within the directory of `path`.
-void loadDataInto(Schema& schema, std::string path);
+void loadDataInto(Schema& schema, const std::string& path, bool force = false);
 
 } // namespace inkfuse
 
