@@ -8,10 +8,11 @@ namespace inkfuse::tpch {
 
 namespace {
 
+// Types used throughout TPC-H.
 const auto t_ui4 = IR::UnsignedInt::build(4);
 const auto t_f8 = IR::Float::build(8);
-const auto t_char = IR::Float::build(8);
-const auto t_date = IR::Float::build(8);
+const auto t_char = IR::Char::build();
+const auto t_date = IR::Date::build();
 
 StoredRelationPtr tableLineitem() {
    auto rel = std::make_unique<StoredRelation>();

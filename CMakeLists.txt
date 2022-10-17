@@ -262,6 +262,8 @@ target_link_libraries(inkfuse_runner PRIVATE inkfuse gflags Threads::Threads)
 add_executable(tester test/tester.cc ${TEST_CC})
 target_include_directories(tester PRIVATE ${CMAKE_SOURCE_DIR}/test)
 target_link_libraries(tester PRIVATE inkfuse gtest gmock Threads::Threads)
+# Move the testdata into the binary tree for easy ingest tests.
+file(COPY test/tpch/testdata DESTINATION test/tpch)
 enable_testing()
 add_test(inkfuse tester)
 
