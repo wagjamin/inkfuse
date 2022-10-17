@@ -42,6 +42,11 @@ ExpressionOp::ExpressionOp(std::vector<std::unique_ptr<RelAlgOp>> children_, std
    }
 }
 
+std::unique_ptr<ExpressionOp> ExpressionOp::build(std::vector<std::unique_ptr<RelAlgOp>> children_, std::string op_name_, std::vector<Node*> out_, std::vector<NodePtr> nodes_)
+{
+   return std::make_unique<ExpressionOp>(std::move(children_), std::move(op_name_), std::move(out_), std::move(nodes_));
+}
+
 ExpressionOp::IURefNode::IURefNode(const IU* child_)
    : Node(child_->type), child(child_) {
 }

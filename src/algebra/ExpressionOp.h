@@ -3,10 +3,10 @@
 
 #include "algebra/RelAlgOp.h"
 #include "codegen/Value.h"
-#include <unordered_set>
 #include <optional>
-#include <vector>
 #include <unordered_map>
+#include <unordered_set>
+#include <vector>
 
 namespace inkfuse {
 
@@ -66,6 +66,14 @@ struct ExpressionOp : public RelAlgOp {
    };
 
    ExpressionOp(
+      std::vector<std::unique_ptr<RelAlgOp>> children_,
+      std::string op_name_,
+      std::vector<Node*>
+         out_,
+      std::vector<NodePtr>
+         nodes_);
+
+   static std::unique_ptr<ExpressionOp> build(
       std::vector<std::unique_ptr<RelAlgOp>> children_,
       std::string op_name_,
       std::vector<Node*>

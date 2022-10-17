@@ -10,6 +10,7 @@ namespace inkfuse {
 /// Relational algebra operator for aggregations.
 struct Aggregation : public RelAlgOp {
    Aggregation(std::vector<std::unique_ptr<RelAlgOp>> children_, std::string op_name_, std::vector<const IU*> group_by_, std::vector<AggregateFunctions::Description> aggregates_);
+   static std::unique_ptr<Aggregation> build(std::vector<std::unique_ptr<RelAlgOp>> children_, std::string op_name_, std::vector<const IU*> group_by_, std::vector<AggregateFunctions::Description> aggregates_);
 
    void decay(PipelineDAG& dag) const override;
 
