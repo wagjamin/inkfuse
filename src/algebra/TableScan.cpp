@@ -21,6 +21,11 @@ TableScan::TableScan(StoredRelation& rel_, std::vector<std::string> cols_, std::
    }
 }
 
+std::unique_ptr<TableScan> TableScan::build(inkfuse::StoredRelation& rel_, std::vector<std::string> cols, std::string name)
+{
+   return std::make_unique<TableScan>(rel_, std::move(cols), std::move(name));
+}
+
 void TableScan::decay(PipelineDAG& dag) const {
    // Create a new pipeline.
    auto& pipe = dag.buildNewPipeline();

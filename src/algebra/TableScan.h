@@ -11,6 +11,7 @@ namespace inkfuse {
 /// and makes them available as IUs.
 struct TableScan : public RelAlgOp {
    TableScan(StoredRelation& rel_, std::vector<std::string> cols, std::string name);
+   static std::unique_ptr<TableScan> build(StoredRelation& rel_, std::vector<std::string> cols, std::string name);
 
    void decay(PipelineDAG& dag) const override;
 

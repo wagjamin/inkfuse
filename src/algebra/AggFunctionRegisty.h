@@ -33,7 +33,7 @@ enum class Opcode {
 struct Description {
    const IU& agg_iu;
    const Opcode code;
-   const bool distinct;
+   const bool distinct = false;
 };
 
 /// Result of an agg function lookup.

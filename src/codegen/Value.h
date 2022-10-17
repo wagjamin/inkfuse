@@ -95,6 +95,68 @@ struct SI : public Value {
    explicit SI(int64_t value_) : value(value_) {}
 };
 
+struct F8 : public Value {
+   double value;
+
+   static ValuePtr build(double value) {
+      return ValuePtr(new F8(value));
+   };
+
+   std::unique_ptr<Value> copy() override {
+      return build(value);
+   };
+
+   int64_t getValue() const {
+      return value;
+   }
+
+   std::string str() const override {
+      return std::to_string(value);
+   }
+
+   TypeArc getType() const override {
+      return std::make_unique<Float>(8);
+   }
+
+   void* rawData() override {
+      return &value;
+   }
+
+   private:
+   explicit F8(double value_) : value(value_) {}
+};
+
+struct DateVal : public Value {
+   int32_t value;
+
+   static ValuePtr build(int32_t value) {
+      return ValuePtr(new DateVal(value));
+   };
+
+   std::unique_ptr<Value> copy() override {
+      return build(value);
+   };
+
+   int64_t getValue() const {
+      return value;
+   }
+
+   std::string str() const override {
+      return std::to_string(value);
+   }
+
+   TypeArc getType() const override {
+      return std::make_unique<Date>();
+   }
+
+   void* rawData() override {
+      return &value;
+   }
+
+   private:
+   explicit DateVal(int32_t value_) : value(value_) {}
+};
+
 }
 
 }

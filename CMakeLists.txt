@@ -230,7 +230,7 @@ set(TEST_CC
         "${CMAKE_SOURCE_DIR}/test/suboperators/test_tscan_source.cpp"
         "${CMAKE_SOURCE_DIR}/test/tpch/test_ingest.cpp"
         "${CMAKE_SOURCE_DIR}/test/test_fragmentizors.cpp"
-        test/test_storage.cpp)
+        test/test_storage.cpp test/tpch/test_queries.cpp)
 
 set(TOOLS_SRC
         "${CMAKE_SOURCE_DIR}/tools/inkfuse_runner.cc"
