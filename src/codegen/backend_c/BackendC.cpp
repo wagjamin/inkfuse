@@ -48,7 +48,7 @@ void BackendProgramC::compileToMachinecode(InterruptableJob& interrupt) {
       command << so_path(program_name);
       auto command_str = command.str();
 
-      auto exit_code = BashCommand::run(command_str, interrupt);
+      auto exit_code = Command::runShell(command_str, interrupt);
       if (interrupt.getResult() == InterruptableJob::Change::Interrupted) {
          return;
       }

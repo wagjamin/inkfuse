@@ -1,6 +1,7 @@
 #include "exec/InterruptableJob.h"
 #include "subprocess.h"
 #include <array>
+#include <iostream>
 #include <stdexcept>
 #include <assert.h>
 #include <sys/eventfd.h>
@@ -75,7 +76,51 @@ InterruptableJob::Change InterruptableJob::getResult() const {
    return *result;
 }
 
-int BashCommand::run(const std::string& command, InterruptableJob& interrupt) {
+int Command::run(const char* command[], InterruptableJob& interrupt) {
+   subprocess_s bash_process;
+   int success = subprocess_create(command, subprocess_option_inherit_environment, &bash_process);
+   if (success != 0) {
+      throw std::runtime_error("Unable to start command");
+   }
+
+   // And hook it up into the InterruptableJob.
+   interrupt.registerJobPID(bash_process.child);
+   // Now we wait until either an interrupt was triggered or compilation finished.
+   auto result = interrupt.awaitChange();
+
+   if (result == InterruptableJob::Change::Interrupted) {
+      // Terminate the subprocess if an interrupt was requested.
+      success = subprocess_terminate(&bash_process);
+      if (success != 0) {
+         throw std::runtime_error("Unable to terminate command");
+      }
+   } else {
+      // The subprocess should be finished (can't run in above branch as kill signal is async).
+      assert(!subprocess_alive(&bash_process));
+   }
+
+   // Properly clean up the process and get the exit code.
+   int exit_code;
+   if (subprocess_join(&bash_process, &exit_code) != 0) {
+      throw std::runtime_error("Waiting for InterruptableJob failed.");
+   };
+   if (exit_code != 0) {
+      // If something went wrong, write out the stdout of the process
+      // to our stdout.
+      FILE* p_stdout = subprocess_stdout(&bash_process);
+      while (true) {
+         int c = fgetc(p_stdout);
+         if (feof(p_stdout)) {
+            break;
+         }
+         printf("%c", c);
+      }
+   }
+
+   return exit_code;
+}
+
+int Command::runShell(const std::string& command, InterruptableJob& interrupt) {
    // Set up the bash command.
    const std::array<const char*, 4> command_line = {
       "/bin/sh",
