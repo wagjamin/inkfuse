@@ -59,11 +59,15 @@ struct InterruptableJob {
    int fd_process = -1;
 };
 
-namespace BashCommand {
+namespace Command {
 
-/// Run the bash command until the job gets interrupted or is finished.
-/// Returns the exit code of the command.
-int run(const std::string& command, InterruptableJob& interrupt);
+/// Run a command through the system shell until the job gets 
+// interrupted or is finished. Returns the exit code of the command.
+int runShell(const std::string& command, InterruptableJob& interrupt);
+
+/// Run a command directly until the job gets interrupted or is
+/// finished. Returns the exit code of the command.
+int run(const char* command[], InterruptableJob& interrupt);
 
 };
 

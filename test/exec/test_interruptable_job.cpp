@@ -62,7 +62,7 @@ TEST(test_interruptable_job, raw_command_finish) {
 
 TEST(test_interruptable_job, bash_no_interrupt) {
    InterruptableJob interrupt;
-   auto exit = BashCommand::run("sleep 0.001", interrupt);
+   auto exit = Command::runShell("sleep 0.001", interrupt);
    EXPECT_EQ(interrupt.getResult(), InterruptableJob::Change::JobDone);
    EXPECT_EQ(exit, 0);
 }
@@ -75,7 +75,7 @@ TEST(test_interruptable_job, bash_interrupt) {
       // And interrupt.
       interrupt.interrupt();
    });
-   auto exit = BashCommand::run("sleep 5", interrupt);
+   auto exit = Command::runShell("sleep 5", interrupt);
    EXPECT_EQ(interrupt.getResult(), InterruptableJob::Change::Interrupted);
    EXPECT_NE(exit, 0);
    interruptor.join();
