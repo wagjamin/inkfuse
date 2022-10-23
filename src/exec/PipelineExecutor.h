@@ -16,7 +16,7 @@ struct InterruptableJob;
 struct PipelineExecutor {
 
    /// Which execution mode should be chosen for this pipeline?
-   enum class ExecutionMode {
+   enum class ExecutionMode : uint8_t {
       /// In fused mode, the complete pipeline gets compiled and then executed.
       Fused,
       /// In interpreted mode, we only use the pre-compiled fragments to run the query.

@@ -16,11 +16,26 @@ struct KeyPackingRuntimeState {
    uint16_t offset;
 };
 
+/// Runtime state, just with two encoded offsets.
+struct KeyPackingRuntimeStateTwo {
+   static const char* name;
+
+   /// Pointer offsets within the given key.
+   uint16_t offset_1;
+   uint16_t offset_2;
+};
+
 /// Runtime parameters for key offsets that can be fed into an operator.
 /// When a query gets executed, the key layout gets computed and is static
 /// for that query. This means that offsets can be hard-baked into the code.
 struct KeyPackingRuntimeParams {
    RUNTIME_PARAM(offset, KeyPackingRuntimeState);
+};
+
+/// Runtime parameters, just with two encoded offsets.
+struct KeyPackingRuntimeParamsTwo {
+   RUNTIME_PARAM(offset_1, KeyPackingRuntimeStateTwo);
+   RUNTIME_PARAM(offset_2, KeyPackingRuntimeStateTwo);
 };
 
 namespace KeyPackingRuntime {

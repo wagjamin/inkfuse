@@ -4,14 +4,34 @@
 #include "algebra/suboperators/sinks/CountingSink.h"
 #include "exec/QueryExecutor.h"
 #include "gtest/gtest.h"
+#include <string>
 
 namespace inkfuse {
 
 namespace {
+using Opcode = AggregateFunctions::Opcode;
+using OpcodeVec = std::vector<Opcode>;
 
 const size_t REL_SIZE = 100'000;
+const std::unordered_map<Opcode, std::string> opcode_names {
+   {Opcode::Sum, "sum"},
+   {Opcode::Count, "count"},
+   {Opcode::Avg, "avg"},
+   {Opcode::Min, "min"},
+   {Opcode::Max, "max"},
+};
 
-struct AggregationTestT : ::testing::TestWithParam<PipelineExecutor::ExecutionMode> {
+std::string buildTestCaseName(const OpcodeVec& opcodes) {
+   std::stringstream name;
+   name << "agg_q";
+   for (auto opcode : opcodes) {
+      name << "_" << opcode_names.at(opcode);
+   }
+   return name.str();
+}
+
+using ParamT = std::tuple<OpcodeVec, PipelineExecutor::ExecutionMode>;
+struct AggregationTestT : public ::testing::TestWithParam<ParamT> {
    AggregationTestT() {
       // col_1 has distinct values 0 to 10_000
       auto& col_1 = rel.attachPODColumn("col_1", IR::UnsignedInt::build(8));
@@ -43,14 +63,17 @@ struct AggregationTestT : ::testing::TestWithParam<PipelineExecutor::ExecutionMo
    PipelineDAG dag;
 };
 
-// SELECT col_1, count(col_2) FROM t GROUP BY col_1
+// SELECT col_1, AGG_FCT1(col_2), AGG_FCT2(col_2), ..., AGG_FCT(col_3) FROM t GROUP BY col_1
+// With AGG_FCT in {count, sum, avg}.
 TEST_P(AggregationTestT, simple_count) {
    // Set up the query.
-   std::vector<AggregateFunctions::Description> agg_fct{{
-                                                           .agg_iu = *iu_col_2,
-                                                           .code = AggregateFunctions::Opcode::Count,
-                                                           .distinct = false,
-                                                        }};
+   std::vector<AggregateFunctions::Description> agg_fct;
+   for (auto opcode : std::get<0>(GetParam())) {
+      agg_fct.push_back({
+         .agg_iu = *iu_col_2,
+         .code = opcode,
+      });
+   }
    std::vector<RelAlgOpPtr> children;
    children.push_back(std::move(*scan));
    Aggregation agg({std::move(children)}, "aggregator", std::vector<const IU*>{iu_col_1}, std::move(agg_fct));
@@ -58,28 +81,34 @@ TEST_P(AggregationTestT, simple_count) {
    // Count the number of result rows, counting both output columns separately.
    // The aggregation should produce 10k rows.
    dag.getPipelines()[1]->attachSuboperator(CountingSink::build(*agg.getOutput()[0], [](size_t count) {
-     EXPECT_EQ(count, 10000);
+      EXPECT_EQ(count, 10000);
    }));
    dag.getPipelines()[1]->attachSuboperator(CountingSink::build(*agg.getOutput()[1], [](size_t count) {
-     EXPECT_EQ(count, 10000);
+      EXPECT_EQ(count, 10000);
    }));
    ASSERT_EQ(dag.getPipelines().size(), 2);
    // Run the query.
-   QueryExecutor::runQuery(dag, GetParam(), "agg_q_1");
-}
-
-// SELECT col_1, sum(col_2) FROM t GROUP BY col_1
-TEST_P(AggregationTestT, simple_sum) {
+   QueryExecutor::runQuery(dag, std::get<1>(GetParam()), buildTestCaseName(std::get<0>(GetParam())));
 }
 
 INSTANTIATE_TEST_CASE_P(
    AggregationTest,
    AggregationTestT,
-   ::testing::Values(
-      PipelineExecutor::ExecutionMode::Fused,
-      PipelineExecutor::ExecutionMode::Interpreted,
-      PipelineExecutor::ExecutionMode::Hybrid));
+   ::testing::Combine(
+      ::testing::Values(OpcodeVec{Opcode::Count},
+                        OpcodeVec{Opcode::Sum},
+                        OpcodeVec{Opcode::Avg},
+                        OpcodeVec{Opcode::Sum, Opcode::Count},
+                        OpcodeVec{Opcode::Avg, Opcode::Sum, Opcode::Count}),
+      ::testing::Values(
+         PipelineExecutor::ExecutionMode::Fused,
+         PipelineExecutor::ExecutionMode::Interpreted,
+         PipelineExecutor::ExecutionMode::Hybrid)
+      ),
+   [](const ::testing::TestParamInfo<ParamT>& info) -> std::string {
+      std::string opcode_names = buildTestCaseName(std::get<0>(info.param));
+      return  opcode_names + "_" + std::to_string(static_cast<int>(std::get<1>(info.param)));
+   });
 
 }
-
 }

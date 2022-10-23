@@ -1,4 +1,9 @@
-# PipelineDAG 
+# PipelineDAG - Deprecated
+
+This doc is an early design idea for how we could resolve hash collisions in an
+incremental fusion engine.
+We found a much nicer way in the end. Still keeping it in the repo :-) 
+
 This doc gives a quick overview of how we reason about dataflow within InkFuse.
 
 ## A Primer on Suboperators

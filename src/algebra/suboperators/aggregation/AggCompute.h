@@ -25,6 +25,9 @@ struct AggCompute {
 
    virtual std::string id() const = 0;
 
+   /// How many ganules does this aggregate consume?
+   virtual size_t requiredGranules() const { return 1; };
+
    protected:
    /// Type leaving the AggCompute.
    IR::TypeArc type;
