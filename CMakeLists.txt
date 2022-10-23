@@ -66,11 +66,13 @@ set(INCLUDE_H
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/LoopDriver.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/RuntimeParam.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/aggregation/AggCompute.h"
+        "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/aggregation/AggComputeAvg.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/aggregation/AggComputeUnpack.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/aggregation/AggReaderSubop.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/aggregation/AggregatorSubop.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/aggregation/AggState.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/aggregation/AggStateCount.h"
+        "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/aggregation/AggStateSum.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/combinators/IfCombinator.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/expressions/ExpressionHelpers.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/expressions/ExpressionSubop.h"
@@ -145,11 +147,13 @@ set(SRC_CC
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/LoopDriver.cpp"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/Suboperator.cpp"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/aggregation/AggCompute.cpp"
+        "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/aggregation/AggComputeAvg.cpp"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/aggregation/AggComputeUnpack.cpp"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/aggregation/AggReaderSubop.cpp"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/aggregation/AggregatorSubop.cpp"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/aggregation/AggState.cpp"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/aggregation/AggStateCount.cpp"
+        "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/aggregation/AggStateSum.cpp"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/expressions/ExpressionHelpers.cpp"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/expressions/ExpressionSubop.cpp"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/expressions/RuntimeExpressionSubop.cpp"
@@ -204,7 +208,7 @@ set(SRC_CC
         "${CMAKE_SOURCE_DIR}/src/runtime/HashTableRuntime.cpp"
         "${CMAKE_SOURCE_DIR}/src/runtime/HashTables.cpp"
         "${CMAKE_SOURCE_DIR}/src/runtime/MemoryRuntime.cpp"
-        src/common/TPCH.cpp src/common/Helpers.cpp)
+        )
 
 set(TEST_CC
         "${CMAKE_SOURCE_DIR}/test/test_ir.cpp"
@@ -230,7 +234,9 @@ set(TEST_CC
         "${CMAKE_SOURCE_DIR}/test/suboperators/test_tscan_source.cpp"
         "${CMAKE_SOURCE_DIR}/test/tpch/test_ingest.cpp"
         "${CMAKE_SOURCE_DIR}/test/test_fragmentizors.cpp"
-        test/test_storage.cpp test/tpch/test_queries.cpp)
+        "${CMAKE_SOURCE_DIR}/test/test_storage.cpp"
+        "${CMAKE_SOURCE_DIR}/test/tpch/test_queries.cpp"
+        )
 
 set(TOOLS_SRC
         "${CMAKE_SOURCE_DIR}/tools/inkfuse_runner.cc"

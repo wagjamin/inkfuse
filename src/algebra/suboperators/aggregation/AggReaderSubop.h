@@ -8,10 +8,9 @@
 
 namespace inkfuse {
 
-
-
 /// AggReaderSubop computes an aggregate function result based on provided aggregate state.
-struct AggReaderSubop : public TemplatedSuboperator<KeyPackingRuntimeState>, public WithRuntimeParams<KeyPackingRuntimeParams> {
+/// Binary runtime state as some agg functions such as avg require two offsets (sum/count).
+struct AggReaderSubop : public TemplatedSuboperator<KeyPackingRuntimeStateTwo>, public WithRuntimeParams<KeyPackingRuntimeParamsTwo> {
    static SuboperatorArc build(const RelAlgOp* source_, const IU& packed_ptr_iu, const IU& agg_iu, const AggCompute& agg_compute_);
 
    void setUpStateImpl(const ExecutionContext& context) override;

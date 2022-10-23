@@ -33,8 +33,7 @@ void invoke_clang_direct(benchmark::State& state) {
       "/usr/bin/clang-11", "-O3", "-fPIC", "-shared", prog.data(), NULL};
    for (auto _ : state) {
       InterruptableJob interrupt;
-      auto res = Command::run(command.data(), interrupt);
-      assert(!res);
+      Command::run(command.data(), interrupt);
    }
 }
 

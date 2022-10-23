@@ -20,8 +20,8 @@ struct AggReaderSubopTest : public ::testing::TestWithParam<std::tuple<PipelineE
       dag.buildNewPipeline();
       auto& pipe = dag.getCurrentPipeline();
       auto& op = pipe.attachSuboperator(AggReaderSubop::build(nullptr, ius[0], ius[1], unpack));
-      KeyPackingRuntimeParams params;
-      params.offsetSet(IR::UI<2>::build(std::get<1>(GetParam())));
+      KeyPackingRuntimeParamsTwo params;
+      params.offset_1Set(IR::UI<2>::build(std::get<1>(GetParam())));
       static_cast<AggReaderSubop&>(op).attachRuntimeParams(std::move(params));
       PipelineExecutor::ExecutionMode mode = std::get<0>(GetParam());
       repiped = pipe.repipeAll(0, pipe.getSubops().size());

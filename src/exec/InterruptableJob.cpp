@@ -103,7 +103,7 @@ int Command::run(const char* command[], InterruptableJob& interrupt) {
    int exit_code;
    if (subprocess_join(&bash_process, &exit_code) != 0) {
       throw std::runtime_error("Waiting for InterruptableJob failed.");
-   };
+   }
    if (exit_code != 0) {
       // If something went wrong, write out the stdout of the process
       // to our stdout.

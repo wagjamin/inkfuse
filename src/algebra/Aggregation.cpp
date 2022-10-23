@@ -109,11 +109,11 @@ void Aggregation::decay(PipelineDAG& dag) const {
    size_t curr_offset = key_size;
    for (const auto& [agg_iu, agg_state] : granules) {
       // Create the aggregator which will compute the granule.
-      auto& aggregator = curr_pipe.attachSuboperator(AggregatorSubop::build(this, *agg_state, agg_pointer_result, *agg_iu));
+      auto& aggregator = reinterpret_cast<AggregatorSubop&>(curr_pipe.attachSuboperator(AggregatorSubop::build(this, *agg_state, agg_pointer_result, *agg_iu)));
       // Attach the runtime parameter that represents the state offset.
       KeyPackingRuntimeParams param;
       param.offsetSet(IR::UI<2>::build(curr_offset));
-      reinterpret_cast<AggregatorSubop&>(aggregator).attachRuntimeParams(std::move(param));
+      aggregator.attachRuntimeParams(std::move(param));
       // Update the offset - the next aggregation state granule lives next to this one.
       curr_offset += agg_state->getStateSize();
    }
@@ -122,7 +122,6 @@ void Aggregation::decay(PipelineDAG& dag) const {
    auto& read_pipe = dag.buildNewPipeline();
    // First, build a reader on the aggregate hash table returning pointers to the elements.
    read_pipe.attachSuboperator(HashTableSource::build(this, ht_scan_result, &hash_table));
-   auto out_compute = compute.cbegin();
 
    // Produce the readers for the materialized keys.
    for (const auto& out_key_iu : out_key_ius) {
@@ -135,13 +134,16 @@ void Aggregation::decay(PipelineDAG& dag) const {
    }
 
    // Produce the actual operators that computes the aggregate functions.
+   auto out_compute = compute.cbegin();
    for (const auto& out_agg_iu : out_aggregate_ius) {
-      auto& reader = read_pipe.attachSuboperator(AggReaderSubop::build(this, ht_scan_result, out_agg_iu, *out_compute->compute));
+      auto& reader = reinterpret_cast<AggReaderSubop&>(read_pipe.attachSuboperator(AggReaderSubop::build(this, ht_scan_result, out_agg_iu, *out_compute->compute)));
       // Attach the runtime parameter that represents the state offset.
-      KeyPackingRuntimeParams param;
-      // TODO(benjamin) fix offset calculation.
-      param.offsetSet(IR::UI<2>::build(key_size));
-      reinterpret_cast<AggReaderSubop&>(reader).attachRuntimeParams(std::move(param));
+      KeyPackingRuntimeParamsTwo param;
+      param.offset_1Set(IR::UI<2>::build(key_size));
+      if (out_compute->compute->requiredGranules() == 2) {
+         param.offset_2Set(IR::UI<2>::build(key_size));
+      }
+      reader.attachRuntimeParams(std::move(param));
       out_compute++;
    }
 }
