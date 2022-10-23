@@ -12,7 +12,6 @@ PipelineRunner::PipelineRunner(PipelinePtr pipe_, ExecutionContext& context_)
    // ends in an operator with a pseudo-IU. In other words: the last suboperator must have some observabile side-effects.
    assert(pipe->getSubops().back()->isSink() || dynamic_cast<IR::Void*>(pipe->getSubops().back()->getIUs().front()->type.get()));
    fuseChunkSource = (dynamic_cast<const FuseChunkSourceDriver*>(pipe->getSubops()[0].get()) != nullptr);
-   setUpState();
 }
 
 void PipelineRunner::setUpState()
@@ -37,6 +36,11 @@ void PipelineRunner::setUpState()
 
 bool PipelineRunner::runMorsel(bool force_pick)
 {
+   if (!subop_state_set_up) {
+      // If we didn't prepare
+      setUpState();
+      subop_state_set_up = true;
+   }
    assert(prepared && fct);
    size_t morsel_size = 1;
    if (fuseChunkSource || force_pick) {

@@ -17,11 +17,6 @@ struct InterruptableJob;
 struct CompiledRunner final : public PipelineRunner  {
    CompiledRunner(PipelinePtr pipe_, ExecutionContext& ctx_, std::string name = "");
 
-   // TODO Fix interface.
-   void prepare() override {
-      throw std::runtime_error("Not implemented.");
-   };
-
    // Prepare the compiled runner, returns whether compilation finished successfully.
    bool prepare(InterruptableJob& interrupt);
 
