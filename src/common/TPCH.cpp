@@ -125,7 +125,8 @@ RelAlgOpPtr q1(const Schema& schema) {
    // 4. Group by l_returnflag, l_linestatus & compute aggregates.
    std::vector<RelAlgOpPtr> agg_children;
    std::vector<const IU*> group_by{
-      filter_ref.getOutput()[getScanIndex("l_returnflag", cols)]};
+      filter_ref.getOutput()[getScanIndex("l_returnflag", cols)],
+      filter_ref.getOutput()[getScanIndex("l_linestatus", cols)]};
    std::vector<AggregateFunctions::Description> aggregates{
       {*filter_ref.getOutput()[getScanIndex("l_quantity", cols)],
        AggregateFunctions::Opcode::Count}};

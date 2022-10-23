@@ -2,6 +2,7 @@
 #define INKFUSE_PIPELINEEXECUTOR_H
 
 #include "algebra/Pipeline.h"
+#include "exec/InterruptableJob.h"
 #include "exec/runners/PipelineRunner.h"
 #include <map>
 #include <utility>
@@ -31,9 +32,15 @@ struct PipelineExecutor {
    /// @param full_name_ the name of the full compiled binary
    PipelineExecutor(Pipeline& pipe_, ExecutionMode mode_ = ExecutionMode::Hybrid, std::string full_name_ = "");
 
-   ~PipelineExecutor();
+   ~PipelineExecutor() noexcept;
 
    const ExecutionContext& getExecutionContext() const;
+
+   /// Prepare the pipeline. Triggers asynchronous compilation for
+   /// compiled/hybrid mode.
+   /// Does not have to be called before `runPipeline`, but allows kicking
+   /// off asynchronous preparation work.
+   void preparePipeline();
 
    /// Run the full pipeline to completion.
    void runPipeline();
@@ -50,11 +57,9 @@ struct PipelineExecutor {
 
    /// Set up interpreted state in a synchronous way.
    void setUpInterpreted();
-   /// Set up fused state in a synchronous way.
-   void setUpFused();
    /// Set up fused state in an asynchronous way.
    /// Returns a handle to a thread performing asynchronous compilation.
-   std::thread setUpFusedAsync(InterruptableJob& interrupt);
+   std::thread setUpFusedAsync();
    /// Clean up the fuse chunks for a new morsel.
    void cleanUp();
 
@@ -70,10 +75,17 @@ struct PipelineExecutor {
    ExecutionMode mode;
    /// Potential full name of the generated program.
    std::string full_name;
-   /// Was interpreted mode set up succesfully?
-   bool interpreted_set_up = false;
    /// Was fused mode set up successfully? Atomic since this is done asynchronously.
    std::atomic<bool> fused_set_up = false;
+
+   /// Was interpreted mode set up succesfully?
+   bool interpreted_set_up = false;
+
+   /// Compilation interrupt. Allows aborting compilation if interpretation
+   /// is done before the compiled code is ready.
+   InterruptableJob interrupt;
+   /// The background thread performing compilation.
+   std::thread compilation_job;
 };
 
 }

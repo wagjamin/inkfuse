@@ -34,10 +34,8 @@ struct PipelineRunner {
    /// column to write into.
    void prepareForRerun();
 
-   /// Prepare the runner, this can include steps like code generation.
-   virtual void prepare() { prepared = true; };
-
    protected:
+
    /// Set up the state for the given pipeline.
    void setUpState();
 
@@ -54,6 +52,8 @@ struct PipelineRunner {
    bool fuseChunkSource;
    /// Was this runner prepared already?
    bool prepared = false;
+   /// Was the state of the superoperators set up already?
+   bool subop_state_set_up = false;
 };
 
 using PipelineRunnerPtr = std::unique_ptr<PipelineRunner>;

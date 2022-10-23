@@ -12,12 +12,9 @@ PipelineExecutor::PipelineExecutor(Pipeline& pipe_, ExecutionMode mode, std::str
    : pipe(pipe_), context(pipe), mode(mode), full_name(std::move(full_name_)) {
    assert(pipe.getSubops()[0]->isSource());
    assert(pipe.getSubops().back()->isSink());
-   for (const auto& op: pipe.getSubops()) {
-      op->setUpState(context);
-   }
 }
 
-PipelineExecutor::~PipelineExecutor() {
+PipelineExecutor::~PipelineExecutor() noexcept {
    for (auto& op : pipe.getSubops()) {
       op->tearDownState();
    }
@@ -27,20 +24,38 @@ const ExecutionContext& PipelineExecutor::getExecutionContext() const {
    return context;
 }
 
+void PipelineExecutor::preparePipeline()
+{
+   if (mode == ExecutionMode::Hybrid || mode == ExecutionMode::Interpreted) {
+      if (!interpreted_set_up) {
+         // Set up interpreted first to avoid races in parallel setup.
+         setUpInterpreted();
+         interpreted_set_up = true;
+      }
+   }
+   if (mode == ExecutionMode::Hybrid || mode == ExecutionMode::Fused) {
+      if (!fused_set_up && !compilation_job.joinable()) {
+         // Prepare asynchronous compilation on a background thread.
+         compilation_job = setUpFusedAsync();
+      }
+   }
+}
+
 void PipelineExecutor::runPipeline() {
+   // First prepare the pipeline.
+   preparePipeline();
    // Scope guard for memory context and flags.
    ExecutionContext::RuntimeGuard guard{context};
    if (mode == ExecutionMode::Fused) {
+      if (compilation_job.joinable()) {
+         // For compiled execution we need to wait for the compiled code
+         // to be ready.
+         compilation_job.join();
+      }
       while (runFusedMorsel()) {}
    } else if (mode == ExecutionMode::Interpreted) {
       while (runInterpretedMorsel()) {}
    } else {
-      // Set up interpreted first to avoid races in parallel setup.
-      setUpInterpreted();
-      // Now we can happily compile in the background. Note that we need to cancel compilation if
-      // interpretation finishes before compilation is done.
-      InterruptableJob compilation_interrupt;
-      auto compiled_job = setUpFusedAsync(compilation_interrupt);
       bool fused_ready = false;
       bool terminate = false;
       while (!fused_ready && !terminate) {
@@ -52,12 +67,16 @@ void PipelineExecutor::runPipeline() {
          terminate = !runFusedMorsel();
       }
       // Stop the backing compilation job (if not finished) and clean up.
-      compilation_interrupt.interrupt();
-      compiled_job.join();
+      interrupt.interrupt();
+      compilation_job.join();
    }
 }
 
 bool PipelineExecutor::runMorsel() {
+   preparePipeline();
+   if (compilation_job.joinable()) {
+      compilation_job.join();
+   }
    // Scope guard for memory context and flags.
    ExecutionContext::RuntimeGuard guard{context};
    if (mode == ExecutionMode::Fused || (mode == ExecutionMode::Hybrid)) {
@@ -86,13 +105,11 @@ void PipelineExecutor::setUpInterpreted() {
       if (!op.outgoingStrongLinks() && !isFuseChunkOp(&op)) {
          // Only operators without outgoing strong links have to be interpreted.
          interpreters.push_back(std::make_unique<InterpretedRunner>(pipe, k, context));
-         interpreters.back()->prepare();
       }
    }
-   interpreted_set_up = true;
 }
 
-std::thread PipelineExecutor::setUpFusedAsync(InterruptableJob& interrupt)
+std::thread PipelineExecutor::setUpFusedAsync()
 {
    return std::thread([&]() {
      // Set up runner.
@@ -107,13 +124,6 @@ std::thread PipelineExecutor::setUpFusedAsync(InterruptableJob& interrupt)
    });
 }
 
-void PipelineExecutor::setUpFused() {
-   // We go through the asynchronous interface but never cancel.
-   InterruptableJob compilation_interrupt;
-   auto thread = setUpFusedAsync(compilation_interrupt);
-   thread.join();
-}
-
 void PipelineExecutor::cleanUp() {
    context.clear();
    // Reset the restart flag to have a clean slate for the next morsel.
@@ -121,10 +131,7 @@ void PipelineExecutor::cleanUp() {
 }
 
 bool PipelineExecutor::runFusedMorsel() {
-   if (!fused_set_up) {
-      setUpFused();
-      while(!fused_set_up.load()) {}
-   }
+   assert(fused_set_up);
    // Run the whole compiled executor.
    if (compiled.at({0, pipe.getSubops().size()})->runMorsel(true)) {
       cleanUp();
@@ -134,10 +141,6 @@ bool PipelineExecutor::runFusedMorsel() {
 }
 
 bool PipelineExecutor::runInterpretedMorsel() {
-   if (!interpreted_set_up) {
-      setUpInterpreted();
-   }
-
    // Run a morsel and retry it if the `restart_flag` gets set to true.
    // This is needed to defend against e.g. hash table resizes without
    // massively complicating the generated code. 

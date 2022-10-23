@@ -34,8 +34,7 @@ TEST_P(TPCHQueriesTestT, q1) {
    root->decay(dag);
    dag.getCurrentPipeline().attachSuboperator(
       CountingSink::build(*root->getOutput()[0], [](size_t count){
-         // TODO(Benjamin) grouping by the wrong thing atm
-         EXPECT_EQ(count, 3);
+         EXPECT_EQ(count, 4);
       })
       );
    QueryExecutor::runQuery(dag, GetParam(), "q1");

@@ -14,6 +14,7 @@ InterpretedRunner::InterpretedRunner(const Pipeline& backing_pipeline, size_t id
    if (!fct) {
       throw std::runtime_error("No fragment " + fragment_id + " found for interpreted runner.");
    }
+   prepared = true;
 }
 
 // static
