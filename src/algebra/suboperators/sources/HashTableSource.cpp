@@ -23,7 +23,7 @@ SuboperatorArc HashTableSource::build(const RelAlgOp* source, const IU& produced
    return std::unique_ptr<HashTableSource>{new HashTableSource(source, produced_iu, hash_table_)};
 }
 
-bool HashTableSource::pickMorsel() {
+size_t HashTableSource::pickMorsel() {
    if (state->it_ptr_end == nullptr) {
       // The last morsel went until the hash table end. We are done.
       return false;
@@ -32,10 +32,12 @@ bool HashTableSource::pickMorsel() {
    state->it_ptr_start = state->it_ptr_end;
    state->it_idx_start = state->it_idx_end;
    // Advance the end iterator by one morsel.
-   for (size_t k = 0; k < DEFAULT_CHUNK_SIZE && (state->it_ptr_end != nullptr); ++k) {
+   size_t entries_found = 0;
+   while (entries_found < DEFAULT_CHUNK_SIZE && (state->it_ptr_end != nullptr)) {
       hash_table->iteratorAdvance(&state->it_ptr_end, &state->it_idx_end);
+      entries_found++;
    }
-   return true;
+   return entries_found;
 }
 
 void HashTableSource::open(CompilationContext& context) {

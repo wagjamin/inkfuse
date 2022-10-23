@@ -1,5 +1,6 @@
 #include "PipelineRunner.h"
 #include "algebra/suboperators/sources/FuseChunkSource.h"
+#include "algebra/suboperators/row_layout/KeyPackerSubop.h"
 
 namespace inkfuse {
 
@@ -37,15 +38,27 @@ void PipelineRunner::setUpState()
 bool PipelineRunner::runMorsel(bool force_pick)
 {
    assert(prepared && fct);
-   bool pick_result = true;
+   size_t morsel_size = 1;
    if (fuseChunkSource || force_pick) {
-      // If we are driven by a fuse chunk source or are forced to pick, we have to.
-      pick_result = pipe->suboperators[0]->pickMorsel();
+      // If we are driven by a fuse chunk source or are forced to pick, we have to
+      // pick a morsel.
+      morsel_size = pipe->suboperators[0]->pickMorsel();
+      // FIXME - HACKFIX - Tread With Caution
+      // It could be that we provide scratch pad IUs within this pipeline.
+      // As these are never officially produced by an expression, we need
+      // to make sure their sizes are set up properly.
+      for (const auto& subop: pipe->getSubops()) {
+         if (dynamic_cast<KeyPackerSubop*>(subop.get())) {
+            assert(subop->getSourceIUs().size() == 2);
+            const IU* scratch_pad_iu = subop->getSourceIUs()[1];
+            context.getColumn(*scratch_pad_iu).size = morsel_size;
+         }
+      }
    }
-   if (pick_result) {
+   if (morsel_size) {
       fct(states.data());
    }
-   return pick_result;
+   return morsel_size;
 }
 
 void PipelineRunner::prepareForRerun() {

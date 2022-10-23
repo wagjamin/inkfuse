@@ -121,7 +121,6 @@ void HashTableSimpleKey::iteratorAdvance(char** it_data, size_t* it_idx)
    }
 }
 
-
 size_t HashTableSimpleKey::size()
 {
    return state.inserted;
