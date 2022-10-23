@@ -36,7 +36,7 @@ void PipelineRunner::setUpState()
 
 bool PipelineRunner::runMorsel(bool force_pick)
 {
-   assert(prepared);
+   assert(prepared && fct);
    bool pick_result = true;
    if (fuseChunkSource || force_pick) {
       // If we are driven by a fuse chunk source or are forced to pick, we have to.
@@ -51,7 +51,7 @@ bool PipelineRunner::runMorsel(bool force_pick)
 void PipelineRunner::prepareForRerun() {
    // When re-running a morsel, we need to clear the sinks from any intermediate "bad" state.
    // The previous (failed) run of the morsel could have written partial data into the output
-   // column taht now needs to get purged.
+   // column that now needs to get purged.
    for (const auto& subop: pipe->getSubops()) {
       if (subop->isSink()) {
          for (const IU* sinked_iu: subop->getSourceIUs()) {
