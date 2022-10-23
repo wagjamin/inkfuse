@@ -12,7 +12,7 @@ struct FuseChunkSourceDriver final : public LoopDriver {
    static std::unique_ptr<FuseChunkSourceDriver> build();
 
    /// Pick then next set of tuples from the table scan up to the maximum chunk size.
-   bool pickMorsel() override;
+   size_t pickMorsel() override;
 
    std::string id() const override;
 

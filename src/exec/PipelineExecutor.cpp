@@ -142,7 +142,7 @@ bool PipelineExecutor::runInterpretedMorsel() {
    // This is needed to defend against e.g. hash table resizes without
    // massively complicating the generated code. 
    auto runMorselWithRetry = [&](PipelineRunner& runner, bool force_pick) {
-      // The resart flag was installed by the current context in `runPipeline` or `runMorsel`.
+      // The restart flag was installed by the current context in `runPipeline` or `runMorsel`.
       bool& restart_flag = ExecutionContext::getInstalledRestartFlag();
       assert(!restart_flag);
 

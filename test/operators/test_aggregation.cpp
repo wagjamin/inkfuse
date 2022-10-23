@@ -118,8 +118,7 @@ TEST_P(AggregationTestT, two_keys) {
    // The aggregation should produce 10k rows.
    for (const IU* out : agg.getOutput()) {
       dag.getPipelines()[1]->attachSuboperator(CountingSink::build(*out, [](size_t count) {
-        // FIXME Currently intermediate morsel sizes are broken.
-        // EXPECT_EQ(count, 10000);
+        EXPECT_EQ(count, 10000);
       }));
    }
    ASSERT_EQ(dag.getPipelines().size(), 2);

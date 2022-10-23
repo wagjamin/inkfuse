@@ -88,7 +88,8 @@ struct Suboperator {
    /// Get a raw pointer to the state of this operator.
    virtual void* accessState() const { return nullptr; };
    /// Pick a morsel of work. Only relevant for source operators.
-   virtual bool pickMorsel() { return true; }
+   /// Returns the size of the picked morsel - or 0 if picking was unsuccessful.
+   virtual size_t pickMorsel() { throw std::runtime_error("Operator does not support picking morsels"); }
 
    /// Build a unique identifier for this suboperator (unique given the parameter set).
    /// This is neded to effectively use the fragment cache during vectorized interpretation.

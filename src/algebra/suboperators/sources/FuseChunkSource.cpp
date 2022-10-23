@@ -10,13 +10,13 @@ std::unique_ptr<FuseChunkSourceDriver> FuseChunkSourceDriver::build() {
 FuseChunkSourceDriver::FuseChunkSourceDriver() : LoopDriver(nullptr) {
 }
 
-bool FuseChunkSourceDriver::pickMorsel() {
+size_t FuseChunkSourceDriver::pickMorsel() {
    assert(col);
    state->start = 0;
    state->end = col->size;
    // We can always pick a morsel for a fuse chunk. The actual execution is responsible for making
    // sure that pickMorsel for fuse chunks is invoked at the right times.
-   return true;
+   return col->size;
 }
 
 std::string FuseChunkSourceDriver::id() const {
