@@ -22,7 +22,7 @@ struct Aggregation : public RelAlgOp {
    struct PlannedAggCompute {
       /// The actual computation.
       AggComputePtr compute;
-      /// Granule offset of the arguments in the backing `granules` vector.
+      /// Offsets of the granules within the packed hash table payload.
       std::vector<size_t> granule_offsets;
    };
 
@@ -38,6 +38,9 @@ struct Aggregation : public RelAlgOp {
    std::list<IU> out_aggregate_ius;
    /// Void-typed pseudo-IUs that connect the key packing operators with the hash table insert. 
    std::list<IU> pseudo_ius;
+   /// Char[]-typed IU to represent the optional packed key of the hash table.
+   /// Need an optional as we need to plan the key layout before we can initialize it.
+   std::optional<IU> packed_ht_key;
    /// Char*-typed IU to get the result of a hash table lookup/insert.
    IU agg_pointer_result;
    /// Char*-typed IU produced by reading from the hash table.

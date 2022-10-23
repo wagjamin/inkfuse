@@ -18,6 +18,8 @@ struct InterpretedRunner final : public PipelineRunner {
    private:
    /// Get the properly repiped pipeline for the actual execution.
    static PipelinePtr getRepiped(const Pipeline& backing_pipeline, size_t idx);
+   /// The fragment id - mainly useful for debugging purposes.
+   std::string fragment_id;
 };
 
 }

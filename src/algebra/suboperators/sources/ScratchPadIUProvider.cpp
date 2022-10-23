@@ -3,11 +3,11 @@
 
 namespace inkfuse {
 
-SuboperatorArc ScratchPadIUProvider::build(RelAlgOp* source_, const IU& provided_iu) {
+SuboperatorArc ScratchPadIUProvider::build(const RelAlgOp* source_, const IU& provided_iu) {
    return SuboperatorArc{new ScratchPadIUProvider(source_, provided_iu)};
 }
 
-ScratchPadIUProvider::ScratchPadIUProvider(RelAlgOp* source_, const IU& provided_iu)
+ScratchPadIUProvider::ScratchPadIUProvider(const RelAlgOp* source_, const IU& provided_iu)
    : TemplatedSuboperator<EmptyState>(source_, {&provided_iu}, {}) {}
 
 void ScratchPadIUProvider::open(CompilationContext& context) {

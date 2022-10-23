@@ -11,7 +11,7 @@ struct RelAlgOp;
 /// in the context of a compiled pipeline.
 struct ScratchPadIUProvider : public TemplatedSuboperator<EmptyState> {
 
-   static SuboperatorArc build(RelAlgOp* source_, const IU& provided_iu);
+   static SuboperatorArc build(const RelAlgOp* source_, const IU& provided_iu);
 
    /// The ScratchPadIUProvider does not have to be interpreted.
    /// For operators which consume this in an interpreted context,
@@ -31,7 +31,7 @@ struct ScratchPadIUProvider : public TemplatedSuboperator<EmptyState> {
    void close(CompilationContext& context) override {};
 
    private:
-   ScratchPadIUProvider(RelAlgOp* source_, const IU& provided_iu);
+   ScratchPadIUProvider(const RelAlgOp* source_, const IU& provided_iu);
 
 };
 

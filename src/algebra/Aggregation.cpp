@@ -7,6 +7,7 @@
 #include "algebra/suboperators/expressions/ExpressionSubop.h"
 #include "algebra/suboperators/row_layout/KeyUnpackerSubop.h"
 #include "algebra/suboperators/sources/HashTableSource.h"
+#include "algebra/suboperators/sources/ScratchPadIUProvider.h"
 #include <map>
 
 namespace inkfuse {
@@ -14,10 +15,6 @@ namespace inkfuse {
 Aggregation::Aggregation(std::vector<std::unique_ptr<RelAlgOp>> children_, std::string op_name_, std::vector<const IU*> group_by_, std::vector<AggregateFunctions::Description> aggregates_)
    : RelAlgOp(std::move(children_), std::move(op_name_)), group_by(std::move(group_by_)),
      agg_pointer_result(IR::Pointer::build(IR::Char::build())), ht_scan_result(IR::Pointer::build(IR::Char::build())) {
-   if (group_by.size() != 1) {
-      // TODO(benjamin): Support aggregation by more keys and empty keys.
-      throw std::runtime_error("Only single-column aggregation supported at the moment.");
-   }
    plan(std::move(aggregates_));
 }
 
@@ -27,38 +24,47 @@ std::unique_ptr<Aggregation> Aggregation::build(std::vector<std::unique_ptr<RelA
 }
 
 void Aggregation::plan(std::vector<AggregateFunctions::Description> description) {
-   if (group_by.size() <= 1) {
-      key_size += group_by.front()->type->numBytes();
-   } else {
-      // TODO(benjamin): Multi-agg
-   }
-
-   for (const auto& out_key_iu : group_by) {
-      const auto& out = out_key_ius.emplace_back(out_key_iu->type);
+   // We pack the aggregation keys first.
+   for (const IU* key: group_by) {
+      key_size += key->type->numBytes();
+      const auto& out = out_key_ius.emplace_back(key->type);
       output_ius.push_back(&out);
+      if (group_by.size() != 1) {
+         // If there is more than one key, we will need a pseudo IU later
+         // to indicate that key packing needs to happen before the hash table insert.
+         pseudo_ius.emplace_back(IR::Void::build());
+      }
    }
+   // We know the key size - so we can now create the properly sized byte array.
+   packed_ht_key.emplace(IR::ByteArray::build(key_size));
 
-   // TODO(benjamin): Easy performance improvements:
+   // Basic planning of the aggregate key. There are some easy performance improvements:
    // - Compute granule layout ordered by IU
    // - Proper aligned state
    // The granules on a given IU that were computed already mapping to the offset in the 'granules' vector.
+
+   // Mapping from the granule ID to its payload state offset within the payload.
    std::map<std::pair<const IU*, std::string>, size_t> computed_granules;
    for (auto& func : description) {
       // Get the suboperators that make up this aggregate function.
       auto ops = AggregateFunctions::lookupSubops(func);
       std::vector<size_t> granule_offsets;
-      granule_offsets.reserve(granules.size());
+      granule_offsets.reserve(ops.agg_reader->requiredGranules());
       for (auto& granule : ops.granules) {
          std::pair<const IU*, std::string> granule_id = {&func.agg_iu, granule->id()};
          if (computed_granules.count(granule_id) == 0) {
             // First time we see this granule, add it to the total set of granules.
-            payload_size += granule->getStateSize();
+            size_t granule_state_size = granule->getStateSize();
             granules.emplace_back(&func.agg_iu, std::move(granule));
-            computed_granules.emplace(granule_id, granules.size() - 1);
+            // Offset within the packed payload is the current offset.
+            computed_granules.emplace(granule_id, payload_size);
+            granule_offsets.push_back(payload_size);
+            // Increase payload size by the state size of the fresh granule.
+            payload_size += granule_state_size;
          } else {
             // We already computed this granule, reuse it.
-            auto idx = computed_granules.at(granule_id);
-            granule_offsets.push_back(idx);
+            auto offset = computed_granules.at(granule_id);
+            granule_offsets.push_back(offset);
          }
       }
       // Construct plan for this aggregation.
@@ -92,17 +98,36 @@ void Aggregation::decay(PipelineDAG& dag) const {
 
    auto& curr_pipe = dag.getCurrentPipeline();
    // Step 1: Pack the aggregation key (if it needs to be packed)
-   const IU* key_iu;
-   if (group_by.size() > 1) {
-      // Pack the aggregation key.
-      // TODO(benjamin)
-   } else {
+   const IU* packed_key_iu;
+   if (group_by.size() == 1) {
       // There is only a single key, we can use that directly.
-      key_iu = group_by[0];
+      packed_key_iu = group_by[0];
+   } else {
+      // We have to pack the aggregation key. First provide a scratch pad IU.
+      curr_pipe.attachSuboperator(ScratchPadIUProvider::build(this, *packed_ht_key));
+
+      // Now pack the key into the provided scratch pad IU.
+      size_t key_offset = 0;
+      auto pseudo = pseudo_ius.begin();
+      for (const auto& key: group_by) {
+         auto& unpacker = curr_pipe.attachSuboperator(KeyPackerSubop::build(this, *key, *packed_ht_key, {&(*pseudo)}));
+         // Attach the runtime parameter that represents the state offset.
+         KeyPackingRuntimeParams param;
+         param.offsetSet(IR::UI<2>::build(key_offset));
+         reinterpret_cast<KeyPackerSubop&>(unpacker).attachRuntimeParams(std::move(param));
+         // Update the key offset by the size of the IU.
+         key_offset += key->type->numBytes();
+         pseudo++;
+      }
+      packed_key_iu = &packed_ht_key.value();
    }
 
    // Step 2: Lookup or insert the key in the aggregation hash table
-   auto& ht_lookup_subop = curr_pipe.attachSuboperator(RuntimeFunctionSubop::htLookupOrInsert(this, agg_pointer_result, *key_iu, {}, &hash_table));
+   std::vector<const IU*> pseudo;
+   for (const auto& pseudo_iu: pseudo_ius) {
+      pseudo.push_back(&pseudo_iu);
+   }
+   auto& ht_lookup_subop = curr_pipe.attachSuboperator(RuntimeFunctionSubop::htLookupOrInsert(this, agg_pointer_result, *packed_key_iu, std::move(pseudo), &hash_table));
 
    // Step 3: Update the aggregation state.
    // The current offset into the serialized aggregate state. The aggregate state starts after the serialized key.
@@ -124,13 +149,15 @@ void Aggregation::decay(PipelineDAG& dag) const {
    read_pipe.attachSuboperator(HashTableSource::build(this, ht_scan_result, &hash_table));
 
    // Produce the readers for the materialized keys.
+   size_t key_offset = 0;
    for (const auto& out_key_iu : out_key_ius) {
       auto& unpacker = read_pipe.attachSuboperator(KeyUnpackerSubop::build(this, ht_scan_result, out_key_iu));
       // Attach the runtime parameter that represents the state offset.
       KeyPackingRuntimeParams param;
-      // TODO(benjamin) fix offset calculation.
-      param.offsetSet(IR::UI<2>::build(0));
+      param.offsetSet(IR::UI<2>::build(key_offset));
       reinterpret_cast<KeyUnpackerSubop&>(unpacker).attachRuntimeParams(std::move(param));
+      // Update the key offset by the size of the IU.
+      key_offset += out_key_iu.type->numBytes();
    }
 
    // Produce the actual operators that computes the aggregate functions.
@@ -138,10 +165,12 @@ void Aggregation::decay(PipelineDAG& dag) const {
    for (const auto& out_agg_iu : out_aggregate_ius) {
       auto& reader = reinterpret_cast<AggReaderSubop&>(read_pipe.attachSuboperator(AggReaderSubop::build(this, ht_scan_result, out_agg_iu, *out_compute->compute)));
       // Attach the runtime parameter that represents the state offset.
-      KeyPackingRuntimeParamsTwo param;
-      param.offset_1Set(IR::UI<2>::build(key_size));
+      const auto& g_offsets = out_compute->granule_offsets;
+         KeyPackingRuntimeParamsTwo param;
+      param.offset_1Set(IR::UI<2>::build(key_size + g_offsets[0]));
       if (out_compute->compute->requiredGranules() == 2) {
-         param.offset_2Set(IR::UI<2>::build(key_size));
+         assert(out_compute->granule_offsets.size() == 2);
+         param.offset_2Set(IR::UI<2>::build(key_size + g_offsets[1]));
       }
       reader.attachRuntimeParams(std::move(param));
       out_compute++;
