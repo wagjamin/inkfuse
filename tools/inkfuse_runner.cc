@@ -1,138 +1,141 @@
-#include "algebra/ExpressionOp.h"
-#include "algebra/TableScan.h"
-#include "algebra/suboperators/sinks/CountingSink.h"
-#include "exec/ExecutionContext.h"
-#include "exec/PipelineExecutor.h"
+#include "algebra/Print.h"
+#include "common/Helpers.h"
+#include "common/TPCH.h"
+#include "exec/QueryExecutor.h"
 #include "gflags/gflags.h"
 #include "interpreter/FragmentCache.h"
 #include "storage/Relation.h"
 #include <chrono>
 #include <deque>
 #include <iostream>
-#include <random>
+#include <fstream>
 #include <vector>
 
 namespace {
 
-} // namespace
-
 using namespace inkfuse;
 
-DEFINE_uint64(depth, 10, "Size of the expression tree");
-DEFINE_double(sf, 1, "Data in the underlying three columns - in GB");
+const std::string help = R"(inkfuse runner commands:
+help - show this message
+exit - exit the program
+show - show what scale factors are loaded
+load sf<X> - load TPC-H data in "/sf<X>"
+run q<N> on sf<X> [mode <ExecMode>] - run TPC-H query <N> on sf<X>
+                                      optional ExecMode in {Compiled, Interpreted, Hybrid}
+                                      default fused
+)";
 
-// InkFuse main binary to run queries.
-// We are running on table T[a: int64_t, b: int64_t, c: uint32_t]
-// Query: SELECT c:int64_t * (a + b) + c:int64_t * c:int64_t (a + b + c) + ...  FROM T
+std::vector<std::string> splitCommand(const std::string& command) {
+   std::vector<std::string> elems;
+   std::istringstream input(command);
+   std::string item;
+   while (std::getline(input, item, ' ')) {
+      elems.push_back(item);
+   }
+   return elems;
+}
+
+void runQuery(const std::string& q_file, std::unique_ptr<Print> root, PipelineExecutor::ExecutionMode mode) {
+   std::ifstream input(q_file);
+   if (input.is_open()) {
+      std::stringstream str;
+      str << input.rdbuf();
+      std::cout << "Running query\n"
+                << str.str() << std::endl;
+   }
+   root->printer->setOstream(std::cout);
+   PipelineDAG dag;
+   root->decay(dag);
+   auto start = std::chrono::steady_clock::now();
+   QueryExecutor::runQuery(dag, mode, "q1");
+   auto stop = std::chrono::steady_clock::now();
+   std::cout << "Produced " << root->printer->num_rows << " rows after ";
+   std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms\n";
+}
+
+} // namespace
+
+// InkFuse main binary to have some fun with queries.
 int main(int argc, char* argv[]) {
-   gflags::SetUsageMessage("inkfuse_runner --depth <depth of expression tree> --sf <sf>");
+   gflags::SetUsageMessage("inkfuse_runner");
    gflags::ParseCommandLineFlags(&argc, &argv, true);
 
-   uint64_t depth = FLAGS_depth;
-   // double sf = FLAGS_sf;
+   std::cout << "Starting Up ..." << std::endl;
 
    // Populate the fragment cache.
    FragmentCache::instance();
 
-   std::vector<double> sfs{-5, -4, -3, -2, -1, 0, 1};
-   for (auto ind : sfs) {
-      auto sf = std::pow(10, ind);
-      // Rows to get the required data size.
-      uint64_t rows = sf * (1ull << 30) / 20;
+   std::cout << "Fragments Loaded - Ready to Go\n"
+             << std::endl;
 
-      // Set up backing storage.
-      StoredRelation rel;
-      std::vector<uint64_t> max{20000, 4000, 10};
-      std::vector<std::string> colnames{"a", "b", "c"};
-      for (size_t col_id = 0; col_id < colnames.size(); ++col_id) {
-         // Create column.
-         auto& col = rel.attachPODColumn(colnames[col_id], IR::SignedInt::build(8));
-         auto& storage = col.getStorage();
-         storage.resize(8 * rows);
+   // Only ingest data once and share it across tests.
+   std::unordered_map<std::string, Schema> loaded;
 
-         // And fill it up.
-         // std::random_device rd;
-         std::mt19937 gen(41088322222);
-         std::uniform_int_distribution<> distr(0, max[col_id]);
-         for (uint64_t k = 0; k < rows; ++k) {
-            reinterpret_cast<int64_t*>(storage.data())[k] = distr(gen);
+   for (std::string command; std::getline(std::cin, command);) {
+      std::vector<std::string> split = splitCommand(command);
+      try {
+         if (split.empty()) {
+            continue;
+         } else if (split[0] == "exit") {
+            break;
+         } else if (split[0] == "help") {
+            std::cout << help << std::endl;
+         } else if (split[0] == "show") {
+            if (loaded.empty()) {
+               std::cout << "No data loaded" << std::endl;
+            } else {
+               std::cout << "Loaded the following scale factors:" << std::endl;
+               for (const auto& [name, _] : loaded) {
+                  std::cout << name << std::endl;
+               }
+            }
+         } else if (split[0] == "load") {
+            if (split.size() < 2) {
+               std::cout << "invoke 'load' as 'load sf<X>'\n"
+                         << std::endl;
+            } else {
+               std::cout << "Loading data at " << split[1] << std::endl;
+               auto& schema = loaded[split[1]];
+               auto start = std::chrono::steady_clock::now();
+               schema = tpch::getTPCHSchema();
+               helpers::loadDataInto(schema, split[1], true);
+               auto end = std::chrono::steady_clock::now();
+               std::cout << "Loaded after " << std::chrono::duration_cast<std::chrono::seconds>(end - start).count() << " seconds" << std::endl;
+            }
+         } else if (split[0] == "run") {
+            auto mode = PipelineExecutor::ExecutionMode::Hybrid;
+            if (split.size() < 4) {
+               std::cout << "invoke 'run' as 'run q<N> on sf<X> [mode {Compiled|Interpreted|Hybrid}]'\n"
+                         << std::endl;
+            } else {
+               if (split.size() >= 6 && split[4] == "mode") {
+                  if (split[5] == "Compiled") {
+                     mode = PipelineExecutor::ExecutionMode::Fused;
+                  } else if (split[5] == "Interpreted") {
+                     mode = PipelineExecutor::ExecutionMode::Interpreted;
+                  } else if (split[5] == "Hybrid") {
+                     mode = PipelineExecutor::ExecutionMode::Hybrid;
+                  } else {
+                     std::cout << "Unrecognized execution mode - we only support {Compiled|Interpreted|Hybrid}\n" << std::endl;
+                     break;
+                  }
+               }
+               const Schema& schema = loaded.at(split[3]);
+               if (split[1] == "q1") {
+                  auto q = tpch::q1(schema);
+                  runQuery("q/1.sql", std::move(q), mode);
+               } else {
+                  std::cout << "Unrecognized query - we only support {q1}";
+               }
+            }
+         } else {
+            std::cout << "Unknown command - type 'help' to see supported commands" << std::endl;
          }
+      } catch (const std::exception& e) {
+         std::cout << "Command failed with: " << e.what() << std::endl;
       }
-
-      // Set up the expression tree.
-      std::deque<IU> in_ius;
-
-      // Set up the table scan.
-      std::unique_ptr<RelAlgOp> scan = std::make_unique<TableScan>(rel, std::vector<std::string>{"a", "b", "c"}, "tscan");
-      const auto& ius = scan->getOutput();
-      auto in_0 = ius[0];
-      auto in_1 = ius[1];
-      auto in_2 = ius[2];
-
-      // Set up the expression tree.
-      std::vector<ExpressionOp::NodePtr> nodes;
-      nodes.reserve(5);
-      auto c1 = nodes.emplace_back(std::make_unique<ExpressionOp::IURefNode>(in_0)).get();
-      auto c2 = nodes.emplace_back(std::make_unique<ExpressionOp::IURefNode>(in_1)).get();
-      auto c3 = nodes.emplace_back(std::make_unique<ExpressionOp::IURefNode>(in_2)).get();
-      auto c4 = nodes.emplace_back(
-                        std::make_unique<ExpressionOp::ComputeNode>(
-                           ExpressionOp::ComputeNode::Type::Add,
-                           std::vector<ExpressionOp::Node*>{c1, c2}))
-                   .get();
-      auto c5 = nodes.emplace_back(
-                        std::make_unique<ExpressionOp::ComputeNode>(
-                           IR::SignedInt::build(8),
-                           c3))
-                   .get();
-      auto c6 = nodes.emplace_back(std::make_unique<ExpressionOp::ComputeNode>(
-                                      ExpressionOp::ComputeNode::Type::Subtract,
-                                      std::vector<ExpressionOp::Node*>{c4, c5}))
-                   .get();
-      auto c7 = nodes.emplace_back(std::make_unique<ExpressionOp::ComputeNode>(
-                                      ExpressionOp::ComputeNode::Type::Multiply,
-                                      std::vector<ExpressionOp::Node*>{c5, c6}))
-                   .get();
-
-      std::vector<std::unique_ptr<RelAlgOp>> children;
-      children.push_back(std::move(scan));
-
-      ExpressionOp op(
-         std::move(children),
-         "expression_1",
-         std::vector<ExpressionOp::Node*>{c7},
-         std::move(nodes));
-
-      /// Set up the actual pipelines.
-      PipelineDAG dag;
-      dag.buildNewPipeline();
-      op.decay(dag);
-
-      auto& pipe = dag.getCurrentPipeline();
-      auto expression_result_iu = op.getOutput().back();
-      // auto& sink = pipe.attachSuboperator(FuseChunkSink::build(nullptr, *expression_result_iu));
-      auto& sink = pipe.attachSuboperator(CountingSink::build(*expression_result_iu));
-
-      auto runInMode = [&](PipelineExecutor::ExecutionMode mode, std::string readable) {
-         // Get ready for compiled execution.
-         PipelineExecutor exec(pipe, mode, "ExpressionT_exec");
-
-         auto start = std::chrono::steady_clock::now();
-         exec.runPipeline();
-         auto stop = std::chrono::steady_clock::now();
-         auto dur = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count();
-
-         auto state = reinterpret_cast<CountingState*>(sink.accessState());
-         if (state->count != rows) {
-            throw std::runtime_error("Did not calculate expression on all rows.");
-         }
-
-         std::cout << ind << "," << rows << "," << readable << "," << dur << std::endl;
-      };
-
-      runInMode(PipelineExecutor::ExecutionMode::Fused, "Fused");
-      runInMode(PipelineExecutor::ExecutionMode::Interpreted, "Interpreted");
-      runInMode(PipelineExecutor::ExecutionMode::Hybrid, "Hybrid");
+      std::cout << std::endl;
    }
+
    return 0;
 }
