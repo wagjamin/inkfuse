@@ -9,7 +9,7 @@ using Type = ExpressionOp::ComputeNode::Type;
 
 const std::vector<IR::TypeArc> types =
    TypeDecorator()
-      .attachNumeric()
+      .attachTypes()
       .produce();
 
 const std::vector<Type> op_types {
@@ -23,6 +23,8 @@ const std::vector<Type> op_types {
    Type::LessEqual,
    Type::Greater,
    Type::GreaterEqual,
+   Type::And,
+   Type::Or
 };
 }
 

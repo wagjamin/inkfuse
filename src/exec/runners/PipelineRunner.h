@@ -35,7 +35,6 @@ struct PipelineRunner {
    void prepareForRerun();
 
    protected:
-
    /// Set up the state for the given pipeline.
    void setUpState();
 

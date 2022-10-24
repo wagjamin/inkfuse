@@ -364,7 +364,9 @@ void BackendC::compileExpression(const IR::Expr& expr, ScopedWriter::Statement& 
             {IR::ArithmeticExpr::Opcode::Less, "<"},
             {IR::ArithmeticExpr::Opcode::LessEqual, "<="},
             {IR::ArithmeticExpr::Opcode::Greater, ">"},
-            {IR::ArithmeticExpr::Opcode::GreaterEqual, ">"},
+            {IR::ArithmeticExpr::Opcode::GreaterEqual, ">="},
+            {IR::ArithmeticExpr::Opcode::And, "&&"},
+            {IR::ArithmeticExpr::Opcode::Or, "||"},
             {IR::ArithmeticExpr::Opcode::Eq, "=="},
             {IR::ArithmeticExpr::Opcode::Neq, "!="},
          };

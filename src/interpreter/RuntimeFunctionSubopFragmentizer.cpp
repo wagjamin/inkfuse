@@ -28,6 +28,17 @@ RuntimeFunctionSubopFragmentizer::RuntimeFunctionSubopFragmentizer() {
          name = op.id();
       }
    }
+   // Fragmentize no-key hash table lookup/insert. Does not care about
+   // input types at all. The input IU just makes connecting the DAG easier.
+   // We still create a 1-byte input type as that's the only thing that really lets
+   // us guarantee that we don't try to access a fuse chunk out of bounds.
+   {
+      auto& [name, pipe] = pipes.emplace_back();
+      const auto& input = generated_ius.emplace_back(IR::Char::build());
+      const auto& result_ptr = generated_ius.emplace_back(IR::Pointer::build(IR::Char::build()));
+      const auto& op = pipe.attachSuboperator(RuntimeFunctionSubop::htNoKeyLookup(nullptr, result_ptr, input, nullptr));
+      name = op.id();
+   }
 }
 
 }

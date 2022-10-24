@@ -114,6 +114,8 @@ struct ArithmeticExpr : public BinaryExpr {
       Eq,
       Neq,
       Less,
+      And,
+      Or,
       LessEqual,
       Greater,
       GreaterEqual,

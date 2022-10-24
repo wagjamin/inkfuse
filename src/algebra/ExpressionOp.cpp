@@ -21,7 +21,8 @@ IR::TypeArc ExpressionOp::derive(ComputeNode::Type code, const std::vector<IR::T
       ComputeNode::Type::Eq, ComputeNode::Type::Neq, 
       ComputeNode::Type::Less, ComputeNode::Type::LessEqual, 
       ComputeNode::Type::Greater, ComputeNode::Type::GreaterEqual,
-      ComputeNode::Type::StrEquals
+      ComputeNode::Type::StrEquals, ComputeNode::Type::And,
+      ComputeNode::Type::Or
    };
    if (code == ComputeNode::Type::Hash) {
       return IR::UnsignedInt::build(8);

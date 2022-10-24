@@ -14,6 +14,7 @@ namespace inkfuse::tpch {
 
 namespace {
 
+using Node = ExpressionOp::Node;
 using ComputeNode = ExpressionOp::ComputeNode;
 using IURefNode = ExpressionOp::IURefNode;
 
@@ -87,7 +88,7 @@ std::unique_ptr<Print> q1(const Schema& schema) {
    auto filter_expr = ExpressionOp::build(
       std::move(children_filter_expr),
       "shipdate_filter",
-      std::vector<ExpressionOp::Node*>{filter_nodes[1].get()},
+      std::vector<Node*>{filter_nodes[1].get()},
       std::move(filter_nodes));
    auto& filter_expr_ref = *filter_expr;
    assert(filter_expr_ref.getOutput().size() == 1);
@@ -126,20 +127,20 @@ std::unique_ptr<Print> q1(const Schema& schema) {
       filter_ref.getOutput()[getScanIndex("l_extendedprice", cols)]));
    auto mult_simple = agg_nodes.emplace_back(std::make_unique<ComputeNode>(
       ComputeNode::Type::Multiply,
-      std::vector<ExpressionOp::Node*>{one_minus_l_discount, agg_nodes.back().get()}
+      std::vector<Node*>{one_minus_l_discount, agg_nodes.back().get()}
    )).get();
 
    // 3.4 Eval l_extendedprice * (1 - l_discount) * (1 + l_tax)
    auto mult_complex = agg_nodes.emplace_back(std::make_unique<ComputeNode>(
       ComputeNode::Type::Multiply,
-      std::vector<ExpressionOp::Node*>{mult_simple, one_plus_l_tax}
+      std::vector<Node*>{mult_simple, one_plus_l_tax}
    )).get();
 
    // 3.5 Set up the operator.
    auto agg_expr = ExpressionOp::build(
       std::move(children_agg_expr),
       "agg_expr",
-      std::vector<ExpressionOp::Node*>{
+      std::vector<Node*>{
          mult_simple,
          mult_complex
       },
@@ -197,6 +198,125 @@ std::unique_ptr<Print> q1(const Schema& schema) {
    };
    return Print::build(std::move(print_children),
                        std::move(out_ius), std::move(colnames));
+}
+
+std::unique_ptr<Print> q6(const Schema& schema) {
+   // 1. Scan from lineitem.
+   auto& rel = schema.at("lineitem");
+   std::vector<std::string> cols{
+      "l_extendedprice",
+      "l_discount",
+      "l_shipdate",
+      "l_discount",
+      "l_quantity"
+   };
+   auto scan = TableScan::build(*rel, cols, "scan");
+   auto& scan_ref = *scan;
+
+   // 2. Evaluate the filter predicate.
+   std::vector<RelAlgOpPtr> children_scan;
+   children_scan.push_back(std::move(scan));
+   std::vector<ExpressionOp::NodePtr> pred_nodes;
+
+   auto l_shipdate_ref = pred_nodes.emplace_back(std::make_unique<IURefNode>(
+         scan_ref.getOutput()[getScanIndex("l_shipdate", cols)])).get();
+   auto l_discount_ref = pred_nodes.emplace_back(std::make_unique<IURefNode>(
+      scan_ref.getOutput()[getScanIndex("l_discount", cols)])).get();
+   auto l_quantity_ref = pred_nodes.emplace_back(std::make_unique<IURefNode>(
+      scan_ref.getOutput()[getScanIndex("l_quantity", cols)])).get();
+   auto pred_1 = pred_nodes.emplace_back(std::make_unique<ComputeNode>(
+      ComputeNode::Type::LessEqual,
+      IR::DateVal::build(helpers::dateStrToInt("1994-01-01")),
+      l_shipdate_ref)).get();
+   auto pred_2 = pred_nodes.emplace_back(std::make_unique<ComputeNode>(
+      ComputeNode::Type::Greater,
+      IR::DateVal::build(helpers::dateStrToInt("1995-01-01")),
+      l_shipdate_ref)).get();
+   auto pred_3 = pred_nodes.emplace_back(std::make_unique<ComputeNode>(
+      ComputeNode::Type::LessEqual,
+      IR::F8::build(0.06 - 0.01001),
+      l_discount_ref)).get();
+   auto pred_4 = pred_nodes.emplace_back(std::make_unique<ComputeNode>(
+      ComputeNode::Type::GreaterEqual,
+      IR::F8::build(0.06 + 0.01001),
+      l_discount_ref)).get();
+   auto pred_5 = pred_nodes.emplace_back(std::make_unique<ComputeNode>(
+      ComputeNode::Type::Greater,
+      IR::F8::build(24),
+      l_quantity_ref)).get();
+   auto and_1  = pred_nodes.emplace_back(std::make_unique<ComputeNode>(
+      ComputeNode::Type::And,
+      std::vector<Node*>{pred_1, pred_2})).get();
+   auto and_2  = pred_nodes.emplace_back(std::make_unique<ComputeNode>(
+      ComputeNode::Type::And,
+      std::vector<Node*>{pred_3, pred_4})).get();
+   auto and_3  = pred_nodes.emplace_back(std::make_unique<ComputeNode>(
+      ComputeNode::Type::And,
+      std::vector<Node*>{and_1, and_2})).get();
+   auto and_4 = pred_nodes.emplace_back(std::make_unique<ComputeNode>(
+      ComputeNode::Type::And,
+      std::vector<Node*>{and_3, pred_5})).get();
+
+   auto expr_node = ExpressionOp::build(
+      std::move(children_scan),
+      "lineitem_filter",
+      std::vector<Node*>{and_4},
+      std::move(pred_nodes));
+   auto& expr_ref = *expr_node;
+   assert(expr_ref.getOutput().size() == 1);
+
+   // 3. Filter
+   std::vector<RelAlgOpPtr> children_filter;
+   children_filter.push_back(std::move(expr_node));
+   std::vector<const IU*> redefined {
+      scan_ref.getOutput()[getScanIndex("l_extendedprice", cols)],
+      scan_ref.getOutput()[getScanIndex("l_discount", cols)]
+   };
+   auto filter = Filter::build(std::move(children_filter), "filter", std::move(redefined), *expr_ref.getOutput()[0]);
+   auto& filter_ref = *filter;
+   assert(filter->getOutput().size() == 2);
+
+   // 4. Multiply.
+   std::vector<RelAlgOpPtr> children_mult;
+   children_mult.push_back(std::move(filter));
+   std::vector<ExpressionOp::NodePtr> mult_nodes;
+   auto mult_ref_1 = mult_nodes.emplace_back(std::make_unique<IURefNode>(
+      filter_ref.getOutput()[0])).get();
+   auto mult_ref_2 = mult_nodes.emplace_back(std::make_unique<IURefNode>(
+      filter_ref.getOutput()[1])).get();
+   auto mult_node = mult_nodes.emplace_back(std::make_unique<ComputeNode>(
+      ComputeNode::Type::Multiply,
+      std::vector<Node*>{mult_ref_1, mult_ref_2})).get();
+
+   auto mult_expr = ExpressionOp::build(
+      std::move(children_mult),
+      "mult_expr",
+      std::vector<Node*>{mult_node},
+      std::move(mult_nodes));
+   auto& mult_ref = *mult_expr;
+   assert(mult_ref.getOutput().size() == 1);
+
+   // 5. Aggregate
+   std::vector<RelAlgOpPtr> agg_children;
+   agg_children.push_back(std::move(mult_expr));
+   // Don't group by anything on this query.
+   std::vector<const IU*> group_by{};
+   std::vector<AggregateFunctions::Description> aggregates{
+      {*mult_ref.getOutput()[0], AggregateFunctions::Opcode::Sum}};
+   auto agg = Aggregation::build(
+      std::move(agg_children),
+      "agg",
+      std::move(group_by),
+      std::move(aggregates));
+
+   // 6. Print
+   std::vector<const IU*> out_ius {agg->getOutput()[0]};
+   std::vector<std::string> colnames = { "revenue" };
+   std::vector<RelAlgOpPtr> print_children;
+   print_children.push_back(std::move(agg));
+   return Print::build(std::move(print_children),
+                       std::move(out_ius), std::move(colnames));
+
 }
 
 }

@@ -54,6 +54,9 @@ struct HashTableSimpleKey {
    /// Get the current capacity. Mainly used for testing.
    size_t capacity();
 
+   /// Special function if we know this hash table is only ever called with a single key.
+   char* lookupOrInsertSingleKey();
+
    private:
    struct LookupResult {
       char* elem;

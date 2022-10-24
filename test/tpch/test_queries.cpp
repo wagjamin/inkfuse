@@ -8,7 +8,8 @@ namespace inkfuse {
 
 namespace {
 
-class TPCHQueriesTestT : public ::testing::TestWithParam<PipelineExecutor::ExecutionMode> {
+// Parametrized over query-id and execution mode.
+class TPCHQueriesTestT : public ::testing::TestWithParam<std::tuple<std::string, PipelineExecutor::ExecutionMode>> {
    public:
    static void SetUpTestCase() {
       // Only ingest data once and share it across tests.
@@ -28,24 +29,42 @@ class TPCHQueriesTestT : public ::testing::TestWithParam<PipelineExecutor::Execu
 
 Schema* TPCHQueriesTestT::schema = nullptr;
 
-TEST_P(TPCHQueriesTestT, q1) {
-   auto root = tpch::q1(*schema);
+using FunctionT = std::function<std::unique_ptr<Print>(const Schema&)>;
+const std::unordered_map<std::string, FunctionT> generator_map {
+   {"q1", tpch::q1},
+   {"q6", tpch::q6},
+};
+
+std::unordered_map<std::string, size_t> expected_rows {
+   {"q1", 4},
+   {"q6", 1},
+};
+
+TEST_P(TPCHQueriesTestT, run) {
+   std::string test_name = std::get<0>(GetParam());
+   const FunctionT& query_generator = generator_map.at(test_name);
+   auto root = query_generator(*schema);
    PipelineDAG dag;
    root->decay(dag);
    std::stringstream stream;
    root->printer->setOstream(stream);
-   QueryExecutor::runQuery(dag, GetParam(), "q1");
-   EXPECT_EQ(root->printer->num_rows, 4);
+   QueryExecutor::runQuery(dag, std::get<1>(GetParam()), test_name);
+   EXPECT_EQ(root->printer->num_rows, expected_rows.at(test_name));
 }
 
 INSTANTIATE_TEST_CASE_P(
    tpch_queries,
    TPCHQueriesTestT,
-   ::testing::Values(
-      PipelineExecutor::ExecutionMode::Fused,
-      PipelineExecutor::ExecutionMode::Interpreted,
-      PipelineExecutor::ExecutionMode::Hybrid)
-   );
+   ::testing::Combine(
+      ::testing::Values("q1", "q6"),
+      ::testing::Values(
+         PipelineExecutor::ExecutionMode::Fused,
+         PipelineExecutor::ExecutionMode::Interpreted,
+         PipelineExecutor::ExecutionMode::Hybrid)),
+   [](const ::testing::TestParamInfo<std::tuple<std::string, PipelineExecutor::ExecutionMode>>& info) -> std::string {
+      return std::get<0>(info.param) + "_mode_" + std::to_string(static_cast<uint8_t>(std::get<1>(info.param)));
+   }
+);
 
 }
 

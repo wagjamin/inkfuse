@@ -47,6 +47,7 @@ bool PipelineRunner::runMorsel(bool force_pick)
       // If we are driven by a fuse chunk source or are forced to pick, we have to
       // pick a morsel.
       morsel_size = pipe->suboperators[0]->pickMorsel();
+
       // FIXME - HACKFIX - Tread With Caution
       // It could be that we provide scratch pad IUs within this pipeline.
       // As these are never officially produced by an expression, we need

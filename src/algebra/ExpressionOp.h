@@ -41,6 +41,8 @@ struct ExpressionOp : public RelAlgOp {
          Eq,
          Neq,
          Less,
+         And,
+         Or,
          LessEqual,
          Greater,
          GreaterEqual,
