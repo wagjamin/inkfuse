@@ -9,6 +9,7 @@ namespace {
 const std::vector<IR::TypeArc> types =
    TypeDecorator()
       .attachTypes()
+      .attachStringType()
       .produce();
 }
 

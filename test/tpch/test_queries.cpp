@@ -33,11 +33,15 @@ using FunctionT = std::function<std::unique_ptr<Print>(const Schema&)>;
 const std::unordered_map<std::string, FunctionT> generator_map {
    {"q1", tpch::q1},
    {"q6", tpch::q6},
+   {"l_count", tpch::l_count},
+   {"l_point", tpch::l_point},
 };
 
 std::unordered_map<std::string, size_t> expected_rows {
    {"q1", 4},
    {"q6", 1},
+   {"l_count", 1},
+   {"l_point", 6},
 };
 
 TEST_P(TPCHQueriesTestT, run) {
@@ -56,7 +60,7 @@ INSTANTIATE_TEST_CASE_P(
    tpch_queries,
    TPCHQueriesTestT,
    ::testing::Combine(
-      ::testing::Values("q1", "q6"),
+      ::testing::Values("q1", "q6", "l_count", "l_point"),
       ::testing::Values(
          PipelineExecutor::ExecutionMode::Fused,
          PipelineExecutor::ExecutionMode::Interpreted,
