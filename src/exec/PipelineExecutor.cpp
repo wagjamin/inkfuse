@@ -53,17 +53,28 @@ void PipelineExecutor::runPipeline() {
          // to be ready.
          compilation_job.join();
       }
+      compiled.at({0, pipe.getSubops().size()})->setUpState(true);
       while (runFusedMorsel()) {}
    } else if (mode == ExecutionMode::Interpreted) {
+      for (auto& interpreter: interpreters) {
+         interpreter->setUpState(true);
+      }
       while (runInterpretedMorsel()) {}
    } else {
+      for (auto& interpreter: interpreters) {
+         interpreter->setUpState(true);
+      }
       bool fused_ready = false;
       bool terminate = false;
       while (!fused_ready && !terminate) {
          terminate = !runInterpretedMorsel();
-         fused_ready = fused_set_up.load();
+         std::unique_lock lock(compiled_lock);
+         fused_ready = fused_set_up;
       }
       // Code is ready - switch over.
+      if (!terminate && fused_ready) {
+         compiled.at({0, pipe.getSubops().size()})->setUpState(false);
+      }
       while (!terminate) {
          terminate = !runFusedMorsel();
       }
@@ -81,8 +92,12 @@ bool PipelineExecutor::runMorsel() {
    // Scope guard for memory context and flags.
    ExecutionContext::RuntimeGuard guard{context};
    if (mode == ExecutionMode::Fused || (mode == ExecutionMode::Hybrid)) {
+      compiled.at({0, pipe.getSubops().size()})->setUpState(true);
       return runFusedMorsel();
    } else {
+      for (auto& interpreter: interpreters) {
+         interpreter->setUpState(true);
+      }
       return runInterpretedMorsel();
    }
 }
@@ -119,8 +134,9 @@ std::thread PipelineExecutor::setUpFusedAsync()
      // And Compile.
      bool done = runner->prepare(interrupt);
      if (done) {
+        std::unique_lock lock(compiled_lock);
         compiled[{0, pipe.getSubops().size()}] = std::move(runner);
-        fused_set_up.store(true);
+        fused_set_up = true;
      }
    });
 }

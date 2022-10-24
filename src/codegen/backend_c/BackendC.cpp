@@ -63,7 +63,6 @@ void BackendProgramC::compileToMachinecode(InterruptableJob& interrupt) {
 }
 
 BackendProgramC::~BackendProgramC() {
-   // TODO dlclose
 }
 
 void BackendProgramC::link() {
@@ -75,6 +74,13 @@ void BackendProgramC::link() {
          fprintf(stderr, "dlopen failed: %s\n", dlerror());
          throw std::runtime_error("Could not link BackendProgramC.");
       }
+   }
+}
+
+void BackendProgramC::unlink()
+{
+   if (handle) {
+      dlclose(handle);
    }
 }
 

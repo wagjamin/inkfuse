@@ -28,7 +28,7 @@ bool CompiledRunner::prepare(InterruptableJob& interrupt)
 
    // Generate C code.
    BackendC backend;
-   auto program = backend.generate(comp.getProgram());
+   program = backend.generate(comp.getProgram());
    program->compileToMachinecode(interrupt);
    if (interrupt.getResult() == InterruptableJob::Change::JobDone) {
       // If we finished successfully without interrupt we can fetch the generated function.

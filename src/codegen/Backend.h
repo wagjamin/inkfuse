@@ -20,6 +20,9 @@ struct BackendProgram {
    /// Link the backend program. This way, it doesn't get linked lazily during the first lookup.
    virtual void link() = 0;
 
+   /// Unlink the backend program.
+   virtual void unlink() = 0;
+
    /// Compile the backend program to actual machine code. The interrupt is used to stop compilation.
    virtual void compileToMachinecode(InterruptableJob& interrupt) = 0;
 

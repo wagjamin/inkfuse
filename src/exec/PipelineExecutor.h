@@ -69,6 +69,8 @@ struct PipelineExecutor {
    ExecutionContext context;
    /// Interpreters for the different sub-operators.
    std::vector<PipelineRunnerPtr> interpreters;
+   /// Lock protecting shared state with the backgruond thread doing async compilation.
+   std::mutex compiled_lock;
    /// Compiled fragments identified by [start, end[ index pairs.
    std::map<std::pair<size_t, size_t>, PipelineRunnerPtr> compiled;
    /// Backing execution mode.
@@ -76,7 +78,7 @@ struct PipelineExecutor {
    /// Potential full name of the generated program.
    std::string full_name;
    /// Was fused mode set up successfully? Atomic since this is done asynchronously.
-   std::atomic<bool> fused_set_up = false;
+   bool fused_set_up = false;
 
    /// Was interpreted mode set up succesfully?
    bool interpreted_set_up = false;

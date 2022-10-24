@@ -14,8 +14,11 @@ PipelineRunner::PipelineRunner(PipelinePtr pipe_, ExecutionContext& context_)
    fuseChunkSource = (dynamic_cast<const FuseChunkSourceDriver*>(pipe->getSubops()[0].get()) != nullptr);
 }
 
-void PipelineRunner::setUpState()
+void PipelineRunner::setUpState(bool init)
 {
+   if (set_up) {
+      return;
+   }
    for (auto& elem : pipe->getSubops()) {
       auto provider = dynamic_cast<FuseChunkSourceIUProvider*>(elem.get());
       if (provider) {
@@ -29,18 +32,16 @@ void PipelineRunner::setUpState()
    }
    states.reserve(pipe->getSubops().size());
    for (const auto& op: pipe->getSubops()) {
-      op->setUpState(context);
+      if (init) {
+         op->setUpState(context);
+      }
       states.push_back(op->accessState());
    }
+   set_up = true;
 }
 
 bool PipelineRunner::runMorsel(bool force_pick)
 {
-   if (!subop_state_set_up) {
-      // If we didn't prepare
-      setUpState();
-      subop_state_set_up = true;
-   }
    assert(prepared && fct);
    size_t morsel_size = 1;
    if (fuseChunkSource || force_pick) {
