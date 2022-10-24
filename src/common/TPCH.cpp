@@ -319,4 +319,80 @@ std::unique_ptr<Print> q6(const Schema& schema) {
 
 }
 
+std::unique_ptr<Print> tpch::l_count(const inkfuse::Schema& schema)
+{
+   // 1. Scan from lineitem.
+   auto& rel = schema.at("lineitem");
+   std::vector<std::string> cols {"l_linestatus"};
+   auto scan = TableScan::build(*rel, cols, "scan");
+   auto& scan_ref = *scan;
+
+   // 2. Aggregate.
+   std::vector<RelAlgOpPtr> agg_children;
+   agg_children.push_back(std::move(scan));
+   // Don't group by anything on this query.
+   std::vector<const IU*> group_by{};
+   std::vector<AggregateFunctions::Description> aggregates{
+      {*scan_ref.getOutput()[0], AggregateFunctions::Opcode::Count}};
+   auto agg = Aggregation::build(
+      std::move(agg_children),
+      "agg",
+      std::move(group_by),
+      std::move(aggregates));
+
+   // 6. Print
+   std::vector<const IU*> out_ius {agg->getOutput()[0]};
+   std::vector<std::string> colnames = { "num_rows" };
+   std::vector<RelAlgOpPtr> print_children;
+   print_children.push_back(std::move(agg));
+   return Print::build(std::move(print_children),
+                       std::move(out_ius), std::move(colnames));
+}
+
+std::unique_ptr<Print> tpch::l_point(const inkfuse::Schema& schema) {
+   // 1. Scan from lineitem.
+   auto& rel = schema.at("lineitem");
+   std::vector<std::string> cols {"l_orderkey", "l_tax"};
+   auto scan = TableScan::build(*rel, cols, "scan");
+   auto& scan_ref = *scan;
+
+   // 2. Expression & Filter
+   std::vector<RelAlgOpPtr> children_scan;
+   children_scan.push_back(std::move(scan));
+   std::vector<ExpressionOp::NodePtr> pred_nodes;
+
+   auto l_orderkey_ref = pred_nodes.emplace_back(std::make_unique<IURefNode>(
+      scan_ref.getOutput()[getScanIndex("l_orderkey", cols)])).get();
+   auto pred_1 = pred_nodes.emplace_back(
+                              std::make_unique<ComputeNode>(
+                                 ComputeNode::Type::Eq,
+                                 IR::UI<4>::build(39),
+                                 l_orderkey_ref)).get();
+   auto expr_node = ExpressionOp::build(
+      std::move(children_scan),
+      "lineitem_filter",
+      std::vector<Node*>{pred_1},
+      std::move(pred_nodes));
+   auto& expr_ref = *expr_node;
+   assert(expr_ref.getOutput().size() == 1);
+
+   // 3. Filter
+   std::vector<RelAlgOpPtr> children_filter;
+   children_filter.push_back(std::move(expr_node));
+   std::vector<const IU*> redefined {
+      scan_ref.getOutput()[getScanIndex("l_tax", cols)],
+   };
+   auto filter = Filter::build(std::move(children_filter), "filter", std::move(redefined), *expr_ref.getOutput()[0]);
+   auto& filter_ref = *filter;
+   assert(filter->getOutput().size() == 1);
+
+   // 6. Print
+   std::vector<RelAlgOpPtr> print_children;
+   print_children.push_back(std::move(filter));
+   std::vector<const IU*> out_ius {filter_ref.getOutput()[0]};
+   std::vector<std::string> colnames = { "l_tax" };
+   return Print::build(std::move(print_children),
+                       std::move(out_ius), std::move(colnames));
+}
+
 }

@@ -30,8 +30,10 @@ struct TypeDecorator {
    TypeDecorator& attachFloatingPoints();
    /// Add all numeric types.
    TypeDecorator& attachNumeric();
-   /// Add all types.
+   /// Add all types apart from String.
    TypeDecorator& attachTypes();
+   /// Add the string type.
+   TypeDecorator& attachStringType();
 
    /// Add types for packed keys.
    TypeDecorator& attachPackedKeyTypes();

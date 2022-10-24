@@ -20,10 +20,14 @@ help - show this message
 exit - exit the program
 load sf<X> - load TPC-H data in "/sf<X>"
 show - show what scale factor that got loaded
+mute - don't show query text
+unmute - do show query text
 run q<N> [mode <ExecMode>] - run TPC-H query <N> on the loaded sf<X>
                              optional ExecMode in {Compiled, Interpreted, Hybrid}
                              default Hybrid.
 )";
+
+bool mute = false;
 
 std::vector<std::string> splitCommand(const std::string& command) {
    std::vector<std::string> elems;
@@ -36,8 +40,8 @@ std::vector<std::string> splitCommand(const std::string& command) {
 }
 
 void runQuery(const std::string& q_name, std::unique_ptr<Print> root, PipelineExecutor::ExecutionMode mode) {
-   std::ifstream input("sql" + q_name + ".sql");
-   if (input.is_open()) {
+   std::ifstream input("q/" + q_name + ".sql");
+   if (!mute && input.is_open()) {
       std::stringstream str;
       str << input.rdbuf();
       std::cout << "Running query\n"
@@ -79,6 +83,10 @@ int main(int argc, char* argv[]) {
             continue;
          } else if (split[0] == "exit") {
             break;
+         } else if (split[0] == "mute") {
+            mute = true;
+         } else if (split[0] == "unmute") {
+            mute = false;
          } else if (split[0] == "help") {
             std::cout << help << std::endl;
          } else if (split[0] == "show") {
@@ -126,13 +134,21 @@ int main(int argc, char* argv[]) {
                }
                if (split[1] == "q1") {
                   auto q = tpch::q1(*loaded);
-                  runQuery("q1", std::move(q), mode);
+                  runQuery("1", std::move(q), mode);
                }
                else if (split[1] == "q6") {
                   auto q = tpch::q6(*loaded);
-                  runQuery("q6", std::move(q), mode);
+                  runQuery("6", std::move(q), mode);
+               }
+               else if (split[1] == "l_count") {
+                  auto q = tpch::l_count(*loaded);
+                  runQuery("l_count", std::move(q), mode);
+               }
+               else if (split[1] == "l_point") {
+                  auto q = tpch::l_point(*loaded);
+                  runQuery("l_point", std::move(q), mode);
                } else {
-                  std::cout << "Unrecognized query - we only support {q1, q6}\n";
+                  std::cout << "Unrecognized query - we only support {q1, q6, l_count, l_point}\n";
                }
             }
          } else {

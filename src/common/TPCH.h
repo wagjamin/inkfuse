@@ -15,6 +15,11 @@ Schema getTPCHSchema();
 std::unique_ptr<Print> q1(const Schema& schema);
 std::unique_ptr<Print> q6(const Schema& schema);
 
+/// Some interesting custom queries. See /tpch for query text.
+std::unique_ptr<Print> l_count(const Schema& schema);
+std::unique_ptr<Print> l_point(const Schema& schema);
+
+
 }
 
 #endif //INKFUSE_TPCH_H

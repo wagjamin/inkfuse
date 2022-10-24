@@ -5,7 +5,7 @@ namespace inkfuse {
 
 namespace {
 
-const std::vector<IR::TypeArc> types = TypeDecorator().attachTypes().produce();
+const std::vector<IR::TypeArc> types = TypeDecorator().attachTypes().attachStringType().produce();
 
 }
 

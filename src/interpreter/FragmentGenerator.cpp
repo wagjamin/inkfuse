@@ -66,6 +66,12 @@ TypeDecorator& TypeDecorator::attachTypes() {
    return *this;
 }
 
+TypeDecorator& TypeDecorator::attachStringType()
+{
+   types.push_back(IR::String::build());
+   return *this;
+}
+
 TypeDecorator& TypeDecorator::attachPackedKeyTypes() {
    types.push_back(IR::ByteArray::build(0));
    types.push_back(IR::Pointer::build(IR::Char::build()));
