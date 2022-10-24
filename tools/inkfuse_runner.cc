@@ -18,11 +18,11 @@ using namespace inkfuse;
 const std::string help = R"(inkfuse runner commands:
 help - show this message
 exit - exit the program
-show - show what scale factors are loaded
 load sf<X> - load TPC-H data in "/sf<X>"
-run q<N> on sf<X> [mode <ExecMode>] - run TPC-H query <N> on sf<X>
-                                      optional ExecMode in {Compiled, Interpreted, Hybrid}
-                                      default fused
+show - show what scale factor that got loaded
+run q<N> [mode <ExecMode>] - run TPC-H query <N> on the loaded sf<X>
+                             optional ExecMode in {Compiled, Interpreted, Hybrid}
+                             default Hybrid.
 )";
 
 std::vector<std::string> splitCommand(const std::string& command) {
@@ -35,8 +35,8 @@ std::vector<std::string> splitCommand(const std::string& command) {
    return elems;
 }
 
-void runQuery(const std::string& q_file, std::unique_ptr<Print> root, PipelineExecutor::ExecutionMode mode) {
-   std::ifstream input(q_file);
+void runQuery(const std::string& q_name, std::unique_ptr<Print> root, PipelineExecutor::ExecutionMode mode) {
+   std::ifstream input("sql" + q_name + ".sql");
    if (input.is_open()) {
       std::stringstream str;
       str << input.rdbuf();
@@ -47,7 +47,7 @@ void runQuery(const std::string& q_file, std::unique_ptr<Print> root, PipelineEx
    PipelineDAG dag;
    root->decay(dag);
    auto start = std::chrono::steady_clock::now();
-   QueryExecutor::runQuery(dag, mode, "q1");
+   QueryExecutor::runQuery(dag, mode, q_name);
    auto stop = std::chrono::steady_clock::now();
    std::cout << "Produced " << root->printer->num_rows << " rows after ";
    std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms\n";
@@ -69,7 +69,8 @@ int main(int argc, char* argv[]) {
              << std::endl;
 
    // Only ingest data once and share it across tests.
-   std::unordered_map<std::string, Schema> loaded;
+   std::optional<Schema> loaded;
+   std::string loaded_name;
 
    for (std::string command; std::getline(std::cin, command);) {
       std::vector<std::string> split = splitCommand(command);
@@ -81,55 +82,57 @@ int main(int argc, char* argv[]) {
          } else if (split[0] == "help") {
             std::cout << help << std::endl;
          } else if (split[0] == "show") {
-            if (loaded.empty()) {
+            if (loaded_name.empty()) {
                std::cout << "No data loaded" << std::endl;
             } else {
-               std::cout << "Loaded the following scale factors:" << std::endl;
-               for (const auto& [name, _] : loaded) {
-                  std::cout << name << std::endl;
-               }
+               std::cout << "Loaded scale factor " << loaded_name << std::endl;
             }
          } else if (split[0] == "load") {
             if (split.size() < 2) {
                std::cout << "invoke 'load' as 'load sf<X>'\n"
                          << std::endl;
+            } else if (!loaded_name.empty()) {
+               std::cout << "already loaded " << loaded_name
+                         << std::endl;
             } else {
                std::cout << "Loading data at " << split[1] << std::endl;
-               auto& schema = loaded[split[1]];
                auto start = std::chrono::steady_clock::now();
-               schema = tpch::getTPCHSchema();
-               helpers::loadDataInto(schema, split[1], true);
+               loaded = tpch::getTPCHSchema();
+               helpers::loadDataInto(*loaded, split[1], true);
                auto end = std::chrono::steady_clock::now();
                std::cout << "Loaded after " << std::chrono::duration_cast<std::chrono::seconds>(end - start).count() << " seconds" << std::endl;
+               loaded_name = split[1];
             }
          } else if (split[0] == "run") {
             auto mode = PipelineExecutor::ExecutionMode::Hybrid;
-            if (split.size() < 4) {
-               std::cout << "invoke 'run' as 'run q<N> on sf<X> [mode {Compiled|Interpreted|Hybrid}]'\n"
+            if (loaded_name.empty()) {
+               std::cout << "You need to load data first through `load sf<X>`\n"
+                         << std::endl;
+            } else if (split.size() < 2) {
+               std::cout << "invoke 'run' as 'run q<N> [mode {Compiled|Interpreted|Hybrid}]'\n"
                          << std::endl;
             } else {
-               if (split.size() >= 6 && split[4] == "mode") {
-                  if (split[5] == "Compiled") {
+               if (split.size() > 2 && split[2] == "mode") {
+                  if (split[3] == "Compiled") {
                      mode = PipelineExecutor::ExecutionMode::Fused;
-                  } else if (split[5] == "Interpreted") {
+                  } else if (split[3] == "Interpreted") {
                      mode = PipelineExecutor::ExecutionMode::Interpreted;
-                  } else if (split[5] == "Hybrid") {
+                  } else if (split[3] == "Hybrid") {
                      mode = PipelineExecutor::ExecutionMode::Hybrid;
                   } else {
                      std::cout << "Unrecognized execution mode - we only support {Compiled|Interpreted|Hybrid}\n" << std::endl;
                      continue;
                   }
                }
-               const Schema& schema = loaded.at(split[3]);
                if (split[1] == "q1") {
-                  auto q = tpch::q1(schema);
-                  runQuery("q/1.sql", std::move(q), mode);
+                  auto q = tpch::q1(*loaded);
+                  runQuery("q1", std::move(q), mode);
                }
                else if (split[1] == "q6") {
-                  auto q = tpch::q6(schema);
-                  runQuery("q/6.sql", std::move(q), mode);
+                  auto q = tpch::q6(*loaded);
+                  runQuery("q6", std::move(q), mode);
                } else {
-                  std::cout << "Unrecognized query - we only support {q1}";
+                  std::cout << "Unrecognized query - we only support {q1, q6}\n";
                }
             }
          } else {

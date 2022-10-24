@@ -23,6 +23,9 @@ struct BackendProgramC : public IR::BackendProgram {
    /// Link the backend program. This way, it doesn't get linked lazily during the first lookup.
    void link() override;
 
+   /// Unlink the backend program.
+   void unlink() override;
+
    /// Compile the backend program to actual machine code. The interrupt is used to stop compilation.
    void compileToMachinecode(InterruptableJob& interrupt) override;
 

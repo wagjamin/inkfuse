@@ -34,10 +34,10 @@ struct PipelineRunner {
    /// column to write into.
    void prepareForRerun();
 
-   protected:
    /// Set up the state for the given pipeline.
-   void setUpState();
+   void setUpState(bool init);
 
+   protected:
    /// The compiled function. Either a fragment received from the backing cache,
    /// or a new function.
    std::function<uint8_t(void**)> fct;
@@ -51,8 +51,8 @@ struct PipelineRunner {
    bool fuseChunkSource;
    /// Was this runner prepared already?
    bool prepared = false;
-   /// Was the state of the superoperators set up already?
-   bool subop_state_set_up = false;
+   /// Was the state of this runner set up already?
+   bool set_up = false;
 };
 
 using PipelineRunnerPtr = std::unique_ptr<PipelineRunner>;
