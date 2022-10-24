@@ -117,13 +117,17 @@ int main(int argc, char* argv[]) {
                      mode = PipelineExecutor::ExecutionMode::Hybrid;
                   } else {
                      std::cout << "Unrecognized execution mode - we only support {Compiled|Interpreted|Hybrid}\n" << std::endl;
-                     break;
+                     continue;
                   }
                }
                const Schema& schema = loaded.at(split[3]);
                if (split[1] == "q1") {
                   auto q = tpch::q1(schema);
                   runQuery("q/1.sql", std::move(q), mode);
+               }
+               else if (split[1] == "q6") {
+                  auto q = tpch::q6(schema);
+                  runQuery("q/6.sql", std::move(q), mode);
                } else {
                   std::cout << "Unrecognized query - we only support {q1}";
                }

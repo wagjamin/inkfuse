@@ -14,6 +14,9 @@ extern "C" char* ht_sk_lookup_or_insert(void* table, char* key);
 extern "C" void ht_sk_lookup_or_insert_with_init(void* table, char** result, bool* is_new_key, char* key);
 extern "C" void ht_sk_it_advance(void* table, char** it_data, uint64_t* it_idx);
 
+/// Special lookup function if we know we have a 0-byte key.
+extern "C" char* ht_nk_lookup(void* table);
+
 void registerRuntime();
 };
 

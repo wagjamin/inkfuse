@@ -15,14 +15,14 @@ const uint8_t tag_hash_mask = tag_fill_mask - 1;
 
 SharedHashTableState::SharedHashTableState(uint16_t total_slot_size_, size_t start_slots_)
    : mod_mask(start_slots_ - 1), total_slot_size(total_slot_size_), max_fill(start_slots_ / 2) {
-   if (start_slots_ < 4 || ((start_slots_ & (start_slots_ - 1)) != 0)) {
-      throw std::runtime_error("Hash table start size has to power of 2 of at least 4.");
+   if (start_slots_ < 2 || ((start_slots_ & (start_slots_ - 1)) != 0)) {
+      throw std::runtime_error("Hash table start size has to power of 2 of at size 2.");
    }
 
    // Set up initial hash table based on the provided start size.
-   // Allow half of the slots to be filled - this is needed to keep collislion chains short.
+   // Allow half of the slots to be filled - this is needed to keep collision chains short.
    tags = std::make_unique<uint8_t[]>(start_slots_);
-   data = std::make_unique<char[]>((start_slots_) * total_slot_size);
+   data = std::make_unique<char[]>((start_slots_) *total_slot_size);
 }
 
 void SharedHashTableState::advance(size_t& idx, char*& data_ptr, uint8_t*& tag_ptr) const {
@@ -57,6 +57,11 @@ void SharedHashTableState::advanceNoWrap(size_t& idx, char*& data_ptr, uint8_t*&
 
 HashTableSimpleKey::HashTableSimpleKey(uint16_t key_size_, uint16_t payload_size_, size_t start_slots_)
    : state(key_size_ + payload_size_, start_slots_), simple_key_size(key_size_) {
+   if (key_size_ == 0) {
+      // If they key size is 0, we can always create a table with 2 slots, as at most
+      // one will be filled.
+      state = SharedHashTableState(key_size_ + payload_size_, 2);
+   }
 }
 
 char* HashTableSimpleKey::lookup(const char* key) {
@@ -75,8 +80,7 @@ char* HashTableSimpleKey::lookupOrInsert(const char* key) {
    return result;
 }
 
-void HashTableSimpleKey::lookupOrInsert(char** result, bool* is_new_key, const char* key)
-{
+void HashTableSimpleKey::lookupOrInsert(char** result, bool* is_new_key, const char* key) {
    // Double the hash table if we don't have enough space.
    // Strictly speaking a bit too passive, as we might not need the
    // slot of the key already exists. But this is a border-case.
@@ -98,8 +102,7 @@ void HashTableSimpleKey::lookupOrInsert(char** result, bool* is_new_key, const c
    *result = slot.elem;
 }
 
-void HashTableSimpleKey::iteratorStart(char** it_data, size_t* it_idx)
-{
+void HashTableSimpleKey::iteratorStart(char** it_data, size_t* it_idx) {
    *it_idx = 0;
    *it_data = &state.data[0];
    uint8_t* tag_ptr = &state.tags[0];
@@ -109,8 +112,7 @@ void HashTableSimpleKey::iteratorStart(char** it_data, size_t* it_idx)
    }
 }
 
-void HashTableSimpleKey::iteratorAdvance(char** it_data, size_t* it_idx)
-{
+void HashTableSimpleKey::iteratorAdvance(char** it_data, size_t* it_idx) {
    assert(*it_data != nullptr);
    uint8_t* tag_ptr = &state.tags[*it_idx];
    // Advance once to the next slot.
@@ -121,14 +123,26 @@ void HashTableSimpleKey::iteratorAdvance(char** it_data, size_t* it_idx)
    }
 }
 
-size_t HashTableSimpleKey::size()
-{
+size_t HashTableSimpleKey::size() {
    return state.inserted;
 }
 
-size_t HashTableSimpleKey::capacity()
-{
+size_t HashTableSimpleKey::capacity() {
    return state.mod_mask + 1;
+}
+
+char* HashTableSimpleKey::lookupOrInsertSingleKey()
+{
+   // We always return the first slot.
+   // We don't need any key checking whatsoever.
+   char* elem_ptr = &state.data[0];
+   uint8_t* tag_ptr = &state.tags[0];
+   if (!*tag_ptr) {
+      // First insert - tag the slot.
+      *tag_ptr = tag_fill_mask;
+      state.inserted++;
+   }
+   return elem_ptr;
 }
 
 HashTableSimpleKey::LookupResult HashTableSimpleKey::findSlotOrEmpty(uint64_t hash, const char* key) {
@@ -150,8 +164,7 @@ HashTableSimpleKey::LookupResult HashTableSimpleKey::findSlotOrEmpty(uint64_t ha
    }
 }
 
-HashTableSimpleKey::LookupResult HashTableSimpleKey::findFirstEmptySlot(uint64_t hash)
-{
+HashTableSimpleKey::LookupResult HashTableSimpleKey::findFirstEmptySlot(uint64_t hash) {
    uint64_t idx = hash & state.mod_mask;
    char* elem_ptr = &state.data[idx * state.total_slot_size];
    uint8_t* tag_ptr = &state.tags[idx];
@@ -162,14 +175,13 @@ HashTableSimpleKey::LookupResult HashTableSimpleKey::findFirstEmptySlot(uint64_t
    return {.elem = elem_ptr, .tag = tag_ptr};
 }
 
-void HashTableSimpleKey::reserveSlot()
-{
+void HashTableSimpleKey::reserveSlot() {
    if (state.inserted < state.max_fill) [[likely]] {
       return;
    }
 
    // We need to resize. Indicate that this happened to the currently installed execution context.
-   // This will force the driver of the query to rerun the primitive if this used the interpreted path. 
+   // This will force the driver of the query to rerun the primitive if this used the interpreted path.
    bool* try_restart_flag = ExecutionContext::tryGetInstalledRestartFlag();
    if (try_restart_flag) {
       *try_restart_flag = true;

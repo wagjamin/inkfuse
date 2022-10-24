@@ -1,7 +1,6 @@
 #include "runtime/HashTableRuntime.h"
 #include "runtime/HashTables.h"
 #include "runtime/Runtime.h"
-#include <cstring>
 
 namespace inkfuse {
 
@@ -28,6 +27,11 @@ extern "C" void HashTableRuntime::ht_sk_it_advance(void* table, char** it_data, 
    reinterpret_cast<HashTableSimpleKey*>(table)->iteratorAdvance(it_data, it_idx);
 }
 
+extern "C" char* HashTableRuntime::ht_nk_lookup(void* table) {
+   return reinterpret_cast<HashTableSimpleKey*>(table)->lookupOrInsertSingleKey();
+}
+
+
 void HashTableRuntime::registerRuntime() {
    RuntimeFunctionBuilder("ht_sk_lookup", IR::Pointer::build(IR::Char::build()))
       .addArg("table", IR::Pointer::build(IR::Void::build()))
@@ -48,6 +52,8 @@ void HashTableRuntime::registerRuntime() {
       .addArg("it_data", IR::Pointer::build(IR::Pointer::build(IR::Char::build())))
       .addArg("it_idx", IR::Pointer::build(IR::UnsignedInt::build(8)));
 
+   RuntimeFunctionBuilder("ht_nk_lookup", IR::Pointer::build(IR::Char::build()))
+      .addArg("table", IR::Pointer::build(IR::Void::build()));
 }
 
 }

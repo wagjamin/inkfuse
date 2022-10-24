@@ -61,6 +61,26 @@ std::unique_ptr<RuntimeFunctionSubop> RuntimeFunctionSubop::htLookupOrInsert(con
          hash_table_));
 }
 
+std::unique_ptr<RuntimeFunctionSubop> RuntimeFunctionSubop::htNoKeyLookup(const RelAlgOp* source, const IU& pointers_, const IU& input_dependency, void* hash_table_)
+{
+   std::string fct_name = "ht_nk_lookup";
+   std::vector<const IU*> in_ius{&input_dependency};
+   std::vector<const IU*> out_ius_{&pointers_};
+   std::vector<const IU*> args{};
+   std::vector<bool> ref{};
+   const IU* out = &pointers_;
+   return std::unique_ptr<RuntimeFunctionSubop>(
+      new RuntimeFunctionSubop(
+         source,
+         std::move(fct_name),
+         std::move(in_ius),
+         std::move(out_ius_),
+         std::move(args),
+         std::move(ref),
+         out,
+         hash_table_));
+}
+
 RuntimeFunctionSubop::RuntimeFunctionSubop(
    const RelAlgOp* source,
    std::string fct_name_,

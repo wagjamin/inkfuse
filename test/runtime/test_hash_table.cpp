@@ -88,7 +88,6 @@ struct HashTableTestT : public ::testing::TestWithParam<ParamT> {
 TEST(hash_table, bad_size) {
    EXPECT_ANY_THROW(HashTableSimpleKey(4, 16, 0));
    EXPECT_ANY_THROW(HashTableSimpleKey(16, 32, 1));
-   EXPECT_ANY_THROW(HashTableSimpleKey(16, 16, 2));
    EXPECT_ANY_THROW(HashTableSimpleKey(16, 3, 3));
 }
 

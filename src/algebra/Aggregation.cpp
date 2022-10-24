@@ -127,7 +127,15 @@ void Aggregation::decay(PipelineDAG& dag) const {
    for (const auto& pseudo_iu: pseudo_ius) {
       pseudo.push_back(&pseudo_iu);
    }
-   auto& ht_lookup_subop = curr_pipe.attachSuboperator(RuntimeFunctionSubop::htLookupOrInsert(this, agg_pointer_result, *packed_key_iu, std::move(pseudo), &hash_table));
+
+   if (key_size) {
+      curr_pipe.attachSuboperator(RuntimeFunctionSubop::htLookupOrInsert(this, agg_pointer_result, *packed_key_iu, std::move(pseudo), &hash_table));
+   } else {
+      // The key size is zero - so we just aggregate a single group.
+      // We use an optimized code path for this. We need to htNoKeyLookup to reference an
+      // input IU as a dependency. This is
+      curr_pipe.attachSuboperator(RuntimeFunctionSubop::htNoKeyLookup(this, agg_pointer_result, *granules[0].first, &hash_table));
+   }
 
    // Step 3: Update the aggregation state.
    // The current offset into the serialized aggregate state. The aggregate state starts after the serialized key.

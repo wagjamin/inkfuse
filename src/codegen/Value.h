@@ -137,10 +137,6 @@ struct DateVal : public Value {
       return build(value);
    };
 
-   int64_t getValue() const {
-      return value;
-   }
-
    std::string str() const override {
       return std::to_string(value);
    }

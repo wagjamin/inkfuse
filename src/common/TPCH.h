@@ -13,6 +13,7 @@ namespace inkfuse::tpch {
 Schema getTPCHSchema();
 
 std::unique_ptr<Print> q1(const Schema& schema);
+std::unique_ptr<Print> q6(const Schema& schema);
 
 }
 
