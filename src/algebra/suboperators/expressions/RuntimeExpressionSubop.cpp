@@ -52,8 +52,8 @@ void RuntimeExpressionSubop::consumeAllChildren(CompilationContext& context) {
       IR::AssignmentStmt::build(
          declare,
          IR::ArithmeticExpr::build(
-            IR::VarRefExpr::build(child),
             runtime_params.dataResolveErased(*this, runtime_param_type, context),
+            IR::VarRefExpr::build(child),
             ExpressionHelpers::code_map.at(type))));
 
    context.notifyIUsReady(*this);

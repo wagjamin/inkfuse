@@ -60,8 +60,8 @@ ExpressionOp::ComputeNode::ComputeNode(IR::TypeArc casted, Node* child)
    : Node(casted), code(Type::Cast), out(std::move(casted)), children({child}) {
 }
 
-ExpressionOp::ComputeNode::ComputeNode(Type code_, Node* arg_1, IR::ValuePtr arg_2)
-   : Node(derive(code_, {arg_1})), code(code_), out(output_type), children({arg_1}), opt_runtime_param(std::move(arg_2)) {
+ExpressionOp::ComputeNode::ComputeNode(Type code_, IR::ValuePtr arg_1, Node* arg_2)
+   : Node(derive(code_, {arg_2})), code(code_), out(output_type), children({arg_2}), opt_runtime_param(std::move(arg_1)) {
    assert(code != Type::Hash && code != Type::Cast);
 }
 

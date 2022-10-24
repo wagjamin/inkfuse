@@ -53,7 +53,7 @@ struct ExpressionOp : public RelAlgOp {
       // Constructor for cast operations.
       ComputeNode(IR::TypeArc casted, Node* child);
       // Constructor for operation with runtime parameter.
-      ComputeNode(Type code, Node* arg_1, IR::ValuePtr arg_2);
+      ComputeNode(Type code, IR::ValuePtr arg_1, Node* arg_2);
 
       // Which expression?
       Type code;

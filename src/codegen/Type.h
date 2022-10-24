@@ -32,6 +32,11 @@ struct Type {
    /// Get a string representation of this type.
    virtual std::string id() const = 0;
 
+   /// Write a value of the type .
+   virtual void print(std::ostream& stream, char* data) const {
+      throw std::runtime_error("Type cannot be printed");
+   };
+
    bool operator==(const Type& other) const {
       /// Simple equality check for types which is actually sufficient for our type system.
       return id() == other.id();
@@ -61,6 +66,8 @@ struct SignedInt : public SQLType {
       return "I" + std::to_string(size);
    };
 
+   void print(std::ostream& stream, char* data) const override;
+
    private:
    uint64_t size;
 };
@@ -80,6 +87,8 @@ struct UnsignedInt : public SQLType {
    std::string id() const override {
       return "UI" + std::to_string(size);
    };
+
+   void print(std::ostream& stream, char* data) const override;
 
    private:
    uint64_t size;
@@ -102,6 +111,8 @@ struct Float : public SQLType {
       return "F" + std::to_string(size);
    }
 
+   void print(std::ostream& stream, char* data) const override;
+
    private:
    uint64_t size;
 };
@@ -119,6 +130,8 @@ struct Bool : public SQLType {
    std::string id() const override {
       return "Bool";
    };
+
+   void print(std::ostream& stream, char* data) const override;
 };
 
 /// Character type.
@@ -134,6 +147,8 @@ struct Char : public SQLType {
    std::string id() const override {
       return "Char";
    }
+
+   void print(std::ostream& stream, char* data) const override;
 };
 
 /// Text type. In the engine it is represented as a char* to a 0-terminated string.
@@ -149,6 +164,8 @@ struct String : public SQLType {
    std::string id() const override {
       return "String";
    }
+
+   void print(std::ostream& stream, char* data) const override;
 };
 
 /// Date type.

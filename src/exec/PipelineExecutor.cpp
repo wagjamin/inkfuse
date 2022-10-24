@@ -1,4 +1,5 @@
 #include "exec/PipelineExecutor.h"
+#include "algebra/Print.h"
 #include "algebra/suboperators/sources/FuseChunkSource.h"
 #include "algebra/suboperators/sinks/FuseChunkSink.h"
 #include "exec/InterruptableJob.h"
@@ -134,6 +135,10 @@ bool PipelineExecutor::runFusedMorsel() {
    assert(fused_set_up);
    // Run the whole compiled executor.
    if (compiled.at({0, pipe.getSubops().size()})->runMorsel(true)) {
+      if (auto printer = pipe.getPrettyPrinter()) {
+         // Tell the printer that a morsel is done.
+         printer->markMorselDone(context);
+      }
       cleanUp();
       return true;
    }
@@ -167,6 +172,10 @@ bool PipelineExecutor::runInterpretedMorsel() {
    if (pickResult) {
       for (auto interpreter = interpreters.begin() + 1; interpreter < interpreters.end(); ++interpreter) {
          runMorselWithRetry(**interpreter, false);
+      }
+      if (auto printer = pipe.getPrettyPrinter()) {
+         // Tell the printer that a morsel is done.
+         printer->markMorselDone(context);
       }
       cleanUp();
    }
