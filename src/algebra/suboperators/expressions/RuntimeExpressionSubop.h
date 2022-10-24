@@ -22,7 +22,7 @@ struct RuntimeExpressionParams {
    RUNTIME_PARAM(data, RuntimeExpressionState);
 };
 
-/// Runtime expression subop takes an IU argument on the left and a constant value on the right.
+/// Runtime expression subop takes an IU argument on the right and a constant value on the left.
 /// It then computes the binary expression on top of that.
 struct RuntimeExpressionSubop : public TemplatedSuboperator<RuntimeExpressionState>, public WithRuntimeParams<RuntimeExpressionParams> {
 

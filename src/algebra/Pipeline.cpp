@@ -205,6 +205,17 @@ const std::vector<SuboperatorArc>& Pipeline::getSubops() const {
    return suboperators;
 }
 
+void Pipeline::setPrettyPrinter(PrettyPrinter& printer_)
+{
+   assert(!printer);
+   printer = &printer_;
+}
+
+PrettyPrinter* Pipeline::getPrettyPrinter()
+{
+   return printer;
+}
+
 HashTableSimpleKey& PipelineDAG::attachHashTableSimpleKey(size_t discard_after, size_t key_size, size_t payload_size) {
    hash_tables.push_back({discard_after, std::make_unique<HashTableSimpleKey>(key_size, payload_size)});
    return *hash_tables.back().second;

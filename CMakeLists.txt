@@ -89,6 +89,7 @@ set(INCLUDE_H
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/sources/FuseChunkSource.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/suboperators/sources/ScratchPadIUProvider.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/Pipeline.h"
+        "${CMAKE_SOURCE_DIR}/src/algebra/Print.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/RelAlgOp.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/ExpressionOp.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/Filter.h"
@@ -137,6 +138,7 @@ set(INCLUDE_H
 
 set(SRC_CC
         "${CMAKE_SOURCE_DIR}/src/algebra/Pipeline.cpp"
+        "${CMAKE_SOURCE_DIR}/src/algebra/Print.cpp"
         "${CMAKE_SOURCE_DIR}/src/algebra/Aggregation.cpp"
         "${CMAKE_SOURCE_DIR}/src/algebra/AggFunctionRegistry.cpp"
         "${CMAKE_SOURCE_DIR}/src/algebra/CompilationContext.cpp"
@@ -208,7 +210,7 @@ set(SRC_CC
         "${CMAKE_SOURCE_DIR}/src/runtime/HashTableRuntime.cpp"
         "${CMAKE_SOURCE_DIR}/src/runtime/HashTables.cpp"
         "${CMAKE_SOURCE_DIR}/src/runtime/MemoryRuntime.cpp"
-        )
+        src/algebra/Print.cpp)
 
 set(TEST_CC
         "${CMAKE_SOURCE_DIR}/test/test_ir.cpp"

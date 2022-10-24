@@ -32,12 +32,10 @@ TEST_P(TPCHQueriesTestT, q1) {
    auto root = tpch::q1(*schema);
    PipelineDAG dag;
    root->decay(dag);
-   dag.getCurrentPipeline().attachSuboperator(
-      CountingSink::build(*root->getOutput()[0], [](size_t count){
-         EXPECT_EQ(count, 4);
-      })
-      );
+   std::stringstream stream;
+   root->printer->setOstream(stream);
    QueryExecutor::runQuery(dag, GetParam(), "q1");
+   EXPECT_EQ(root->printer->num_rows, 4);
 }
 
 INSTANTIATE_TEST_CASE_P(

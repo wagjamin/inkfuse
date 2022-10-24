@@ -12,6 +12,8 @@
 
 namespace inkfuse {
 
+struct PrettyPrinter;
+
 /// Pipelines are DAG structured through IU dependencies. The PipelineGraph explicitly
 /// models the edges induced by IU dependencies between sub-operators.
 /// Strong edges are modeled directly through the sub-operator properties on "incoming edges".
@@ -42,7 +44,7 @@ struct Pipeline {
 
    /// Get the downstream consumers of IUs for a given sub-operator.
    const std::vector<Suboperator*>& getConsumers(Suboperator& subop) const;
-   /// Get the upstream producers of IUs for a .
+   /// Get the upstream producers of IUs for a given sub-operator.
    const std::vector<Suboperator*>& getProducers(Suboperator& subop) const;
 
    /// Get the suboperator producing a given IU.
@@ -54,6 +56,9 @@ struct Pipeline {
 
    /// Get the sub-operators in this pipeline.
    const std::vector<SuboperatorArc>& getSubops() const;
+
+   void setPrettyPrinter(PrettyPrinter& printer);
+   PrettyPrinter* getPrettyPrinter();
 
    private:
    friend class CompilationContext;
@@ -68,6 +73,9 @@ struct Pipeline {
    PipelineGraph graph;
    /// The IU providers.
    std::unordered_map<const IU*, Suboperator*> iu_providers;
+
+   /// An optional PrettyPrinter that can be used to render the pipeline results.
+   PrettyPrinter* printer;
 };
 
 using PipelinePtr = std::unique_ptr<Pipeline>;

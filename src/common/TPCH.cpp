@@ -2,6 +2,7 @@
 #include "algebra/Aggregation.h"
 #include "algebra/ExpressionOp.h"
 #include "algebra/Filter.h"
+#include "algebra/Print.h"
 #include "algebra/TableScan.h"
 #include "common/Helpers.h"
 
@@ -56,7 +57,7 @@ Schema getTPCHSchema() {
    return schema;
 }
 
-RelAlgOpPtr q1(const Schema& schema) {
+std::unique_ptr<Print> q1(const Schema& schema) {
    // 1. Scan from lineitem.
    auto& rel = schema.at("lineitem");
    std::vector<std::string> cols{
@@ -76,9 +77,10 @@ RelAlgOpPtr q1(const Schema& schema) {
    filter_nodes.push_back(std::make_unique<IURefNode>(
       scan_ref.getOutput()[getScanIndex("l_shipdate", cols)]));
    filter_nodes.push_back(std::make_unique<ComputeNode>(
-      ComputeNode::Type::LessEqual,
-      filter_nodes[0].get(),
-      IR::DateVal::build(helpers::dateStrToInt("1998-12-01") - 90)));
+      ComputeNode::Type::GreaterEqual,
+      IR::DateVal::build(helpers::dateStrToInt("1998-12-01") - 90),
+      filter_nodes[0].get()
+      ));
 
    std::vector<RelAlgOpPtr> children_filter_expr;
    children_filter_expr.push_back(std::move(scan));
@@ -106,19 +108,41 @@ RelAlgOpPtr q1(const Schema& schema) {
    // 3.1 Eval 1 + l_tax
    agg_nodes.push_back(std::make_unique<IURefNode>(
       filter_ref.getOutput()[getScanIndex("l_tax", cols)]));
-   agg_nodes.push_back(std::make_unique<ComputeNode>(
+   auto one_plus_l_tax = agg_nodes.emplace_back(std::make_unique<ComputeNode>(
       ComputeNode::Type::Add,
-      agg_nodes[0].get(),
-      IR::F8::build(1.0)));
+      IR::F8::build(1.0),
+      agg_nodes.back().get())).get();
 
    // 3.2 Eval 1 - l_discount
+   agg_nodes.push_back(std::make_unique<IURefNode>(
+      filter_ref.getOutput()[getScanIndex("l_discount", cols)]));
+   auto one_minus_l_discount = agg_nodes.emplace_back(std::make_unique<ComputeNode>(
+      ComputeNode::Type::Subtract,
+      IR::F8::build(1.0),
+      agg_nodes.back().get())).get();
+
    // 3.3 Eval l_extendedprice * (1 - l_discount)
+   agg_nodes.push_back(std::make_unique<IURefNode>(
+      filter_ref.getOutput()[getScanIndex("l_extendedprice", cols)]));
+   auto mult_simple = agg_nodes.emplace_back(std::make_unique<ComputeNode>(
+      ComputeNode::Type::Multiply,
+      std::vector<ExpressionOp::Node*>{one_minus_l_discount, agg_nodes.back().get()}
+   )).get();
+
    // 3.4 Eval l_extendedprice * (1 - l_discount) * (1 + l_tax)
+   auto mult_complex = agg_nodes.emplace_back(std::make_unique<ComputeNode>(
+      ComputeNode::Type::Multiply,
+      std::vector<ExpressionOp::Node*>{mult_simple, one_plus_l_tax}
+   )).get();
+
    // 3.5 Set up the operator.
    auto agg_expr = ExpressionOp::build(
       std::move(children_agg_expr),
       "agg_expr",
-      std::vector<ExpressionOp::Node*>{agg_nodes[1].get()},
+      std::vector<ExpressionOp::Node*>{
+         mult_simple,
+         mult_complex
+      },
       std::move(agg_nodes));
    auto& agg_expr_ref = *agg_expr;
 
@@ -129,6 +153,18 @@ RelAlgOpPtr q1(const Schema& schema) {
       filter_ref.getOutput()[getScanIndex("l_linestatus", cols)]};
    std::vector<AggregateFunctions::Description> aggregates{
       {*filter_ref.getOutput()[getScanIndex("l_quantity", cols)],
+       AggregateFunctions::Opcode::Sum},
+      {*filter_ref.getOutput()[getScanIndex("l_extendedprice", cols)],
+         AggregateFunctions::Opcode::Sum},
+      {*agg_expr->getOutput()[0], AggregateFunctions::Opcode::Sum},
+      {*agg_expr->getOutput()[1], AggregateFunctions::Opcode::Sum},
+      {*filter_ref.getOutput()[getScanIndex("l_quantity", cols)],
+         AggregateFunctions::Opcode::Avg},
+      {*filter_ref.getOutput()[getScanIndex("l_extendedprice", cols)],
+         AggregateFunctions::Opcode::Avg},
+      {*filter_ref.getOutput()[getScanIndex("l_discount", cols)],
+         AggregateFunctions::Opcode::Avg},
+      {*filter_ref.getOutput()[getScanIndex("l_quantity", cols)],
        AggregateFunctions::Opcode::Count}};
    agg_children.push_back(std::move(agg_expr));
    auto agg = Aggregation::build(
@@ -138,7 +174,29 @@ RelAlgOpPtr q1(const Schema& schema) {
       std::move(aggregates));
 
    // TODO(benjamin) ORDER BY
-   return agg;
+
+   // Attach the sink for printing.
+   std::vector<const IU*> out_ius;
+   out_ius.reserve(agg->getOutput().size());
+   for (const IU* iu: agg->getOutput()) {
+      out_ius.push_back(iu);
+   }
+   std::vector<RelAlgOpPtr> print_children;
+   print_children.push_back(std::move(agg));
+   std::vector<std::string> colnames = {
+      "l_returnflag",
+      "l_linestatus",
+      "sum_qty",
+      "sum_base_price",
+      "sum_disc_price",
+      "sum_charge",
+      "avg_qty",
+      "avg_price",
+      "avg_disc",
+      "count_order"
+   };
+   return Print::build(std::move(print_children),
+                       std::move(out_ius), std::move(colnames));
 }
 
 }

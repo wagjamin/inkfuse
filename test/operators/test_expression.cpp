@@ -33,7 +33,7 @@ struct ExpressionT {
       // Finally addition with a constant which will produce a RuntimeExpressionOp.
       auto c6 = nodes.emplace_back(std::make_unique<ExpressionOp::ComputeNode>(
                                       ExpressionOp::ComputeNode::Type::Add,
-                                      c5, IR::UI<2>::build(5)))
+                                      IR::UI<2>::build(5), c5))
                    .get();
       op.emplace(
          std::vector<std::unique_ptr<RelAlgOp>>{},
