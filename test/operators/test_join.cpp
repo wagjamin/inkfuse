@@ -30,7 +30,7 @@ struct PkJoinTestT : public ::testing::TestWithParam<PipelineExecutor::Execution
          for (size_t k = 0; k < BUILD_SIZE; ++k) {
             // Primary key - everything is unique.
             reinterpret_cast<int32_t*>(storage_col_1.data())[k] = k;
-            reinterpret_cast<uint8_t*>(storage_col_2.data())[k] = k % 256;
+            reinterpret_cast<uint8_t*>(storage_col_2.data())[k] = k % 10;
             reinterpret_cast<float*>(storage_col_3.data())[k] = k % 10000;
          }
 
@@ -103,7 +103,7 @@ TEST_P(PkJoinTestT, one_key) {
    // Every row on the probe side should have a match, meaning that there should be PROBE_SIZE result rows.
    for (const IU* out : join.getOutput()) {
       dag.getPipelines()[1]->attachSuboperator(CountingSink::build(*out, [](size_t count) {
-         EXPECT_EQ(count, 1'000'000);
+         EXPECT_EQ(count, PROBE_SIZE);
       }));
    }
    ASSERT_EQ(dag.getPipelines().size(), 2);
@@ -113,7 +113,28 @@ TEST_P(PkJoinTestT, one_key) {
 
 /// PK join with a compound (int4, uint1) key.
 TEST_P(PkJoinTestT, two_keys) {
+   // Set up the join.
+   std::vector<RelAlgOpPtr> children;
+   children.push_back(std::move(*scan_1));
+   children.push_back(std::move(*scan_2));
+   std::vector<const IU*> keys_left{iu_rel_1_col_1, iu_rel_1_col_2};
+   std::vector<const IU*> payload_left{iu_rel_1_col_2};
+   std::vector<const IU*> keys_right{iu_rel_2_col_1, iu_rel_2_col_2};
+   std::vector<const IU*> payload_right{iu_rel_2_col_3};
+   Join join(std::move(children), "join", std::move(keys_left), std::move(payload_left), std::move(keys_right), std::move(payload_right), JoinType::Inner, true);
+   join.decay(dag);
 
+   // Count the number of result rows, counting all output columns separately to
+   // make sure they get accessed in the read pipeline.
+   // Every tenth row on the probe side should have a match, meaning that there should be PROBE_SIZE / 10 result rows.
+   for (const IU* out : join.getOutput()) {
+      dag.getPipelines()[1]->attachSuboperator(CountingSink::build(*out, [](size_t count) {
+        EXPECT_EQ(count, PROBE_SIZE / 10);
+      }));
+   }
+   ASSERT_EQ(dag.getPipelines().size(), 2);
+   // Run the query.
+   QueryExecutor::runQuery(dag, GetParam(), "join_two_keys");
 }
 
 INSTANTIATE_TEST_CASE_P(PkJoinTest, PkJoinTestT, ::testing::Values(PipelineExecutor::ExecutionMode::Fused,
