@@ -116,6 +116,8 @@ std::unique_ptr<Pipeline> Pipeline::repipe(size_t start, size_t end, const std::
          }
          for (auto iu : subop->getSourceIUs()) {
             if (!in_provided.count(iu) && !in_required.count(iu)) {
+               // We don't want to read the same IU multiple times. If we did this there would
+               // be multiple providers of the same IU which goes against IU SSA.
                in_required.insert(iu);
                in_required_ordered.push_back(iu);
             }

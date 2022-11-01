@@ -9,7 +9,7 @@ PipelineRunner::PipelineRunner(PipelinePtr pipe_, ExecutionContext& context_)
 {
    assert(pipe->getSubops()[0]->isSource());
    // We either run a pipeline with a sink in the end, or interpret a pipeline that
-   // ends in an operator with a pseudo-IU. In other words: the last suboperator must have some observabile side-effects.
+   // ends in an operator with a pseudo-IU. In other words: the last suboperator must have some observable side effects.
    assert(pipe->getSubops().back()->isSink() || dynamic_cast<IR::Void*>(pipe->getSubops().back()->getIUs().front()->type.get()));
    fuseChunkSource = (dynamic_cast<const FuseChunkSourceDriver*>(pipe->getSubops()[0].get()) != nullptr);
 }

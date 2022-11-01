@@ -110,11 +110,11 @@ void Aggregation::decay(PipelineDAG& dag) const {
       size_t key_offset = 0;
       auto pseudo = pseudo_ius.begin();
       for (const auto& key: group_by) {
-         auto& unpacker = curr_pipe.attachSuboperator(KeyPackerSubop::build(this, *key, *packed_ht_key, {&(*pseudo)}));
+         auto& packer = curr_pipe.attachSuboperator(KeyPackerSubop::build(this, *key, *packed_ht_key, {&(*pseudo)}));
          // Attach the runtime parameter that represents the state offset.
          KeyPackingRuntimeParams param;
          param.offsetSet(IR::UI<2>::build(key_offset));
-         reinterpret_cast<KeyPackerSubop&>(unpacker).attachRuntimeParams(std::move(param));
+         reinterpret_cast<KeyPackerSubop&>(packer).attachRuntimeParams(std::move(param));
          // Update the key offset by the size of the IU.
          key_offset += key->type->numBytes();
          pseudo++;

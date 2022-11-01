@@ -43,7 +43,7 @@ struct ColumnFilterScope : public TemplatedSuboperator<EmptyState> {
 struct ColumnFilterLogic : public TemplatedSuboperator<EmptyState> {
 
    /// Set up a ColumnFilterLogic that consumes the ColumnFilterScope pseudo IU and redefines the incoming one.
-   static SuboperatorArc build(const RelAlgOp* source_, const IU& pseudo, const IU& incoming, const IU& redefined);
+   static SuboperatorArc build(const RelAlgOp* source_, const IU& pseudo, const IU& incoming, const IU& redefined, IR::TypeArc filter_type_ = IR::Bool::build(), bool filters_itself = false);
 
    /// A ColumnFilterLogic sub-operator will wrap the incoming ColumnFilterScope
    /// operator into its vectorized primitive.
@@ -55,7 +55,13 @@ struct ColumnFilterLogic : public TemplatedSuboperator<EmptyState> {
    std::string id() const override;
 
    private:
-   ColumnFilterLogic(const RelAlgOp* source_, const IU& pseudo, const IU& incoming, const IU& redefined);
+   ColumnFilterLogic(const RelAlgOp* source_, const IU& pseudo, const IU& incoming, const IU& redefined, IR::TypeArc filter_type_, bool filters_itself_);
+
+   /// On what type do we filter?
+   IR::TypeArc filter_type;
+   /// Does this filter filter itself? I.e. the filter IU is the same one as the
+   /// incoming one that gets redefined?
+   bool filters_itself;
 
 };
 

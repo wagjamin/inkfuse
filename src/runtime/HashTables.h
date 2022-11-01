@@ -39,6 +39,8 @@ struct HashTableSimpleKey {
    char* lookup(const char* key);
    /// Get the pointer to a given key, creating a new group if it does not exist yet.
    char* lookupOrInsert(const char* key);
+   /// Insert a new key - must only be called when we know the group does not exist yet.
+   char* insert(const char* key);
    /// Get the pointer to a given key, creating a new group if it does not exist yet.
    /// Updates the 'result' and 'is_new_key' arguments to give the caller
    /// insight into whether this key was new.

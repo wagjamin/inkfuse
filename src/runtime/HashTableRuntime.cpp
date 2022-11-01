@@ -11,6 +11,10 @@ const uint64_t fill_mask = 1ull << 63ull;
 const uint64_t hash_mask = fill_mask - 1;
 }
 
+extern "C" char* HashTableRuntime::ht_sk_insert(void* table, char* key) {
+   return reinterpret_cast<HashTableSimpleKey*>(table)->insert(key);
+}
+
 extern "C" char* HashTableRuntime::ht_sk_lookup(void* table, char* key) {
    return reinterpret_cast<HashTableSimpleKey*>(table)->lookup(key);
 }
@@ -33,6 +37,10 @@ extern "C" char* HashTableRuntime::ht_nk_lookup(void* table) {
 
 
 void HashTableRuntime::registerRuntime() {
+   RuntimeFunctionBuilder("ht_sk_insert", IR::Pointer::build(IR::Char::build()))
+      .addArg("table", IR::Pointer::build(IR::Void::build()))
+      .addArg("key", IR::Pointer::build(IR::Char::build()));
+
    RuntimeFunctionBuilder("ht_sk_lookup", IR::Pointer::build(IR::Char::build()))
       .addArg("table", IR::Pointer::build(IR::Void::build()))
       .addArg("key", IR::Pointer::build(IR::Char::build()));
