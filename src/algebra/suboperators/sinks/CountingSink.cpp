@@ -64,7 +64,9 @@ void CountingSink::registerRuntime()
 }
 
 void CountingSink::tearDownStateImpl() {
-   callback(state->count);
+   if (callback) {
+      callback(state->count);
+   }
 }
 
 }

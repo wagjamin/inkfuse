@@ -14,6 +14,30 @@ void RuntimeFunctionSubop::registerRuntime() {
       .addMember("this_object", IR::Pointer::build(IR::Void::build()));
 }
 
+std::unique_ptr<RuntimeFunctionSubop> RuntimeFunctionSubop::htInsert(const inkfuse::RelAlgOp* source, const inkfuse::IU& pointers_, const inkfuse::IU& key_, std::vector<const IU*> pseudo_ius_, void* hash_table_)
+{
+   std::string fct_name = "ht_sk_insert";
+   std::vector<const IU*> in_ius{&key_};
+   for (auto pseudo : pseudo_ius_) {
+      // Pseudo IUs are used as input IUs in the backing graph, but do not influence arguments.
+      in_ius.push_back(pseudo);
+   }
+   std::vector<bool> ref{key_.type->id() != "ByteArray" && key_.type->id() != "Ptr_Char"};
+   std::vector<const IU*> out_ius_{&pointers_};
+   std::vector<const IU*> args{&key_};
+   const IU* out = &pointers_;
+   return std::unique_ptr<RuntimeFunctionSubop>(
+      new RuntimeFunctionSubop(
+         source,
+         std::move(fct_name),
+         std::move(in_ius),
+         std::move(out_ius_),
+         std::move(args),
+         std::move(ref),
+         out,
+         hash_table_));
+}
+
 std::unique_ptr<RuntimeFunctionSubop> RuntimeFunctionSubop::htLookup(const RelAlgOp* source, const IU& pointers_, const IU& keys_, std::vector<const IU*> pseudo_ius_, void* hash_table) {
    std::string fct_name = "ht_sk_lookup";
    std::vector<const IU*> in_ius{&keys_};

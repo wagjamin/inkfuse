@@ -47,13 +47,13 @@ std::string ColumnFilterScope::id() const
    return "ColumnFilterScope";
 }
 
-SuboperatorArc ColumnFilterLogic::build(const RelAlgOp* source_, const IU& pseudo, const IU& incoming_, const IU& redefined)
+SuboperatorArc ColumnFilterLogic::build(const RelAlgOp* source_, const IU& pseudo, const IU& incoming_, const IU& redefined, IR::TypeArc filter_type_, bool filters_itself_)
 {
-   return SuboperatorArc{new ColumnFilterLogic(source_, pseudo, incoming_, redefined)};
+   return SuboperatorArc{new ColumnFilterLogic(source_, pseudo, incoming_, redefined, std::move(filter_type_), filters_itself_)};
 }
 
-ColumnFilterLogic::ColumnFilterLogic(const RelAlgOp* source_, const IU& pseudo, const IU& incoming, const IU& redefined)
-   : TemplatedSuboperator<EmptyState>(source_, std::vector<const IU*>{&redefined}, std::vector<const IU*>{&pseudo, &incoming})
+ColumnFilterLogic::ColumnFilterLogic(const RelAlgOp* source_, const IU& pseudo, const IU& incoming, const IU& redefined, IR::TypeArc filter_type_, bool filters_itself_)
+   : TemplatedSuboperator<EmptyState>(source_, std::vector<const IU*>{&redefined}, std::vector<const IU*>{&pseudo, &incoming}), filter_type(std::move(filter_type_)), filters_itself(filters_itself_)
 {
 }
 
@@ -80,7 +80,11 @@ void ColumnFilterLogic::consumeAllChildren(CompilationContext& context)
 
 std::string ColumnFilterLogic::id() const
 {
-   return "ColumnFilterLogic_" + source_ius[1]->type->id();
+   if (filters_itself) {
+      return "ColumnSelfFilterLogic_" + filter_type->id() + "_" + source_ius[1]->type->id();
+   } else {
+      return "ColumnFilterLogic_" + filter_type->id() + "_" + source_ius[1]->type->id();
+   }
 }
 
 }

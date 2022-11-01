@@ -23,6 +23,9 @@ struct RuntimeFunctionSubop : public TemplatedSuboperator<RuntimeFunctionSubopSt
    static const bool hasConsume = false;
    static const bool hasConsumeAll = true;
 
+   /// Build an insert function for a hash table.
+   static std::unique_ptr<RuntimeFunctionSubop> htInsert(const RelAlgOp* source, const IU& pointers_, const IU& key_, std::vector<const IU*> pseudo_ius_, void* hash_table_ = nullptr);
+
    /// Build a hash table lookup function.
    static std::unique_ptr<RuntimeFunctionSubop> htLookup(const RelAlgOp* source, const IU& pointers_, const IU& key_, std::vector<const IU*> pseudo_ius_, void* hash_table_ = nullptr);
 
@@ -31,7 +34,6 @@ struct RuntimeFunctionSubop : public TemplatedSuboperator<RuntimeFunctionSubopSt
 
    /// Build a lookup function for a hash table with a 0-byte key.
    static std::unique_ptr<RuntimeFunctionSubop> htNoKeyLookup(const RelAlgOp* source, const IU& pointers_, const IU& input_dependency, void* hash_table_ = nullptr);
-
 
    static void registerRuntime();
 

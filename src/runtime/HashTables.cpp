@@ -102,6 +102,33 @@ void HashTableSimpleKey::lookupOrInsert(char** result, bool* is_new_key, const c
    *result = slot.elem;
 }
 
+char* HashTableSimpleKey::insert(const char* key)
+{
+   reserveSlot();
+   const uint64_t hash = XXH3_64bits(key, simple_key_size);
+
+   // Access the base table at the right index.
+   uint64_t idx = hash & state.mod_mask;
+   char* elem_ptr = &state.data[idx * state.total_slot_size];
+   uint8_t* tag_ptr = &state.tags[idx];
+
+   // Find the first free slot.
+   for (;;) {
+      const uint8_t tag_fill = *tag_ptr & tag_fill_mask;
+      const uint8_t tag_hash = *tag_ptr & tag_hash_mask;
+      if (!tag_fill) {
+         // We found the first free slot. Mark it as occupied.
+         auto target_tag = static_cast<uint8_t>(hash >> 56ul);
+         *tag_ptr = tag_fill_mask | target_tag;
+         // Copy over the key.
+         std::memcpy(elem_ptr, key, simple_key_size);
+         state.inserted++;
+         return elem_ptr;
+      }
+      state.advance(idx, elem_ptr, tag_ptr);
+   }
+}
+
 void HashTableSimpleKey::iteratorStart(char** it_data, size_t* it_idx) {
    *it_idx = 0;
    *it_data = &state.data[0];

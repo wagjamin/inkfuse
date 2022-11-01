@@ -94,6 +94,7 @@ set(INCLUDE_H
         "${CMAKE_SOURCE_DIR}/src/algebra/ExpressionOp.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/Filter.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/IU.h"
+        "${CMAKE_SOURCE_DIR}/src/algebra/Join.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/TableScan.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/Aggregation.h"
         "${CMAKE_SOURCE_DIR}/src/algebra/AggFunctionRegistry.h"
@@ -172,6 +173,7 @@ set(SRC_CC
         "${CMAKE_SOURCE_DIR}/src/algebra/TableScan.cpp"
         "${CMAKE_SOURCE_DIR}/src/algebra/ExpressionOp.cpp"
         "${CMAKE_SOURCE_DIR}/src/algebra/Filter.cpp"
+        "${CMAKE_SOURCE_DIR}/src/algebra/Join.cpp"
         "${CMAKE_SOURCE_DIR}/src/algebra/RelAlgOp.cpp"
         "${CMAKE_SOURCE_DIR}/src/exec/PipelineExecutor.cpp"
         "${CMAKE_SOURCE_DIR}/src/exec/QueryExecutor.cpp"
@@ -210,7 +212,7 @@ set(SRC_CC
         "${CMAKE_SOURCE_DIR}/src/runtime/HashTableRuntime.cpp"
         "${CMAKE_SOURCE_DIR}/src/runtime/HashTables.cpp"
         "${CMAKE_SOURCE_DIR}/src/runtime/MemoryRuntime.cpp"
-        src/algebra/Print.cpp)
+        )
 
 set(TEST_CC
         "${CMAKE_SOURCE_DIR}/test/test_ir.cpp"
@@ -222,6 +224,7 @@ set(TEST_CC
         "${CMAKE_SOURCE_DIR}/test/operators/test_table_scan.cpp"
         "${CMAKE_SOURCE_DIR}/test/operators/test_expression.cpp"
         "${CMAKE_SOURCE_DIR}/test/operators/test_filter.cpp"
+        "${CMAKE_SOURCE_DIR}/test/operators/test_join.cpp"
         "${CMAKE_SOURCE_DIR}/test/runtime/test_hash_table.cpp"
         "${CMAKE_SOURCE_DIR}/test/suboperators/test_hash_table_source.cpp"
         "${CMAKE_SOURCE_DIR}/test/suboperators/aggregation/test_agg_reader_subop.cpp"

@@ -18,6 +18,16 @@ RuntimeFunctionSubopFragmentizer::RuntimeFunctionSubopFragmentizer() {
          name = op.id();
       }
 
+      // Fragmentize hash table insert.
+      {
+         auto& [name, pipe] = pipes.emplace_back();
+         const auto& key = generated_ius.emplace_back(in_type);
+         const auto& result_ptr = generated_ius.emplace_back(IR::Pointer::build(IR::Char::build()));
+         // No pseudo-IU inputs, these only matter for more complex DAGs.
+         const auto& op = pipe.attachSuboperator(RuntimeFunctionSubop::htInsert(nullptr, result_ptr, key, {}));
+         name = op.id();
+      }
+
       // Fragmentize hash table lookup with insert.
       {
          auto& [name, pipe] = pipes.emplace_back();
