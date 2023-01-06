@@ -444,7 +444,7 @@ std::unique_ptr<Print> q3(const Schema& schema) {
    std::vector<RelAlgOpPtr> print_children;
    print_children.push_back(std::move(agg));
    return Print::build(std::move(print_children),
-                       std::move(out_ius), std::move(colnames));
+                       std::move(out_ius), std::move(colnames), "q3_print", 10);
 }
 
 std::unique_ptr<Print> q6(const Schema& schema) {
@@ -577,6 +577,10 @@ std::unique_ptr<Print> q6(const Schema& schema) {
    print_children.push_back(std::move(agg));
    return Print::build(std::move(print_children),
                        std::move(out_ius), std::move(colnames));
+}
+
+std::unique_ptr<Print> q9(const Schema& schema) {
+
 }
 
 std::unique_ptr<Print> l_count(const inkfuse::Schema& schema) {
