@@ -2,6 +2,7 @@
 #include "algebra/Aggregation.h"
 #include "algebra/ExpressionOp.h"
 #include "algebra/Filter.h"
+#include "algebra/Join.h"
 #include "algebra/Print.h"
 #include "algebra/TableScan.h"
 #include "common/Helpers.h"
@@ -10,6 +11,8 @@
 // - DECIMALs gets represented as double
 // - VARCHARs/CHARs get represented as TEXT
 //   (only exception is char(1) which gets represented as char)
+// This would not be good for a production engine, but is good enough
+// as an experimental engine outlining the approach to query execution.
 namespace inkfuse::tpch {
 
 namespace {
@@ -19,7 +22,7 @@ using ComputeNode = ExpressionOp::ComputeNode;
 using IURefNode = ExpressionOp::IURefNode;
 
 // Types used throughout TPC-H.
-const auto t_ui4 = IR::UnsignedInt::build(4);
+const auto t_i4 = IR::SignedInt::build(4);
 const auto t_f8 = IR::Float::build(8);
 const auto t_char = IR::Char::build();
 const auto t_date = IR::Date::build();
@@ -31,10 +34,10 @@ size_t getScanIndex(std::string_view name, const std::vector<std::string>& cols)
 
 StoredRelationPtr tableLineitem() {
    auto rel = std::make_unique<StoredRelation>();
-   rel->attachPODColumn("l_orderkey", t_ui4);
-   rel->attachPODColumn("l_partkey", t_ui4);
-   rel->attachPODColumn("l_suppkey", t_ui4);
-   rel->attachPODColumn("l_linenumber", t_ui4);
+   rel->attachPODColumn("l_orderkey", t_i4);
+   rel->attachPODColumn("l_partkey", t_i4);
+   rel->attachPODColumn("l_suppkey", t_i4);
+   rel->attachPODColumn("l_linenumber", t_i4);
    rel->attachPODColumn("l_quantity", t_f8);
    rel->attachPODColumn("l_extendedprice", t_f8);
    rel->attachPODColumn("l_discount", t_f8);
@@ -50,11 +53,40 @@ StoredRelationPtr tableLineitem() {
    return rel;
 }
 
+StoredRelationPtr tableOrders() {
+   auto rel = std::make_unique<StoredRelation>();
+   rel->attachPODColumn("o_orderkey", t_i4);
+   rel->attachPODColumn("o_custkey", t_i4);
+   rel->attachPODColumn("o_orderstatus", t_char);
+   rel->attachPODColumn("o_totalprice", t_f8);
+   rel->attachPODColumn("o_orderdate", t_date);
+   rel->attachStringColumn("o_orderpriority");
+   rel->attachStringColumn("o_clerk");
+   rel->attachPODColumn("o_shippriority", t_i4);
+   rel->attachStringColumn("o_comment");
+   return rel;
+}
+
+StoredRelationPtr tableCustomer() {
+   auto rel = std::make_unique<StoredRelation>();
+   rel->attachPODColumn("c_custkey", t_i4);
+   rel->attachStringColumn("c_name");
+   rel->attachStringColumn("c_address");
+   rel->attachPODColumn("c_nationkey", t_i4);
+   rel->attachStringColumn("c_phone");
+   rel->attachPODColumn("c_acctbal", t_f8);
+   rel->attachStringColumn("c_mktsegment");
+   rel->attachStringColumn("c_comment");
+   return rel;
+}
+
 }
 
 Schema getTPCHSchema() {
    Schema schema;
    schema.emplace("lineitem", tableLineitem());
+   schema.emplace("orders", tableOrders());
+   schema.emplace("customer", tableCustomer());
    return schema;
 }
 
@@ -69,7 +101,7 @@ std::unique_ptr<Print> q1(const Schema& schema) {
       "l_discount",
       "l_tax",
       "l_shipdate"};
-   auto scan = TableScan::build(*rel, cols, "scan");
+   auto scan = TableScan::build(*rel, cols, "l_scan");
    auto& scan_ref = *scan;
 
    // 2. Filter l_shipdate <= date '1998-12-01' - interval '90' day
@@ -80,8 +112,7 @@ std::unique_ptr<Print> q1(const Schema& schema) {
    filter_nodes.push_back(std::make_unique<ComputeNode>(
       ComputeNode::Type::GreaterEqual,
       IR::DateVal::build(helpers::dateStrToInt("1998-12-01") - 90),
-      filter_nodes[0].get()
-      ));
+      filter_nodes[0].get()));
 
    std::vector<RelAlgOpPtr> children_filter_expr;
    children_filter_expr.push_back(std::move(scan));
@@ -110,31 +141,33 @@ std::unique_ptr<Print> q1(const Schema& schema) {
    agg_nodes.push_back(std::make_unique<IURefNode>(
       filter_ref.getOutput()[getScanIndex("l_tax", cols)]));
    auto one_plus_l_tax = agg_nodes.emplace_back(std::make_unique<ComputeNode>(
-      ComputeNode::Type::Add,
-      IR::F8::build(1.0),
-      agg_nodes.back().get())).get();
+                                                   ComputeNode::Type::Add,
+                                                   IR::F8::build(1.0),
+                                                   agg_nodes.back().get()))
+                            .get();
 
    // 3.2 Eval 1 - l_discount
    agg_nodes.push_back(std::make_unique<IURefNode>(
       filter_ref.getOutput()[getScanIndex("l_discount", cols)]));
    auto one_minus_l_discount = agg_nodes.emplace_back(std::make_unique<ComputeNode>(
-      ComputeNode::Type::Subtract,
-      IR::F8::build(1.0),
-      agg_nodes.back().get())).get();
+                                                         ComputeNode::Type::Subtract,
+                                                         IR::F8::build(1.0),
+                                                         agg_nodes.back().get()))
+                                  .get();
 
    // 3.3 Eval l_extendedprice * (1 - l_discount)
    agg_nodes.push_back(std::make_unique<IURefNode>(
       filter_ref.getOutput()[getScanIndex("l_extendedprice", cols)]));
    auto mult_simple = agg_nodes.emplace_back(std::make_unique<ComputeNode>(
-      ComputeNode::Type::Multiply,
-      std::vector<Node*>{one_minus_l_discount, agg_nodes.back().get()}
-   )).get();
+                                                ComputeNode::Type::Multiply,
+                                                std::vector<Node*>{one_minus_l_discount, agg_nodes.back().get()}))
+                         .get();
 
    // 3.4 Eval l_extendedprice * (1 - l_discount) * (1 + l_tax)
    auto mult_complex = agg_nodes.emplace_back(std::make_unique<ComputeNode>(
-      ComputeNode::Type::Multiply,
-      std::vector<Node*>{mult_simple, one_plus_l_tax}
-   )).get();
+                                                 ComputeNode::Type::Multiply,
+                                                 std::vector<Node*>{mult_simple, one_plus_l_tax}))
+                          .get();
 
    // 3.5 Set up the operator.
    auto agg_expr = ExpressionOp::build(
@@ -142,8 +175,7 @@ std::unique_ptr<Print> q1(const Schema& schema) {
       "agg_expr",
       std::vector<Node*>{
          mult_simple,
-         mult_complex
-      },
+         mult_complex},
       std::move(agg_nodes));
    auto& agg_expr_ref = *agg_expr;
 
@@ -156,15 +188,15 @@ std::unique_ptr<Print> q1(const Schema& schema) {
       {*filter_ref.getOutput()[getScanIndex("l_quantity", cols)],
        AggregateFunctions::Opcode::Sum},
       {*filter_ref.getOutput()[getScanIndex("l_extendedprice", cols)],
-         AggregateFunctions::Opcode::Sum},
+       AggregateFunctions::Opcode::Sum},
       {*agg_expr->getOutput()[0], AggregateFunctions::Opcode::Sum},
       {*agg_expr->getOutput()[1], AggregateFunctions::Opcode::Sum},
       {*filter_ref.getOutput()[getScanIndex("l_quantity", cols)],
-         AggregateFunctions::Opcode::Avg},
+       AggregateFunctions::Opcode::Avg},
       {*filter_ref.getOutput()[getScanIndex("l_extendedprice", cols)],
-         AggregateFunctions::Opcode::Avg},
+       AggregateFunctions::Opcode::Avg},
       {*filter_ref.getOutput()[getScanIndex("l_discount", cols)],
-         AggregateFunctions::Opcode::Avg},
+       AggregateFunctions::Opcode::Avg},
       {*filter_ref.getOutput()[getScanIndex("l_quantity", cols)],
        AggregateFunctions::Opcode::Count}};
    agg_children.push_back(std::move(agg_expr));
@@ -179,7 +211,7 @@ std::unique_ptr<Print> q1(const Schema& schema) {
    // Attach the sink for printing.
    std::vector<const IU*> out_ius;
    out_ius.reserve(agg->getOutput().size());
-   for (const IU* iu: agg->getOutput()) {
+   for (const IU* iu : agg->getOutput()) {
       out_ius.push_back(iu);
    }
    std::vector<RelAlgOpPtr> print_children;
@@ -194,8 +226,223 @@ std::unique_ptr<Print> q1(const Schema& schema) {
       "avg_qty",
       "avg_price",
       "avg_disc",
-      "count_order"
+      "count_order"};
+   return Print::build(std::move(print_children),
+                       std::move(out_ius), std::move(colnames));
+}
+
+std::unique_ptr<Print> q3(const Schema& schema) {
+   // 1. Join Customer <-> Orders
+   // 1.1 Scan customer
+   auto& c_rel = schema.at("customer");
+   std::vector<std::string> c_cols{
+      "c_custkey",
+      "c_mktsegment",
    };
+   auto c_scan = TableScan::build(*c_rel, c_cols, "scan");
+   auto& c_scan_ref = *c_scan;
+
+   // 1.2 Filter customer on c_mktsegment = 'BUILDING'
+   std::vector<ExpressionOp::NodePtr> c_nodes;
+   c_nodes.emplace_back(std::make_unique<IURefNode>(c_scan_ref.getOutput()[1]));
+   c_nodes.emplace_back(std::make_unique<ComputeNode>(ComputeNode::Type::StrEquals, IR::StringVal::build("BUILDING"), c_nodes[0].get()));
+   auto c_nodes_root = c_nodes[1].get();
+   std::vector<RelAlgOpPtr> c_expr_children;
+   c_expr_children.push_back(std::move(c_scan));
+   auto c_expr = ExpressionOp::build(
+      std::move(c_expr_children),
+      "expr_customer",
+      {c_nodes_root},
+      std::move(c_nodes));
+   auto& c_expr_ref = *c_expr;
+
+   std::vector<RelAlgOpPtr> c_filter_children;
+   c_filter_children.push_back(std::move(c_expr));
+   auto c_filter = Filter::build(
+      std::move(c_filter_children),
+      "filter_customer",
+      {c_scan_ref.getOutput()[0]},
+      *c_expr_ref.getOutput()[0]);
+   auto& c_filter_ref = *c_filter;
+
+   // 1.2 Scan orders
+   auto& o_rel = schema.at("orders");
+   std::vector<std::string> o_cols{
+      "o_orderkey",
+      "o_custkey",
+      "o_orderdate",
+      "o_shippriority",
+   };
+   auto o_scan = TableScan::build(*o_rel, o_cols, "scan");
+   auto& o_scan_ref = *o_scan;
+   // 1.3 Filter orders on o_orderdate < '1995-03-15'
+   std::vector<ExpressionOp::NodePtr> o_nodes;
+   o_nodes.emplace_back(std::make_unique<IURefNode>(o_scan_ref.getOutput()[2]));
+   o_nodes.emplace_back(
+      std::make_unique<ComputeNode>(
+         ComputeNode::Type::Greater,
+         IR::DateVal::build(helpers::dateStrToInt("1995-03-15")),
+         o_nodes[0].get()));
+   auto o_nodes_root = o_nodes[1].get();
+   std::vector<RelAlgOpPtr> o_expr_children;
+   o_expr_children.push_back(std::move(o_scan));
+   auto o_expr = ExpressionOp::build(
+      std::move(o_expr_children),
+      "expr_orders",
+      {o_nodes_root},
+      std::move(o_nodes));
+   auto& o_expr_ref = *o_expr;
+
+   std::vector<RelAlgOpPtr> o_filter_children;
+   o_filter_children.push_back(std::move(o_expr));
+   auto o_filter = Filter::build(
+      std::move(o_filter_children),
+      "filter_customer",
+      // We will need all output columns again.
+      {o_scan_ref.getOutput()[0],
+       o_scan_ref.getOutput()[1],
+       o_scan_ref.getOutput()[2],
+       o_scan_ref.getOutput()[3],
+      },
+      *o_expr_ref.getOutput()[0]);
+   auto& o_filter_ref = *o_filter;
+
+   // 1.4 Join the two tables.
+   // The engine can infer that this is a PK join, c_custkey is PK of customer
+   std::vector<RelAlgOpPtr> c_o_join_children;
+   c_o_join_children.push_back(std::move(c_filter));
+   c_o_join_children.push_back(std::move(o_filter));
+   auto c_o_join = Join::build(
+      std::move(c_o_join_children),
+      "c_o_join",
+      // Keys left (c_custkey)
+      {c_filter_ref.getOutput()[0]},
+      // Payload left ()
+      {},
+      // Keys right (o_custkey)
+      {o_filter_ref.getOutput()[1]},
+      // Payload right (o_orderkey, o_orderdate, o_shippriority)
+      {
+         o_filter_ref.getOutput()[0],
+         o_filter_ref.getOutput()[2],
+         o_filter_ref.getOutput()[3],
+      },
+      JoinType::Inner,
+      true
+      );
+   auto& c_o_join_ref = *c_o_join;
+
+   // 2. Join This on Lineitem
+   // 2.1 Scan lineitem
+   auto& l_rel = schema.at("lineitem");
+   std::vector<std::string> l_cols{
+      "l_orderkey",
+      "l_discount",
+      "l_shipdate",
+      "l_extendedprice"
+   };
+   auto l_scan = TableScan::build(*l_rel, l_cols, "l_scan");
+   auto& l_scan_ref = *l_scan;
+
+   // 2.2 Filter lineitem on l_shipdate > '1995-03-15'
+   std::vector<ExpressionOp::NodePtr> l_nodes;
+   l_nodes.emplace_back(std::make_unique<IURefNode>(l_scan_ref.getOutput()[2]));
+   l_nodes.emplace_back(std::make_unique<ComputeNode>(ComputeNode::Type::Less, IR::DateVal::build(helpers::dateStrToInt("1995-03-15")), l_nodes[0].get()));
+   auto l_nodes_root = l_nodes[1].get();
+   std::vector<RelAlgOpPtr> l_expr_children;
+   l_expr_children.push_back(std::move(l_scan));
+   auto l_expr = ExpressionOp::build(
+      std::move(l_expr_children),
+      "expr_lineitem",
+      {l_nodes_root},
+      std::move(l_nodes));
+   auto& l_expr_ref = *l_expr;
+
+   std::vector<RelAlgOpPtr> l_filter_children;
+   l_filter_children.push_back(std::move(l_expr));
+   auto l_filter = Filter::build(
+      std::move(l_filter_children),
+      "filter_lineitem",
+      // We will need all output columns apart from l_shipdate.
+      {l_scan_ref.getOutput()[0],
+       l_scan_ref.getOutput()[1],
+       l_scan_ref.getOutput()[3],
+      },
+      *l_expr_ref.getOutput()[0]);
+   auto& l_filter_ref = *l_filter;
+
+   // 2.3 Perform the actual join
+   // The engine can infer that this is a PK join, o_custkey is PK of orders
+   // And initial join was a PK join (i.e. at most one match per row)
+   std::vector<RelAlgOpPtr> c_o_l_join_children;
+   c_o_l_join_children.push_back(std::move(c_o_join));
+   c_o_l_join_children.push_back(std::move(l_filter));
+   auto c_o_l_join = Join::build(
+      std::move(c_o_l_join_children),
+      "c_o_l_join",
+      // Keys left (o_orderkey)
+      {c_o_join_ref.getOutput()[2]},
+      // Payload left (o_orderdate, o_shippriority)
+      {
+         c_o_join_ref.getOutput()[3],
+         c_o_join_ref.getOutput()[4],
+      },
+      // Keys right (l_orderkey)
+      {l_filter_ref.getOutput()[0]},
+      // Payload right (l_discount, l_extendedprice)
+      {
+         l_filter_ref.getOutput()[1],
+         l_filter_ref.getOutput()[2],
+      },
+      JoinType::Inner,
+      true
+   );
+   auto& c_o_l_join_ref = *c_o_l_join;
+
+   // 3. Aggregate
+   // 3.1 Calculate `l_extendedprice * (1 - l_discount)`
+   std::vector<ExpressionOp::NodePtr> agg_nodes;
+   agg_nodes.emplace_back(std::make_unique<IURefNode>(c_o_l_join_ref.getOutput()[4]));
+   agg_nodes.emplace_back(std::make_unique<IURefNode>(c_o_l_join_ref.getOutput()[5]));
+   agg_nodes.emplace_back(std::make_unique<ComputeNode>(ComputeNode::Type::Subtract, IR::F8::build(1.0), agg_nodes[0].get()));
+   agg_nodes.emplace_back(std::make_unique<ComputeNode>(ComputeNode::Type::Multiply, std::vector<Node*>{agg_nodes[1].get(), agg_nodes[2].get()}));
+   auto agg_nodes_root = agg_nodes[3].get();
+   std::vector<RelAlgOpPtr> agg_e_children;
+   agg_e_children.push_back(std::move(c_o_l_join));
+   auto agg_e = ExpressionOp::build(
+      std::move(agg_e_children),
+      "agg_expr",
+      {agg_nodes_root},
+      std::move(agg_nodes));
+   auto& agg_e_ref = *agg_e;
+
+   // 3.2 Perform the aggregation.
+   std::vector<RelAlgOpPtr> agg_children;
+   agg_children.push_back(std::move(agg_e));
+   // Group by (l_orderkey, o_orderdate, o_shippriority).
+   std::vector<const IU*> group_by{
+      c_o_l_join_ref.getOutput()[0],
+      c_o_l_join_ref.getOutput()[1],
+      c_o_l_join_ref.getOutput()[2],
+   };
+   std::vector<AggregateFunctions::Description> aggregates{
+      {*agg_e_ref.getOutput()[0], AggregateFunctions::Opcode::Sum}};
+   auto agg = Aggregation::build(
+      std::move(agg_children),
+      "agg",
+      std::move(group_by),
+      std::move(aggregates));
+
+   // 4. Print
+   std::vector<const IU*> out_ius{
+      agg->getOutput()[0],
+      agg->getOutput()[3],
+      agg->getOutput()[1],
+      agg->getOutput()[2],
+   };
+   std::vector<std::string> colnames = {"l_orderkey", "revenue", "o_orderdate", "o_shippriority"};
+   std::vector<RelAlgOpPtr> print_children;
+   print_children.push_back(std::move(agg));
    return Print::build(std::move(print_children),
                        std::move(out_ius), std::move(colnames));
 }
@@ -208,8 +455,7 @@ std::unique_ptr<Print> q6(const Schema& schema) {
       "l_discount",
       "l_shipdate",
       "l_discount",
-      "l_quantity"
-   };
+      "l_quantity"};
    auto scan = TableScan::build(*rel, cols, "scan");
    auto& scan_ref = *scan;
 
@@ -219,43 +465,56 @@ std::unique_ptr<Print> q6(const Schema& schema) {
    std::vector<ExpressionOp::NodePtr> pred_nodes;
 
    auto l_shipdate_ref = pred_nodes.emplace_back(std::make_unique<IURefNode>(
-         scan_ref.getOutput()[getScanIndex("l_shipdate", cols)])).get();
+                                                    scan_ref.getOutput()[getScanIndex("l_shipdate", cols)]))
+                            .get();
    auto l_discount_ref = pred_nodes.emplace_back(std::make_unique<IURefNode>(
-      scan_ref.getOutput()[getScanIndex("l_discount", cols)])).get();
+                                                    scan_ref.getOutput()[getScanIndex("l_discount", cols)]))
+                            .get();
    auto l_quantity_ref = pred_nodes.emplace_back(std::make_unique<IURefNode>(
-      scan_ref.getOutput()[getScanIndex("l_quantity", cols)])).get();
+                                                    scan_ref.getOutput()[getScanIndex("l_quantity", cols)]))
+                            .get();
    auto pred_1 = pred_nodes.emplace_back(std::make_unique<ComputeNode>(
-      ComputeNode::Type::LessEqual,
-      IR::DateVal::build(helpers::dateStrToInt("1994-01-01")),
-      l_shipdate_ref)).get();
+                                            ComputeNode::Type::LessEqual,
+                                            IR::DateVal::build(helpers::dateStrToInt("1994-01-01")),
+                                            l_shipdate_ref))
+                    .get();
    auto pred_2 = pred_nodes.emplace_back(std::make_unique<ComputeNode>(
-      ComputeNode::Type::Greater,
-      IR::DateVal::build(helpers::dateStrToInt("1995-01-01")),
-      l_shipdate_ref)).get();
+                                            ComputeNode::Type::Greater,
+                                            IR::DateVal::build(helpers::dateStrToInt("1995-01-01")),
+                                            l_shipdate_ref))
+                    .get();
+   // We have some rounding issues if we don't use 0.01001.
    auto pred_3 = pred_nodes.emplace_back(std::make_unique<ComputeNode>(
-      ComputeNode::Type::LessEqual,
-      IR::F8::build(0.06 - 0.01001),
-      l_discount_ref)).get();
+                                            ComputeNode::Type::LessEqual,
+                                            IR::F8::build(0.06 - 0.01001),
+                                            l_discount_ref))
+                    .get();
    auto pred_4 = pred_nodes.emplace_back(std::make_unique<ComputeNode>(
-      ComputeNode::Type::GreaterEqual,
-      IR::F8::build(0.06 + 0.01001),
-      l_discount_ref)).get();
+                                            ComputeNode::Type::GreaterEqual,
+                                            IR::F8::build(0.06 + 0.01001),
+                                            l_discount_ref))
+                    .get();
    auto pred_5 = pred_nodes.emplace_back(std::make_unique<ComputeNode>(
-      ComputeNode::Type::Greater,
-      IR::F8::build(24),
-      l_quantity_ref)).get();
-   auto and_1  = pred_nodes.emplace_back(std::make_unique<ComputeNode>(
-      ComputeNode::Type::And,
-      std::vector<Node*>{pred_1, pred_2})).get();
-   auto and_2  = pred_nodes.emplace_back(std::make_unique<ComputeNode>(
-      ComputeNode::Type::And,
-      std::vector<Node*>{pred_3, pred_4})).get();
-   auto and_3  = pred_nodes.emplace_back(std::make_unique<ComputeNode>(
-      ComputeNode::Type::And,
-      std::vector<Node*>{and_1, and_2})).get();
+                                            ComputeNode::Type::Greater,
+                                            IR::F8::build(24),
+                                            l_quantity_ref))
+                    .get();
+   auto and_1 = pred_nodes.emplace_back(std::make_unique<ComputeNode>(
+                                           ComputeNode::Type::And,
+                                           std::vector<Node*>{pred_1, pred_2}))
+                   .get();
+   auto and_2 = pred_nodes.emplace_back(std::make_unique<ComputeNode>(
+                                           ComputeNode::Type::And,
+                                           std::vector<Node*>{pred_3, pred_4}))
+                   .get();
+   auto and_3 = pred_nodes.emplace_back(std::make_unique<ComputeNode>(
+                                           ComputeNode::Type::And,
+                                           std::vector<Node*>{and_1, and_2}))
+                   .get();
    auto and_4 = pred_nodes.emplace_back(std::make_unique<ComputeNode>(
-      ComputeNode::Type::And,
-      std::vector<Node*>{and_3, pred_5})).get();
+                                           ComputeNode::Type::And,
+                                           std::vector<Node*>{and_3, pred_5}))
+                   .get();
 
    auto expr_node = ExpressionOp::build(
       std::move(children_scan),
@@ -268,10 +527,9 @@ std::unique_ptr<Print> q6(const Schema& schema) {
    // 3. Filter
    std::vector<RelAlgOpPtr> children_filter;
    children_filter.push_back(std::move(expr_node));
-   std::vector<const IU*> redefined {
+   std::vector<const IU*> redefined{
       scan_ref.getOutput()[getScanIndex("l_extendedprice", cols)],
-      scan_ref.getOutput()[getScanIndex("l_discount", cols)]
-   };
+      scan_ref.getOutput()[getScanIndex("l_discount", cols)]};
    auto filter = Filter::build(std::move(children_filter), "filter", std::move(redefined), *expr_ref.getOutput()[0]);
    auto& filter_ref = *filter;
    assert(filter->getOutput().size() == 2);
@@ -281,12 +539,15 @@ std::unique_ptr<Print> q6(const Schema& schema) {
    children_mult.push_back(std::move(filter));
    std::vector<ExpressionOp::NodePtr> mult_nodes;
    auto mult_ref_1 = mult_nodes.emplace_back(std::make_unique<IURefNode>(
-      filter_ref.getOutput()[0])).get();
+                                                filter_ref.getOutput()[0]))
+                        .get();
    auto mult_ref_2 = mult_nodes.emplace_back(std::make_unique<IURefNode>(
-      filter_ref.getOutput()[1])).get();
+                                                filter_ref.getOutput()[1]))
+                        .get();
    auto mult_node = mult_nodes.emplace_back(std::make_unique<ComputeNode>(
-      ComputeNode::Type::Multiply,
-      std::vector<Node*>{mult_ref_1, mult_ref_2})).get();
+                                               ComputeNode::Type::Multiply,
+                                               std::vector<Node*>{mult_ref_1, mult_ref_2}))
+                       .get();
 
    auto mult_expr = ExpressionOp::build(
       std::move(children_mult),
@@ -310,20 +571,18 @@ std::unique_ptr<Print> q6(const Schema& schema) {
       std::move(aggregates));
 
    // 6. Print
-   std::vector<const IU*> out_ius {agg->getOutput()[0]};
-   std::vector<std::string> colnames = { "revenue" };
+   std::vector<const IU*> out_ius{agg->getOutput()[0]};
+   std::vector<std::string> colnames = {"revenue"};
    std::vector<RelAlgOpPtr> print_children;
    print_children.push_back(std::move(agg));
    return Print::build(std::move(print_children),
                        std::move(out_ius), std::move(colnames));
-
 }
 
-std::unique_ptr<Print> tpch::l_count(const inkfuse::Schema& schema)
-{
+std::unique_ptr<Print> l_count(const inkfuse::Schema& schema) {
    // 1. Scan from lineitem.
    auto& rel = schema.at("lineitem");
-   std::vector<std::string> cols {"l_linestatus"};
+   std::vector<std::string> cols{"l_linestatus"};
    auto scan = TableScan::build(*rel, cols, "scan");
    auto& scan_ref = *scan;
 
@@ -341,18 +600,18 @@ std::unique_ptr<Print> tpch::l_count(const inkfuse::Schema& schema)
       std::move(aggregates));
 
    // 6. Print
-   std::vector<const IU*> out_ius {agg->getOutput()[0]};
-   std::vector<std::string> colnames = { "num_rows" };
+   std::vector<const IU*> out_ius{agg->getOutput()[0]};
+   std::vector<std::string> colnames = {"num_rows"};
    std::vector<RelAlgOpPtr> print_children;
    print_children.push_back(std::move(agg));
    return Print::build(std::move(print_children),
                        std::move(out_ius), std::move(colnames));
 }
 
-std::unique_ptr<Print> tpch::l_point(const inkfuse::Schema& schema) {
+std::unique_ptr<Print> l_point(const inkfuse::Schema& schema) {
    // 1. Scan from lineitem.
    auto& rel = schema.at("lineitem");
-   std::vector<std::string> cols {"l_orderkey", "l_tax"};
+   std::vector<std::string> cols{"l_orderkey", "l_tax"};
    auto scan = TableScan::build(*rel, cols, "scan");
    auto& scan_ref = *scan;
 
@@ -362,12 +621,14 @@ std::unique_ptr<Print> tpch::l_point(const inkfuse::Schema& schema) {
    std::vector<ExpressionOp::NodePtr> pred_nodes;
 
    auto l_orderkey_ref = pred_nodes.emplace_back(std::make_unique<IURefNode>(
-      scan_ref.getOutput()[getScanIndex("l_orderkey", cols)])).get();
+                                                    scan_ref.getOutput()[getScanIndex("l_orderkey", cols)]))
+                            .get();
    auto pred_1 = pred_nodes.emplace_back(
                               std::make_unique<ComputeNode>(
                                  ComputeNode::Type::Eq,
-                                 IR::UI<4>::build(39),
-                                 l_orderkey_ref)).get();
+                                 IR::SI<4>::build(39),
+                                 l_orderkey_ref))
+                    .get();
    auto expr_node = ExpressionOp::build(
       std::move(children_scan),
       "lineitem_filter",
@@ -379,7 +640,7 @@ std::unique_ptr<Print> tpch::l_point(const inkfuse::Schema& schema) {
    // 3. Filter
    std::vector<RelAlgOpPtr> children_filter;
    children_filter.push_back(std::move(expr_node));
-   std::vector<const IU*> redefined {
+   std::vector<const IU*> redefined{
       scan_ref.getOutput()[getScanIndex("l_tax", cols)],
    };
    auto filter = Filter::build(std::move(children_filter), "filter", std::move(redefined), *expr_ref.getOutput()[0]);
@@ -389,8 +650,8 @@ std::unique_ptr<Print> tpch::l_point(const inkfuse::Schema& schema) {
    // 6. Print
    std::vector<RelAlgOpPtr> print_children;
    print_children.push_back(std::move(filter));
-   std::vector<const IU*> out_ius {filter_ref.getOutput()[0]};
-   std::vector<std::string> colnames = { "l_tax" };
+   std::vector<const IU*> out_ius{filter_ref.getOutput()[0]};
+   std::vector<std::string> colnames = {"l_tax"};
    return Print::build(std::move(print_children),
                        std::move(out_ius), std::move(colnames));
 }

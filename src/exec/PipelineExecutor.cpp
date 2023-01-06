@@ -53,16 +53,16 @@ void PipelineExecutor::runPipeline() {
          // to be ready.
          compilation_job.join();
       }
-      compiled.at({0, pipe.getSubops().size()})->setUpState(true);
+      compiled.at({0, pipe.getSubops().size()})->setUpState();
       while (runFusedMorsel()) {}
    } else if (mode == ExecutionMode::Interpreted) {
       for (auto& interpreter: interpreters) {
-         interpreter->setUpState(true);
+         interpreter->setUpState();
       }
       while (runInterpretedMorsel()) {}
    } else {
       for (auto& interpreter: interpreters) {
-         interpreter->setUpState(true);
+         interpreter->setUpState();
       }
       bool fused_ready = false;
       bool terminate = false;
@@ -73,7 +73,7 @@ void PipelineExecutor::runPipeline() {
       }
       // Code is ready - switch over.
       if (!terminate && fused_ready) {
-         compiled.at({0, pipe.getSubops().size()})->setUpState(false);
+         compiled.at({0, pipe.getSubops().size()})->setUpState();
       }
       while (!terminate) {
          terminate = !runFusedMorsel();
@@ -92,11 +92,11 @@ bool PipelineExecutor::runMorsel() {
    // Scope guard for memory context and flags.
    ExecutionContext::RuntimeGuard guard{context};
    if (mode == ExecutionMode::Fused || (mode == ExecutionMode::Hybrid)) {
-      compiled.at({0, pipe.getSubops().size()})->setUpState(true);
+      compiled.at({0, pipe.getSubops().size()})->setUpState();
       return runFusedMorsel();
    } else {
       for (auto& interpreter: interpreters) {
-         interpreter->setUpState(true);
+         interpreter->setUpState();
       }
       return runInterpretedMorsel();
    }

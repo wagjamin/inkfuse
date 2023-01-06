@@ -1,4 +1,5 @@
 #include "codegen/Type.h"
+#include "common/Helpers.h"
 #include <algorithm>
 #include <iomanip>
 
@@ -57,7 +58,13 @@ void Char::print(std::ostream& stream, char* data) const
 
 void String::print(std::ostream& stream, char* data) const
 {
-   stream << data;
+   std::string str(data);
+   stream << str;
+}
+
+void Date::print(std::ostream& stream, char* data) const
+{
+   stream << helpers::dateIntToStr(*reinterpret_cast<int32_t*>(data));
 }
 
 }

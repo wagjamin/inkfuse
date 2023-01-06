@@ -7,7 +7,10 @@ RuntimeFunctionSubopFragmentizer::RuntimeFunctionSubopFragmentizer() {
    // Hash tables operations are defined on all types.
    // For char* and ByteArrays, the input IU is not dereferenced, for all other types it is.
    auto in_types = TypeDecorator().attachTypes().attachPackedKeyTypes().produce();
-   for (auto& in_type : in_types) {
+   // For inserts we have a separate primitive that doesn't return anything. Needed for join builds
+   // without payloads.
+   auto out_types = std::vector<IR::TypeArc>{IR::Pointer::build(IR::Char::build()), nullptr};
+   for (const auto& in_type : in_types) {
       // Fragmentize hash table lookup.
       {
          auto& [name, pipe] = pipes.emplace_back();
@@ -18,24 +21,32 @@ RuntimeFunctionSubopFragmentizer::RuntimeFunctionSubopFragmentizer() {
          name = op.id();
       }
 
-      // Fragmentize hash table insert.
-      {
-         auto& [name, pipe] = pipes.emplace_back();
-         const auto& key = generated_ius.emplace_back(in_type);
-         const auto& result_ptr = generated_ius.emplace_back(IR::Pointer::build(IR::Char::build()));
-         // No pseudo-IU inputs, these only matter for more complex DAGs.
-         const auto& op = pipe.attachSuboperator(RuntimeFunctionSubop::htInsert(nullptr, result_ptr, key, {}));
-         name = op.id();
-      }
+      for (const auto& out_type: out_types) {
+         // Fragmentize hash table insert.
+         {
+            auto& [name, pipe] = pipes.emplace_back();
+            const auto& key = generated_ius.emplace_back(in_type);
+            const IU* out_iu = nullptr;
+            if (out_type) {
+               out_iu = &generated_ius.emplace_back(out_type);
+            }
+            // No pseudo-IU inputs, these only matter for more complex DAGs.
+            const auto& op = pipe.attachSuboperator(RuntimeFunctionSubop::htInsert(nullptr, out_iu, key, {}));
+            name = op.id();
+         }
 
-      // Fragmentize hash table lookup with insert.
-      {
-         auto& [name, pipe] = pipes.emplace_back();
-         const auto& key = generated_ius.emplace_back(in_type);
-         const auto& result_ptr = generated_ius.emplace_back(IR::Pointer::build(IR::Char::build()));
-         // No pseudo-IU inputs, these only matter for more complex DAGs.
-         const auto& op = pipe.attachSuboperator(RuntimeFunctionSubop::htLookupOrInsert(nullptr, result_ptr, key, {}));
-         name = op.id();
+         // Fragmentize hash table lookup with insert.
+         {
+            auto& [name, pipe] = pipes.emplace_back();
+            const auto& key = generated_ius.emplace_back(in_type);
+            const IU* out_iu = nullptr;
+            if (out_type) {
+               out_iu = &generated_ius.emplace_back(out_type);
+            }
+            // No pseudo-IU inputs, these only matter for more complex DAGs.
+            const auto& op = pipe.attachSuboperator(RuntimeFunctionSubop::htLookupOrInsert(nullptr, out_iu, key, {}));
+            name = op.id();
+         }
       }
    }
    // Fragmentize no-key hash table lookup/insert. Does not care about

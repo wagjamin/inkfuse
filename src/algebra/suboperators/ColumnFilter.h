@@ -49,6 +49,8 @@ struct ColumnFilterLogic : public TemplatedSuboperator<EmptyState> {
    /// operator into its vectorized primitive.
    bool incomingStrongLinks() const override { return true; }
 
+   void open(CompilationContext& context) override;
+
    /// Redefines the backing column.
    void consumeAllChildren(CompilationContext& context) override;
 

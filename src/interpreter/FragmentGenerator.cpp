@@ -72,6 +72,11 @@ TypeDecorator& TypeDecorator::attachStringType()
    return *this;
 }
 
+TypeDecorator& TypeDecorator::attachCharPtr() {
+   types.push_back(IR::Pointer::build(IR::Char::build()));
+   return *this;
+}
+
 TypeDecorator& TypeDecorator::attachPackedKeyTypes() {
    types.push_back(IR::ByteArray::build(0));
    types.push_back(IR::Pointer::build(IR::Char::build()));

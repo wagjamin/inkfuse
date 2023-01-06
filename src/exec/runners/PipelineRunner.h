@@ -35,7 +35,8 @@ struct PipelineRunner {
    void prepareForRerun();
 
    /// Set up the state for the given pipeline.
-   void setUpState(bool init);
+   /// @param compiled_hybrid are we setting up state as the compiled backend in hybird mode?
+   void setUpState();
 
    protected:
    /// The compiled function. Either a fragment received from the backing cache,

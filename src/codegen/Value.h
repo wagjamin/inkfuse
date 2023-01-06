@@ -153,6 +153,41 @@ struct DateVal : public Value {
    explicit DateVal(int32_t value_) : value(value_) {}
 };
 
+struct StringVal : public Value {
+   // The managed string.
+   std::string value;
+   // A char* to the backing string. Needed to return a char** in the resolved
+   // type in the runtime.
+   char* value_ptr;
+
+   static ValuePtr build(std::string value) {
+      return ValuePtr(new StringVal(std::move(value)));
+   }
+
+   TypeArc getType() const override {
+      return IR::String::build();
+   };
+
+   std::string str() const override {
+      // Produce a literal that can be used for codegen.
+      return "\"" + value + "\"";
+   };
+
+   std::unique_ptr<Value> copy() override {
+      return build(value);
+   };
+
+   void* rawData() override {
+      // We need to return a char** - this is because the runtime uses char* as the type for a string.
+      // But this means that the erased type is char**.
+      return &value_ptr;
+   }
+
+   private:
+   StringVal(std::string value): value(std::move(value)), value_ptr(this->value.data()) {
+   }
+};
+
 }
 
 }
