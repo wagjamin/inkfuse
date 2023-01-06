@@ -10,6 +10,8 @@ namespace inkfuse {
 
 namespace {
 
+static constexpr bool debug_mode = false;
+
 /// Generate the path for the c program.
 std::string path(std::string_view program_name) {
    std::stringstream stream;
@@ -42,7 +44,11 @@ void BackendProgramC::compileToMachinecode(InterruptableJob& interrupt) {
       command << env << " ";
 #endif
       command << path(program_name);
-      command << " -g -O3 -fPIC";
+      if constexpr (debug_mode) {
+         command << " -g -O0 -fPIC";
+      } else {
+         command << " -O3 -fPIC";
+      }
       command << " -shared";
       command << " -o ";
       command << so_path(program_name);

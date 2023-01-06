@@ -153,7 +153,10 @@ bool PipelineExecutor::runFusedMorsel() {
    if (compiled.at({0, pipe.getSubops().size()})->runMorsel(true)) {
       if (auto printer = pipe.getPrettyPrinter()) {
          // Tell the printer that a morsel is done.
-         printer->markMorselDone(context);
+         if (printer->markMorselDone(context)) {
+            // Output is closed - no more work to be done.
+            return false;
+         }
       }
       cleanUp();
       return true;
@@ -191,7 +194,10 @@ bool PipelineExecutor::runInterpretedMorsel() {
       }
       if (auto printer = pipe.getPrettyPrinter()) {
          // Tell the printer that a morsel is done.
-         printer->markMorselDone(context);
+         if (printer->markMorselDone(context)) {
+            // Output is closed - no more work to be done.
+            return false;
+         }
       }
       cleanUp();
    }

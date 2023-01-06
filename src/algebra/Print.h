@@ -10,11 +10,12 @@ struct ExecutionContext;
 
 /// The pretty printer that gets created by a Print operator.
 struct PrettyPrinter {
-   PrettyPrinter(std::vector<const IU*> ius, std::vector<std::string> colnames);
+   PrettyPrinter(std::vector<const IU*> ius, std::vector<std::string> colnames, std::optional<size_t> limit);
 
    /// Tell the pretty printer that a morsel is materialized in the sinks
    /// and can be written out.
-   void markMorselDone(ExecutionContext& ctx);
+   /// @return true if the output is closed.
+   bool markMorselDone(ExecutionContext& ctx);
 
    /// Set the output stream for this PrettyPrinter.
    void setOstream(std::ostream& ostream);
@@ -29,6 +30,8 @@ struct PrettyPrinter {
    std::vector<const IU*> ius;
    /// The column names.
    std::vector<std::string> colnames;
+   /// Row limit - the output is closed once this limit is reached.
+   std::optional<size_t> limit;
    /// How many morsels did we print so far?
    size_t morsel_count = 0;
    /// The output stream into which to write the pretty-printed result.
@@ -43,7 +46,8 @@ struct Print : public RelAlgOp {
       std::vector<std::unique_ptr<RelAlgOp>> children_,
       std::vector<const IU*> ius,
       std::vector<std::string> colnames,
-      std::string op_name_ = "");
+      std::string op_name_ = "",
+      std::optional<size_t> limit = {});
 
    void decay(PipelineDAG& dag) const override;
 
@@ -54,7 +58,8 @@ struct Print : public RelAlgOp {
    Print(std::vector<std::unique_ptr<RelAlgOp>> children_,
          std::vector<const IU*> ius,
          std::vector<std::string> colnames,
-         std::string op_name_);
+         std::string op_name_,
+         std::optional<size_t> limit);
 };
 
 }

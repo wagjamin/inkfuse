@@ -5,8 +5,8 @@
 
 namespace inkfuse {
 
-PrettyPrinter::PrettyPrinter(std::vector<const IU*> ius_, std::vector<std::string> colnames_)
-: ius(std::move(ius_)), colnames(std::move(colnames_))
+PrettyPrinter::PrettyPrinter(std::vector<const IU*> ius_, std::vector<std::string> colnames_, std::optional<size_t> limit)
+: ius(std::move(ius_)), colnames(std::move(colnames_)), limit(limit)
 {
    if (ius.empty()) {
       throw std::runtime_error("PrettyPrinter must produce at least one column");
@@ -16,13 +16,12 @@ PrettyPrinter::PrettyPrinter(std::vector<const IU*> ius_, std::vector<std::strin
    }
 }
 
-void PrettyPrinter::markMorselDone(inkfuse::ExecutionContext& ctx)
+bool PrettyPrinter::markMorselDone(inkfuse::ExecutionContext& ctx)
 {
    auto chunk_size = ctx.getColumn(*ius[0]).size;
-   num_rows += chunk_size;
    if (!out) {
       // Nothing we can write into.
-      return;
+      return false;
    }
    if (morsel_count == 0) {
       // This is the first morsel to finish - write the output header.
@@ -32,6 +31,14 @@ void PrettyPrinter::markMorselDone(inkfuse::ExecutionContext& ctx)
       }
       *out << "\n";
    }
+   // How many rows are we allowed to write until we hit the limit?
+   size_t write = chunk_size;
+   if (limit) {
+      write = std::min(write, *limit);
+      *limit = *limit - write;
+   }
+   num_rows += write;
+
    // Get the raw pointers to the data.
    std::vector<char*> data;
    data.reserve(ius.size());
@@ -41,7 +48,7 @@ void PrettyPrinter::markMorselDone(inkfuse::ExecutionContext& ctx)
       data.push_back(col.raw_data);
    }
    // Write out the actual chunk.
-   for (size_t row = 0; row < chunk_size; ++row) {
+   for (size_t row = 0; row < write; ++row) {
       for (size_t col = 0; col < ius.size(); ++col) {
          if (col != 0) {
             *out << ",";
@@ -53,6 +60,8 @@ void PrettyPrinter::markMorselDone(inkfuse::ExecutionContext& ctx)
       *out << "\n";
    }
    morsel_count++;
+   // If the limit reached 0 we close the stream.
+   return limit && *limit == 0;
 }
 
 void PrettyPrinter::setOstream(std::ostream& ostream)
@@ -60,13 +69,13 @@ void PrettyPrinter::setOstream(std::ostream& ostream)
    out = &ostream;
 }
 
-std::unique_ptr<Print> Print::build(std::vector<std::unique_ptr<RelAlgOp>> children_, std::vector<const IU*> ius, std::vector<std::string> colnames, std::string op_name_)
+std::unique_ptr<Print> Print::build(std::vector<std::unique_ptr<RelAlgOp>> children_, std::vector<const IU*> ius, std::vector<std::string> colnames, std::string op_name_, std::optional<size_t> limit)
 {
-   return std::unique_ptr<Print>{new Print(std::move(children_), std::move(ius), std::move(colnames), std::move(op_name_))};
+   return std::unique_ptr<Print>{new Print(std::move(children_), std::move(ius), std::move(colnames), std::move(op_name_), limit)};
 }
 
-Print::Print(std::vector<std::unique_ptr<RelAlgOp>> children_, std::vector<const IU*> ius, std::vector<std::string> colnames, std::string op_name_)
-   : RelAlgOp(std::move(children_), std::move(op_name_)), printer(std::make_unique<PrettyPrinter>(std::move(ius), std::move(colnames)))
+Print::Print(std::vector<std::unique_ptr<RelAlgOp>> children_, std::vector<const IU*> ius, std::vector<std::string> colnames, std::string op_name_, std::optional<size_t> limit)
+   : RelAlgOp(std::move(children_), std::move(op_name_)), printer(std::make_unique<PrettyPrinter>(std::move(ius), std::move(colnames), limit))
 {
 }
 
