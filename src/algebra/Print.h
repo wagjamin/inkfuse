@@ -2,6 +2,7 @@
 #define INKFUSE_PRINT_H
 
 #include "algebra/RelAlgOp.h"
+#include <optional>
 #include <ostream>
 
 namespace inkfuse {

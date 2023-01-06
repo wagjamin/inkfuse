@@ -1,10 +1,11 @@
 #ifndef INKFUSE_LOOPDRIVER_H
 #define INKFUSE_LOOPDRIVER_H
 
-#include "algebra/RelAlgOp.h"
 #include "algebra/CompilationContext.h"
+#include "algebra/RelAlgOp.h"
 #include "algebra/suboperators/Suboperator.h"
 #include "codegen/IRBuilder.h"
+#include <optional>
 
 namespace inkfuse {
 
@@ -19,7 +20,6 @@ struct LoopDriverState {
 };
 
 struct LoopDriver : public TemplatedSuboperator<LoopDriverState> {
-
    /// A raw LoopDriver should never be interpreted. It only makes sense connected to the
    /// followup IU provider.
    bool outgoingStrongLinks() const override { return true; }
@@ -64,10 +64,10 @@ struct LoopDriver : public TemplatedSuboperator<LoopDriverState> {
 
       // Next up we create the driving for-loop.
       this->opt_while = builder.buildWhile(
-            IR::ArithmeticExpr::build(
-               IR::VarRefExpr::build(*decl_start_ptr),
-               IR::VarRefExpr::build(*decl_end_ptr),
-               IR::ArithmeticExpr::Opcode::Less));
+         IR::ArithmeticExpr::build(
+            IR::VarRefExpr::build(*decl_start_ptr),
+            IR::VarRefExpr::build(*decl_end_ptr),
+            IR::ArithmeticExpr::Opcode::Less));
       {
          // Generate code for downstream consumers.
          context.notifyIUsReady(*this);

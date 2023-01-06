@@ -34,8 +34,8 @@ void BackendProgramC::compileToMachinecode(InterruptableJob& interrupt) {
       dump();
       // Invoke the compiler.
       std::stringstream command;
-#ifdef WITH_JIT_CLANG_11
-      command << "clang-11 ";
+#ifdef WITH_JIT_CLANG_14
+      command << "clang-14 ";
 #else
       const char* env = std::getenv("CUSTOM_JIT");
       if (!env) {
