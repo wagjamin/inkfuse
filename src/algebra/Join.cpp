@@ -66,7 +66,8 @@ void Join::plan()
    scratch_pad_left.emplace(IR::ByteArray::build(key_size_left));
    scratch_pad_right.emplace(IR::ByteArray::build(key_size_right + payload_size_right));
    filtered_build.emplace(IR::Pointer::build(IR::Char::build()));
-   filtered_probe.emplace(IR::ByteArray::build(key_size_right + payload_size_right));
+   // The filtered probe column consists of Char* into the contiguous ByteArray column `filtered_build`.
+   filtered_probe.emplace(IR::Pointer::build(IR::Char::build()));
    lookup_left.emplace(IR::Pointer::build(IR::Char::build()));
    lookup_right.emplace(IR::Pointer::build(IR::Char::build()));
    filter_pseudo_iu.emplace(IR::Void::build());
@@ -131,8 +132,15 @@ void Join::decayPkJoin(inkfuse::PipelineDAG& dag) const
       for (const auto& pseudo_iu: left_pseudo_ius) {
          pseudo.push_back(&pseudo_iu);
       }
-      // We need a lookupOrInsert to be robust towards morsel restarts.
-      build_pipe.attachSuboperator(RuntimeFunctionSubop::htLookupOrInsert(this, *lookup_left, *key_iu, std::move(pseudo), &ht));
+      // We know there are no duplicate keys. We might think we can insert directly, without duplicate checking.
+      // However, this is not possible since there might be morsel restarts. We need `htLookupOrInsert`.
+      if (payload_left.empty()) {
+         // We do not care about the result pointer as we don't need to do packing.
+         build_pipe.attachSuboperator(RuntimeFunctionSubop::htLookupOrInsert(this, nullptr, *key_iu, std::move(pseudo), &ht));
+      } else {
+         // We need the result pointer for payload packing.
+         build_pipe.attachSuboperator(RuntimeFunctionSubop::htLookupOrInsert(this, &(*lookup_left), *key_iu, std::move(pseudo), &ht));
+      }
 
       // 1.3 Pack the payload.
       size_t build_payload_offset = key_size_left;
@@ -190,6 +198,7 @@ void Join::decayPkJoin(inkfuse::PipelineDAG& dag) const
       // 2.3 Filter on probe matches.
       probe_pipe.attachSuboperator(ColumnFilterScope::build(this, *lookup_right, *filter_pseudo_iu));
       // We need to filter both the probe result and the row with which we probed.
+      // Note: the filtered ByteArray from the probe side becomes a Char* after filtering.
       probe_pipe.attachSuboperator(ColumnFilterLogic::build(this, *filter_pseudo_iu, *scratch_pad_right, *filtered_probe, /* filter_type_= */ lookup_right->type));
       // The filter on the probe site filters "itself". This has some repercussions on the repiping
       // behaviour of the suboperator and needs to be passed explicitly.

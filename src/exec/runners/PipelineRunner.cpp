@@ -1,12 +1,12 @@
 #include "PipelineRunner.h"
-#include "algebra/suboperators/sources/FuseChunkSource.h"
 #include "algebra/suboperators/row_layout/KeyPackerSubop.h"
+#include "algebra/suboperators/sinks/FuseChunkSink.h"
+#include "algebra/suboperators/sources/FuseChunkSource.h"
 
 namespace inkfuse {
 
 PipelineRunner::PipelineRunner(PipelinePtr pipe_, ExecutionContext& context_)
-: pipe(std::move(pipe_)), context(context_.recontextualize(*pipe))
-{
+   : pipe(std::move(pipe_)), context(context_.recontextualize(*pipe)) {
    assert(pipe->getSubops()[0]->isSource());
    // We either run a pipeline with a sink in the end, or interpret a pipeline that
    // ends in an operator with a pseudo-IU. In other words: the last suboperator must have some observable side effects.
@@ -14,8 +14,7 @@ PipelineRunner::PipelineRunner(PipelinePtr pipe_, ExecutionContext& context_)
    fuseChunkSource = (dynamic_cast<const FuseChunkSourceDriver*>(pipe->getSubops()[0].get()) != nullptr);
 }
 
-void PipelineRunner::setUpState(bool init)
-{
+void PipelineRunner::setUpState() {
    if (set_up) {
       return;
    }
@@ -31,8 +30,9 @@ void PipelineRunner::setUpState(bool init)
       }
    }
    states.reserve(pipe->getSubops().size());
-   for (const auto& op: pipe->getSubops()) {
-      if (init) {
+   for (const auto& op : pipe->getSubops()) {
+      // Don't re-initialize already initialized suboperators that are shared between backends.
+      if (!op->accessState()) {
          op->setUpState(context);
       }
       states.push_back(op->accessState());
@@ -40,8 +40,7 @@ void PipelineRunner::setUpState(bool init)
    set_up = true;
 }
 
-bool PipelineRunner::runMorsel(bool force_pick)
-{
+bool PipelineRunner::runMorsel(bool force_pick) {
    assert(prepared && fct);
    size_t morsel_size = 1;
    if (fuseChunkSource || force_pick) {
@@ -53,7 +52,7 @@ bool PipelineRunner::runMorsel(bool force_pick)
       // It could be that we provide scratch pad IUs within this pipeline.
       // As these are never officially produced by an expression, we need
       // to make sure their sizes are set up properly.
-      for (const auto& subop: pipe->getSubops()) {
+      for (const auto& subop : pipe->getSubops()) {
          if (dynamic_cast<KeyPackerSubop*>(subop.get())) {
             assert(subop->getSourceIUs().size() == 2);
             const IU* scratch_pad_iu = subop->getSourceIUs()[1];
@@ -71,15 +70,14 @@ void PipelineRunner::prepareForRerun() {
    // When re-running a morsel, we need to clear the sinks from any intermediate "bad" state.
    // The previous (failed) run of the morsel could have written partial data into the output
    // column that now needs to get purged.
-   for (const auto& subop: pipe->getSubops()) {
+   for (const auto& subop : pipe->getSubops()) {
       if (subop->isSink()) {
-         for (const IU* sinked_iu: subop->getSourceIUs()) {
+         for (const IU* sinked_iu : subop->getSourceIUs()) {
             auto& col = context.getColumn(*sinked_iu);
             col.size = 0;
          }
       }
    }
 }
-
 
 }

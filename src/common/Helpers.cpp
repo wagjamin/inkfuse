@@ -13,6 +13,13 @@ int32_t dateStrToInt(const char* str) {
    return time.time_since_epoch().count();
 }
 
+std::string dateIntToStr(int32_t date) {
+   std::stringstream stream;
+   std::chrono::sys_days dur(std::chrono::days{date});
+   date::to_stream(stream, "%Y-%m-%d", dur);
+   return stream.str();
+}
+
 void loadDataInto(Schema& schema, const std::string& path, bool force) {
    for (auto& [tbl_name, tbl]: schema) {
       std::ifstream input;

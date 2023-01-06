@@ -181,6 +181,8 @@ struct Date : public SQLType {
    std::string id() const override {
       return "Date";
    }
+
+   void print(std::ostream& stream, char* data) const override;
 };
 
 /// Void type which is usually wrapped into pointers for a lack of better options.

@@ -35,6 +35,8 @@ struct TypeDecorator {
    /// Add the string type.
    TypeDecorator& attachStringType();
 
+   /// Add Ptr<Char>.
+   TypeDecorator& attachCharPtr();
    /// Add types for packed keys.
    TypeDecorator& attachPackedKeyTypes();
 

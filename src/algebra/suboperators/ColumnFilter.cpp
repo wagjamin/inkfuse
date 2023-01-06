@@ -55,6 +55,25 @@ SuboperatorArc ColumnFilterLogic::build(const RelAlgOp* source_, const IU& pseud
 ColumnFilterLogic::ColumnFilterLogic(const RelAlgOp* source_, const IU& pseudo, const IU& incoming, const IU& redefined, IR::TypeArc filter_type_, bool filters_itself_)
    : TemplatedSuboperator<EmptyState>(source_, std::vector<const IU*>{&redefined}, std::vector<const IU*>{&pseudo, &incoming}), filter_type(std::move(filter_type_)), filters_itself(filters_itself_)
 {
+   // When filtering a ByteArray something subtle happens:
+   // The result column becomes a char*. This way we don't have to copy the entire byte array, but rather
+   // just pointers. An alternative implementation would be to have variable size sinks and to do
+   // memcpys. We didn't benchmark the alternatives, this is fast enough.
+   if (dynamic_cast<IR::ByteArray*>(incoming.type.get())) {
+      if (redefined.type->id() != "Ptr_Char") {
+         throw std::runtime_error("A filtered ByteArray must become a Char*");
+      }
+   }
+}
+
+void ColumnFilterLogic::open(CompilationContext& context)
+{
+   // First request the incoming IU that gets filtered. This is extremely important as their iterator
+   // should be generated outside of the `if`. If we don't descend the DAG this way, then we might generate
+   // the variable-size state iterator inside the nested control flow.
+   context.requestIU(*this, *source_ius[1]);
+   // Only now request generation of the `if`. We know that the variable-sized iterators are outside the `if`.
+   context.requestIU(*this, *source_ius[0]);
 }
 
 void ColumnFilterLogic::consumeAllChildren(CompilationContext& context)
