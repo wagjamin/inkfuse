@@ -1,6 +1,7 @@
 #include "exec/InterruptableJob.h"
 #include "gtest/gtest.h"
 #include "subprocess.h"
+#include <array>
 #include <thread>
 
 namespace inkfuse {

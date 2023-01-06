@@ -4,6 +4,7 @@
 #include "algebra/Filter.h"
 #include "algebra/suboperators/Suboperator.h"
 #include "codegen/IRBuilder.h"
+#include <optional>
 
 /// This file contains all the sub-operators required to get filters working in ink-fuse.
 /// Filters are split into two sub-operators. An initial, single ColumnFilterScope sub-operator

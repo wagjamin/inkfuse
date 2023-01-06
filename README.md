@@ -30,10 +30,10 @@ Let's take a look at the main directories:
 ## Configuring Inkfuse 
 Inkfuse comes with the following CMake settings that can be configured:
 - `WITH_COVERAGE: Bool`: Should the build have coverage information attached? Default `OFF`.
-- `JIT_CLANG_11: Bool`: Should the default `clang-11` be used to compile generated code? If `OFF`, then the compiler is read at runtime from the `CUSTOM_JIT` env variable. Default `ON`.
+- `JIT_CLANG_14: Bool`: Should the default `clang-14` be used to compile generated code? If `OFF`, then the compiler is read at runtime from the `CUSTOM_JIT` env variable. Default `ON`.
 
 Inkfuse also listens to the following environment variables:
-- `CUSTOM_JIT`: If `JIT_CLANG_11` is set to `OFF`, then this flag controls which C compiler to use.
+- `CUSTOM_JIT`: If `JIT_CLANG_14` is set to `OFF`, then this flag controls which C compiler to use.
 
 ## Contributing
 

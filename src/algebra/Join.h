@@ -3,6 +3,7 @@
 
 #include "algebra/RelAlgOp.h"
 #include <list>
+#include <optional>
 
 namespace inkfuse {
 

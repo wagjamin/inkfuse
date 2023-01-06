@@ -4,6 +4,7 @@
 #include "algebra/AggFunctionRegisty.h"
 #include "algebra/RelAlgOp.h"
 #include <list>
+#include <optional>
 
 namespace inkfuse {
 

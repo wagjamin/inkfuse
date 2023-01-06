@@ -20,7 +20,7 @@ const std::vector<std::string> programs{"bench/testdata/simple_program.h", "benc
 
 void invoke_clang_bashed(benchmark::State& state) {
    const auto& prog = programs[state.range(0)];
-   std::string cmd_str = "clang-11 -O3 -fPIC -shared " + prog;
+   std::string cmd_str = "clang-14 -O3 -fPIC -shared " + prog;
    for (auto _ : state) {
       InterruptableJob interrupt;
       Command::runShell(cmd_str, interrupt);
@@ -30,7 +30,7 @@ void invoke_clang_bashed(benchmark::State& state) {
 void invoke_clang_direct(benchmark::State& state) {
    const auto& prog = programs[state.range(0)];
    std::array<const char*, 6> command = {
-      "/usr/bin/clang-11", "-O3", "-fPIC", "-shared", prog.data(), NULL};
+      "/usr/bin/clang-14", "-O3", "-fPIC", "-shared", prog.data(), NULL};
    for (auto _ : state) {
       InterruptableJob interrupt;
       Command::run(command.data(), interrupt);
@@ -58,7 +58,7 @@ void invoke_gcc_direct(benchmark::State& state) {
 
 void invoke_clangpp_bashed(benchmark::State& state) {
    const auto& prog = programs[state.range(0)];
-   std::string cmd_str = "clang++-11 -O3 -fPIC -shared " + prog;
+   std::string cmd_str = "clang++-14 -O3 -fPIC -shared " + prog;
    for (auto _ : state) {
       InterruptableJob interrupt;
       Command::runShell(cmd_str, interrupt);
@@ -68,7 +68,7 @@ void invoke_clangpp_bashed(benchmark::State& state) {
 void invoke_clangpp_direct(benchmark::State& state) {
    const auto& prog = programs[state.range(0)];
    std::array<const char*, 6> command = {
-      "/usr/bin/clang++-11", "-O3", "-fPIC", "-shared", prog.data(), NULL};
+      "/usr/bin/clang++-14", "-O3", "-fPIC", "-shared", prog.data(), NULL};
    for (auto _ : state) {
       InterruptableJob interrupt;
       Command::run(command.data(), interrupt);
