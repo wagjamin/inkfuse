@@ -560,12 +560,12 @@ std::unique_ptr<Print> q4(const Schema& schema) {
    // 4. Aggregate.
    std::vector<RelAlgOpPtr> agg_children;
    agg_children.push_back(std::move(o_l_join));
-   // Group by (l_orderkey, o_orderdate, o_shippriority).
+   // Group by (o_orderpriority).
    std::vector<const IU*> group_by{
       o_l_join_ref.getOutput()[1],
    };
    std::vector<AggregateFunctions::Description> aggregates{
-      {*o_l_join_ref.getOutput()[1], AggregateFunctions::Opcode::Sum}};
+      {*o_l_join_ref.getOutput()[1], AggregateFunctions::Opcode::Count}};
    auto agg = Aggregation::build(
       std::move(agg_children),
       "agg",

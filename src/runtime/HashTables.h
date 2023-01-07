@@ -92,7 +92,7 @@ struct HashTableComplexKey {
    /// Unique Hash Table ID.
    static const std::string ID;
 
-   HashTableComplexKey(uint16_t simple_key_size, uint16_t complex_key_slots, uint16_t payload_size, size_t start_slots);
+   HashTableComplexKey(uint16_t simple_key_size, uint16_t complex_key_slots, uint16_t payload_size, size_t start_slots = 64);
 
    /// Get the pointer to a given key, or nullptr if the group does not exist.
    char* lookup(const char* key);

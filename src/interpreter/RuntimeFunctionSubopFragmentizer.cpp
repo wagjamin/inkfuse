@@ -70,6 +70,26 @@ RuntimeFunctionSubopFragmentizer::RuntimeFunctionSubopFragmentizer() {
       const auto& op = pipe.attachSuboperator(RuntimeFunctionSubop::htNoKeyLookup(nullptr, result_ptr, input, nullptr));
       name = op.id();
    }
+
+   // Fragmentize string insert on the complex hash table.
+   {
+      auto& [name, pipe] = pipes.emplace_back();
+      const auto& key = generated_ius.emplace_back(IR::String::build());
+      const auto& result_ptr = generated_ius.emplace_back(IR::Pointer::build(IR::Char::build()));
+      // No pseudo-IU inputs, these only matter for more complex DAGs.
+      const auto& op = pipe.attachSuboperator(RuntimeFunctionSubop::htLookup<HashTableComplexKey>(nullptr, result_ptr, key, {}));
+      name = op.id();
+   }
+
+   // Fragmentize hash table lookup that disables the slot (for left semi joins).
+   {
+      auto& [name, pipe] = pipes.emplace_back();
+      const auto& key = generated_ius.emplace_back(IR::String::build());
+      const auto& result_ptr = generated_ius.emplace_back(IR::Pointer::build(IR::Char::build()));
+      // No pseudo-IU inputs, these only matter for more complex DAGs.
+      const auto& op = pipe.attachSuboperator(RuntimeFunctionSubop::htLookupOrInsert<HashTableComplexKey>(nullptr, &result_ptr, key, {}));
+      name = op.id();
+   }
 }
 
 }
