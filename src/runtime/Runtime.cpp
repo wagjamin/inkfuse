@@ -29,7 +29,7 @@ GlobalRuntime::GlobalRuntime() : program(std::make_unique<IR::Program>("global_r
    HashRuntime::registerRuntime();
    HashTableRuntime::registerRuntime();
    MemoryRuntime::registerRuntime();
-   HashTableSource::registerRuntime();
+   HashTableSourceState::registerRuntime();
 }
 
 RuntimeStructBuilder::~RuntimeStructBuilder() {

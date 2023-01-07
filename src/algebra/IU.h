@@ -15,9 +15,9 @@ namespace inkfuse {
 struct IU {
    public:
    /// Constructor.
-   IU(IR::TypeArc type_, std::string name_) : type(std::move(type_)), name(std::move(name_)){};
+   IU(IR::TypeArc type_, std::string name_) : type(std::move(type_)), name(std::move(name_)) { assert(type); };
 
-   explicit IU(IR::TypeArc type_) : type(std::move(type_)) {};
+   explicit IU(IR::TypeArc type_) : type(std::move(type_)) { assert(type); };
 
    /// Type of this IU.
    IR::TypeArc type;

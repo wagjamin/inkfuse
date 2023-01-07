@@ -129,7 +129,7 @@ void Aggregation::decay(PipelineDAG& dag) const {
    }
 
    if (key_size) {
-      curr_pipe.attachSuboperator(RuntimeFunctionSubop::htLookupOrInsert(this, &agg_pointer_result, *packed_key_iu, std::move(pseudo), &hash_table));
+      curr_pipe.attachSuboperator(RuntimeFunctionSubop::htLookupOrInsert<HashTableSimpleKey>(this, &agg_pointer_result, *packed_key_iu, std::move(pseudo), &hash_table));
    } else {
       // The key size is zero - so we just aggregate a single group.
       // We use an optimized code path for this. We need to htNoKeyLookup to reference an
@@ -154,7 +154,7 @@ void Aggregation::decay(PipelineDAG& dag) const {
    // Step 4: Attach readers on a new pipeline.
    auto& read_pipe = dag.buildNewPipeline();
    // First, build a reader on the aggregate hash table returning pointers to the elements.
-   read_pipe.attachSuboperator(HashTableSource::build(this, ht_scan_result, &hash_table));
+   read_pipe.attachSuboperator(SimpleHashTableSource::build(this, ht_scan_result, &hash_table));
 
    // Produce the readers for the materialized keys.
    size_t key_offset = 0;

@@ -9,6 +9,7 @@ namespace {
 const std::vector<IR::TypeArc> types =
    TypeDecorator()
       .attachTypes()
+      .attachStringType()
       .produce();
 
 // We can pack/unpack into raw char* or explicit byte arrays. Size 1 is a placeholder, does not affect the generated code.

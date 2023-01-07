@@ -19,7 +19,7 @@ struct HtInsertTest : public ::testing::TestWithParam<PipelineExecutor::Executio
    HtInsertTest() : ht(4, 4, 16), pointers(IR::Pointer::build(IR::Char::build())), keys(IR::UnsignedInt::build(4)), to_pack(IR::UnsignedInt::build(4)) {
       auto& pipe = dag.buildNewPipeline();
       // lookupOrInsert creating new groups within the backing hash table.
-      pipe.attachSuboperator(RuntimeFunctionSubop::htLookupOrInsert(nullptr, &pointers, keys, {}, &ht));
+      pipe.attachSuboperator(RuntimeFunctionSubop::htLookupOrInsert<HashTableSimpleKey>(nullptr, &pointers, keys, {}, &ht));
       // key packing on top of this.
       auto& packer = pipe.attachSuboperator(KeyPackerSubop::build(nullptr, to_pack, pointers, {}));
       KeyPackingRuntimeParams params;

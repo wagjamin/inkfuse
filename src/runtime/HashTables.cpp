@@ -9,9 +9,14 @@ namespace inkfuse {
 namespace {
 /// Highest order bit in the tag slot indicates if slot is filled.
 const uint8_t tag_fill_mask = 1u << 7u;
+/// Mask that allows inverting hash fingerprint but doesn't touch the fill bit.
+const uint8_t fingerprint_inversion_mask = tag_fill_mask - 1;
 /// Lower order 7 bits in the hash slot store salt of the hash.
 const uint8_t tag_hash_mask = tag_fill_mask - 1;
 }
+
+const std::string HashTableSimpleKey::ID = "sk";
+const std::string HashTableComplexKey::ID = "ck";
 
 SharedHashTableState::SharedHashTableState(uint16_t total_slot_size_, size_t start_slots_)
    : mod_mask(start_slots_ - 1), total_slot_size(total_slot_size_), max_fill(start_slots_ / 2) {
@@ -70,7 +75,24 @@ char* HashTableSimpleKey::lookup(const char* key) {
    // Find the slot which we belong to.
    const auto slot = findSlotOrEmpty(hash, key);
    // Only if the slot was tagged did we actually find the key.
-   return *slot.tag ? slot.elem : nullptr;
+   return (*slot.tag & tag_fill_mask) ? slot.elem : nullptr;
+}
+
+char* HashTableSimpleKey::lookupDisable(const char* key) {
+   // First step: hash the key.
+   const uint64_t hash = XXH3_64bits(key, simple_key_size);
+   // Find the slot which we belong to.
+   const auto slot = findSlotOrEmpty(hash, key);
+   // Store the current tag value.
+   const uint8_t tag_before = *slot.tag;
+   // Disable the slot. It won't be found in the future anymore.
+   // What actually happens here is a bit of bit fiddling: we keep the slot enabled but invert
+   // the lower 7 bit (hash fingerprint).
+   // This way, any future lookup on the key will not find this tag anymore.
+   // As a result, the row won't be found. At the same time, the chain stays intact.
+   *slot.tag = tag_before ^ fingerprint_inversion_mask;
+   // Only if the slot was tagged did we actually find the key.
+   return (tag_before & tag_fill_mask) ? slot.elem : nullptr;
 }
 
 char* HashTableSimpleKey::lookupOrInsert(const char* key) {
@@ -102,8 +124,7 @@ void HashTableSimpleKey::lookupOrInsert(char** result, bool* is_new_key, const c
    *result = slot.elem;
 }
 
-char* HashTableSimpleKey::insert(const char* key)
-{
+char* HashTableSimpleKey::insert(const char* key) {
    reserveSlot();
    const uint64_t hash = XXH3_64bits(key, simple_key_size);
 
@@ -150,16 +171,15 @@ void HashTableSimpleKey::iteratorAdvance(char** it_data, size_t* it_idx) {
    }
 }
 
-size_t HashTableSimpleKey::size() {
+size_t HashTableSimpleKey::size() const {
    return state.inserted;
 }
 
-size_t HashTableSimpleKey::capacity() {
+size_t HashTableSimpleKey::capacity() const {
    return state.mod_mask + 1;
 }
 
-char* HashTableSimpleKey::lookupOrInsertSingleKey()
-{
+char* HashTableSimpleKey::lookupOrInsertSingleKey() {
    // We always return the first slot.
    // We don't need any key checking whatsoever.
    char* elem_ptr = &state.data[0];
@@ -234,6 +254,155 @@ void HashTableSimpleKey::reserveSlot() {
       curr_tag++;
    }
    state.inserted = new_state.inserted;
+}
+
+HashTableComplexKey::HashTableComplexKey(uint16_t simple_key_size, uint16_t complex_key_slots, uint16_t payload_size, size_t start_slots)
+   : state(simple_key_size + 8 * complex_key_slots + payload_size, start_slots), simple_key_size(simple_key_size), complex_key_slots(complex_key_slots), payload_size(payload_size) {
+   if (simple_key_size != 0 || complex_key_slots != 1) {
+      throw std::runtime_error("InkFuse currently only supports complex hash tables with a single string.");
+   }
+}
+
+char* HashTableComplexKey::lookup(const char* key) {
+   // The char* of the key represents the packed key. The first slot contains an 8 byte char pointer.
+   const auto indirection = reinterpret_cast<char* const*>(key);
+   const size_t len = std::strlen(*indirection);
+   // First step: hash the string key.
+   const uint64_t hash = XXH3_64bits(*indirection, len);
+   // Find the slot which we belong to.
+   const auto slot = findSlotOrEmpty(hash, *indirection);
+   // Only if the slot was tagged did we actually find the key.
+   return (*slot.tag & tag_fill_mask) ? slot.elem : nullptr;
+}
+
+char* HashTableComplexKey::lookupOrInsert(const char* key) {
+   char* result;
+   bool is_new_key;
+   lookupOrInsert(&result, &is_new_key, key);
+   return result;
+}
+
+void HashTableComplexKey::lookupOrInsert(char** result, bool* is_new_key, const char* key) {
+   // Double the hash table if we don't have enough space.
+   // Strictly speaking a bit too passive, as we might not need the
+   // slot of the key already exists. But this is a border-case.
+   reserveSlot();
+
+   // First step: hash the key.
+   // The char* of the key represents the packed key. The first slot contains an 8 byte char pointer.
+   const auto indirection = reinterpret_cast<char* const*>(key);
+   const size_t len = std::strlen(*indirection);
+   const uint64_t hash = XXH3_64bits(*indirection, len);
+   const auto slot = findSlotOrEmpty(hash, *indirection);
+   if (!(*slot.tag)) {
+      // Initialize the slot.
+      auto target_tag = static_cast<uint8_t>(hash >> 56ul);
+      *slot.tag = tag_fill_mask | target_tag;
+      // Copy over the pointer into the first slot.
+      *reinterpret_cast<char**>(slot.elem) = *indirection;
+      state.inserted++;
+      *is_new_key = true;
+   } else {
+      *is_new_key = false;
+   }
+   *result = slot.elem;
+}
+
+void HashTableComplexKey::iteratorStart(char** it_data, uint64_t* it_idx) {
+   *it_idx = 0;
+   *it_data = &state.data[0];
+   uint8_t* tag_ptr = &state.tags[0];
+   while (((*tag_ptr & tag_fill_mask) == 0) && *it_data != nullptr) {
+      // Advance iterator to the first occupied slot.
+      state.advanceNoWrap(*it_idx, *it_data, tag_ptr);
+   }
+}
+
+void HashTableComplexKey::iteratorAdvance(char** it_data, uint64_t* it_idx) {
+   assert(*it_data != nullptr);
+   uint8_t* tag_ptr = &state.tags[*it_idx];
+   // Advance once to the next slot.
+   state.advanceNoWrap(*it_idx, *it_data, tag_ptr);
+   while (((*tag_ptr & tag_fill_mask) == 0) && *it_data != nullptr) {
+      // Advance until a free slot was found.
+      state.advanceNoWrap(*it_idx, *it_data, tag_ptr);
+   }
+}
+
+HashTableComplexKey::LookupResult HashTableComplexKey::findSlotOrEmpty(uint64_t hash, const char* string) {
+   // Access the base table at the right index.
+   uint64_t idx = hash & state.mod_mask;
+   char* elem_ptr = &state.data[idx * state.total_slot_size];
+   uint8_t* tag_ptr = &state.tags[idx];
+   // Get the tag from the hash, take the highest order bits as these
+   // have the lowest risk of collision (lowest order bits are used to compute the slot).
+   auto target_tag = tag_hash_mask & static_cast<uint8_t>(hash >> 56ul);
+   for (;;) {
+      const uint8_t tag_fill = *tag_ptr & tag_fill_mask;
+      const uint8_t tag_hash = *tag_ptr & tag_hash_mask;
+      // Compare the actual strings within the slot.
+      const char* elem_string = *reinterpret_cast<char**>(elem_ptr);
+      if (!tag_fill || (tag_hash == target_tag && elem_string && (std::strcmp(elem_string, string) == 0))) {
+         // We either found the key or an empty slot indicating the key does not exist.
+         return {.elem = elem_ptr, .tag = tag_ptr};
+      }
+      state.advance(idx, elem_ptr, tag_ptr);
+   }
+}
+
+HashTableComplexKey::LookupResult HashTableComplexKey::findFirstEmptySlot(uint64_t hash) {
+   uint64_t idx = hash & state.mod_mask;
+   char* elem_ptr = &state.data[idx * state.total_slot_size];
+   uint8_t* tag_ptr = &state.tags[idx];
+
+   while (*tag_ptr != 0) {
+      state.advance(idx, elem_ptr, tag_ptr);
+   }
+   return {.elem = elem_ptr, .tag = tag_ptr};
+}
+
+void HashTableComplexKey::reserveSlot() {
+   if (state.inserted < state.max_fill) [[likely]] {
+      return;
+   }
+
+   // We need to resize. Indicate that this happened to the currently installed execution context.
+   // This will force the driver of the query to rerun the primitive if this used the interpreted path.
+   bool* try_restart_flag = ExecutionContext::tryGetInstalledRestartFlag();
+   if (try_restart_flag) {
+      *try_restart_flag = true;
+   }
+
+   char* curr_slot = &state.data[0];
+   uint8_t* curr_tag = &state.tags[0];
+   size_t old_max_slot = state.mod_mask;
+   // Double the size.
+   SharedHashTableState new_state(state.total_slot_size, 2 * (state.mod_mask + 1));
+   std::swap(new_state, state);
+   for (uint64_t idx = 0; idx <= old_max_slot; ++idx) {
+      if (*curr_tag) {
+         // If it's set, insert hash value into new table. Upper bit does not matter, so don't have to zero it out.
+         const auto indirection = reinterpret_cast<char* const*>(curr_slot);
+         const size_t len = std::strlen(*indirection);
+         const uint64_t hash = XXH3_64bits(*indirection, len);
+         const auto slot = findFirstEmptySlot(hash);
+         // Move over the tag.
+         *slot.tag = *curr_tag;
+         // Move over the full payload. The pointer stays the same, so memcpy is fine.
+         std::memcpy(slot.elem, curr_slot, state.total_slot_size);
+      }
+      curr_slot += state.total_slot_size;
+      curr_tag++;
+   }
+   state.inserted = new_state.inserted;
+}
+
+size_t HashTableComplexKey::size() const {
+   return state.inserted;
+}
+
+size_t HashTableComplexKey::capacity() const {
+   return state.mod_mask + 1;
 }
 
 }

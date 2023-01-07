@@ -40,8 +40,9 @@ std::unique_ptr<RuntimeFunctionSubop> RuntimeFunctionSubop::htInsert(const inkfu
          hash_table_));
 }
 
-std::unique_ptr<RuntimeFunctionSubop> RuntimeFunctionSubop::htLookup(const RelAlgOp* source, const IU& pointers_, const IU& keys_, std::vector<const IU*> pseudo_ius_, void* hash_table) {
-   std::string fct_name = "ht_sk_lookup";
+std::unique_ptr<RuntimeFunctionSubop> RuntimeFunctionSubop::htLookupDisable(const RelAlgOp* source, const IU& pointers_, const IU& keys_, std::vector<const IU*> pseudo_ius_, void* hash_table_)
+{
+   std::string fct_name = "ht_sk_lookup_disable";
    std::vector<const IU*> in_ius{&keys_};
    for (auto pseudo : pseudo_ius_) {
       // Pseudo IUs are used as input IUs in the backing graph, but do not influence arguments.
@@ -60,32 +61,6 @@ std::unique_ptr<RuntimeFunctionSubop> RuntimeFunctionSubop::htLookup(const RelAl
          std::move(args),
          std::move(ref),
          out,
-         hash_table));
-}
-
-std::unique_ptr<RuntimeFunctionSubop> RuntimeFunctionSubop::htLookupOrInsert(const RelAlgOp* source, const IU* pointers_, const IU& keys_, std::vector<const IU*> pseudo_ius_, void* hash_table_) {
-   std::string fct_name = "ht_sk_lookup_or_insert";
-   std::vector<const IU*> in_ius{&keys_};
-   for (auto pseudo : pseudo_ius_) {
-      // Pseudo IUs are used as input IUs in the backing graph, but do not influence arguments.
-      in_ius.push_back(pseudo);
-   }
-   // The argument needs to be referenced if we directly use a non-packed IU as argument.
-   std::vector<bool> ref{keys_.type->id() != "ByteArray" && keys_.type->id() != "Ptr_Char"};
-   std::vector<const IU*> out_ius_;
-   if (pointers_) {
-      out_ius_.push_back(pointers_);
-   }
-   std::vector<const IU*> args{&keys_};
-   return std::unique_ptr<RuntimeFunctionSubop>(
-      new RuntimeFunctionSubop(
-         source,
-         std::move(fct_name),
-         std::move(in_ius),
-         std::move(out_ius_),
-         std::move(args),
-         std::move(ref),
-         pointers_,
          hash_table_));
 }
 

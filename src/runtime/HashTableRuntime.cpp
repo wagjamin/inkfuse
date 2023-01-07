@@ -4,19 +4,16 @@
 
 namespace inkfuse {
 
-namespace {
-// Lower order 63 bits in the hash slot store the hash suffix.
-const uint64_t fill_mask = 1ull << 63ull;
-// Highest order bit in the hash slot indicates if slot is filled.
-const uint64_t hash_mask = fill_mask - 1;
-}
-
 extern "C" char* HashTableRuntime::ht_sk_insert(void* table, char* key) {
    return reinterpret_cast<HashTableSimpleKey*>(table)->insert(key);
 }
 
 extern "C" char* HashTableRuntime::ht_sk_lookup(void* table, char* key) {
    return reinterpret_cast<HashTableSimpleKey*>(table)->lookup(key);
+}
+
+extern "C" char* HashTableRuntime::ht_sk_lookup_disable(void* table, char* key) {
+   return reinterpret_cast<HashTableSimpleKey*>(table)->lookupDisable(key);
 }
 
 extern "C" char* HashTableRuntime::ht_sk_lookup_or_insert(void* table, char* key) {
@@ -35,6 +32,18 @@ extern "C" char* HashTableRuntime::ht_nk_lookup(void* table) {
    return reinterpret_cast<HashTableSimpleKey*>(table)->lookupOrInsertSingleKey();
 }
 
+extern "C" char* HashTableRuntime::ht_ck_lookup(void* table, char* key) {
+   return reinterpret_cast<HashTableComplexKey*>(table)->lookup(key);
+}
+
+extern "C" char* HashTableRuntime::ht_ck_lookup_or_insert(void* table, char* key) {
+   return reinterpret_cast<HashTableComplexKey*>(table)->lookupOrInsert(key);
+}
+
+extern "C" void HashTableRuntime::ht_ck_it_advance(void* table, char** it_data, uint64_t* it_idx) {
+   reinterpret_cast<HashTableComplexKey*>(table)->iteratorAdvance(it_data, it_idx);
+}
+
 
 void HashTableRuntime::registerRuntime() {
    RuntimeFunctionBuilder("ht_sk_insert", IR::Pointer::build(IR::Char::build()))
@@ -42,6 +51,10 @@ void HashTableRuntime::registerRuntime() {
       .addArg("key", IR::Pointer::build(IR::Char::build()));
 
    RuntimeFunctionBuilder("ht_sk_lookup", IR::Pointer::build(IR::Char::build()))
+      .addArg("table", IR::Pointer::build(IR::Void::build()))
+      .addArg("key", IR::Pointer::build(IR::Char::build()));
+
+   RuntimeFunctionBuilder("ht_sk_lookup_disable", IR::Pointer::build(IR::Char::build()))
       .addArg("table", IR::Pointer::build(IR::Void::build()))
       .addArg("key", IR::Pointer::build(IR::Char::build()));
 
@@ -62,6 +75,19 @@ void HashTableRuntime::registerRuntime() {
 
    RuntimeFunctionBuilder("ht_nk_lookup", IR::Pointer::build(IR::Char::build()))
       .addArg("table", IR::Pointer::build(IR::Void::build()));
+
+   RuntimeFunctionBuilder("ht_ck_lookup", IR::Pointer::build(IR::Char::build()))
+      .addArg("table", IR::Pointer::build(IR::Void::build()))
+      .addArg("key", IR::Pointer::build(IR::Char::build()));
+
+   RuntimeFunctionBuilder("ht_ck_lookup_or_insert", IR::Pointer::build(IR::Char::build()))
+      .addArg("table", IR::Pointer::build(IR::Void::build()))
+      .addArg("key", IR::Pointer::build(IR::Char::build()));
+
+   RuntimeFunctionBuilder("ht_ck_it_advance", IR::Pointer::build(IR::Char::build()))
+      .addArg("table", IR::Pointer::build(IR::Void::build()))
+      .addArg("it_data", IR::Pointer::build(IR::Pointer::build(IR::Char::build())))
+      .addArg("it_idx", IR::Pointer::build(IR::UnsignedInt::build(8)));
 }
 
 }

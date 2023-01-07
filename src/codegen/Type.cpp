@@ -58,8 +58,11 @@ void Char::print(std::ostream& stream, char* data) const
 
 void String::print(std::ostream& stream, char* data) const
 {
-   std::string str(data);
-   stream << str;
+   // String columns have an indirection. They don't contain the inlined string,
+   // but pointers to the backing string.
+   // The char* to the current element in the column thus actually is a char**.
+   auto indirection = reinterpret_cast<const char**>(data);
+   stream << *indirection;
 }
 
 void Date::print(std::ostream& stream, char* data) const
