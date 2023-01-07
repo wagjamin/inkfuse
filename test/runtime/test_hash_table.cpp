@@ -38,7 +38,7 @@ struct HashTableTestT : public ::testing::TestWithParam<ParamT> {
       return {.keys = std::move(keys), .payloads = std::move(payloads)};
    }
 
-   template<bool withLookup = true>
+   template <bool withLookup = true>
    void insertAt(const RandomDataResult& data, size_t idx) {
       const char* key_ptr = &data.keys[idx * std::get<0>(GetParam())];
       const char* payload_ptr = &data.payloads[idx * 16];
@@ -119,18 +119,18 @@ TEST_P(HashTableTestT, direct_inserts_lookups) {
    auto num_vals = std::get<1>(GetParam());
    auto data = buildRandomData(num_vals);
    for (uint64_t k = 0; k < num_vals; ++k) {
-   // Insert ourselves.
-   insertAt<false>(data, k);
-   checkContains(data, k);
+      // Insert ourselves.
+      insertAt<false>(data, k);
+      checkContains(data, k);
    }
    // Re-find everything after all inserts.
    for (uint64_t k = 0; k < num_vals; ++k) {
-   checkContains(data, k);
+      checkContains(data, k);
    }
    // Other values cannot be found.
    auto data_not_exists = buildRandomData(num_vals, 420);
    for (uint64_t k = 0; k < num_vals; ++k) {
-   checkNotContains(data_not_exists, k);
+      checkNotContains(data_not_exists, k);
    }
 }
 

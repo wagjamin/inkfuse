@@ -26,11 +26,61 @@ struct RuntimeFunctionSubop : public TemplatedSuboperator<RuntimeFunctionSubopSt
    /// Build an insert function for a hash table.
    static std::unique_ptr<RuntimeFunctionSubop> htInsert(const RelAlgOp* source, const IU* pointers_, const IU& key_, std::vector<const IU*> pseudo_ius_, void* hash_table_ = nullptr);
 
+   /// Build a hash table lookup function that disables every found slot.
+   static std::unique_ptr<RuntimeFunctionSubop> htLookupDisable(const RelAlgOp* source, const IU& pointers_, const IU& key_, std::vector<const IU*> pseudo_ius_, void* hash_table_ = nullptr);
+
    /// Build a hash table lookup function.
-   static std::unique_ptr<RuntimeFunctionSubop> htLookup(const RelAlgOp* source, const IU& pointers_, const IU& key_, std::vector<const IU*> pseudo_ius_, void* hash_table_ = nullptr);
+   template <class HashTable>
+   static std::unique_ptr<RuntimeFunctionSubop> htLookup(const RelAlgOp* source, const IU& pointers_, const IU& key_, std::vector<const IU*> pseudo_ius_, void* hash_table_ = nullptr) {
+      std::string fct_name = "ht_" + HashTable::ID + "_lookup";
+      std::vector<const IU*> in_ius{&key_};
+      for (auto pseudo : pseudo_ius_) {
+         // Pseudo IUs are used as input IUs in the backing graph, but do not influence arguments.
+         in_ius.push_back(pseudo);
+      }
+      std::vector<bool> ref{key_.type->id() != "ByteArray" && key_.type->id() != "Ptr_Char"};
+      std::vector<const IU*> out_ius_{&pointers_};
+      std::vector<const IU*> args{&key_};
+      const IU* out = &pointers_;
+      return std::unique_ptr<RuntimeFunctionSubop>(
+         new RuntimeFunctionSubop(
+            source,
+            std::move(fct_name),
+            std::move(in_ius),
+            std::move(out_ius_),
+            std::move(args),
+            std::move(ref),
+            out,
+            hash_table_));
+   }
 
    /// Build a hash table lookup or insert function.
-   static std::unique_ptr<RuntimeFunctionSubop> htLookupOrInsert(const RelAlgOp* source, const IU* pointers_, const IU& key_, std::vector<const IU*> pseudo_ius_, void* hash_table_ = nullptr);
+   template <class HashTable>
+   static std::unique_ptr<RuntimeFunctionSubop> htLookupOrInsert(const RelAlgOp* source, const IU* pointers_, const IU& key_, std::vector<const IU*> pseudo_ius_, void* hash_table_ = nullptr) {
+      std::string fct_name = "ht_" + HashTable::ID + "_lookup_or_insert";
+      std::vector<const IU*> in_ius{&key_};
+      for (auto pseudo : pseudo_ius_) {
+         // Pseudo IUs are used as input IUs in the backing graph, but do not influence arguments.
+         in_ius.push_back(pseudo);
+      }
+      // The argument needs to be referenced if we directly use a non-packed IU as argument.
+      std::vector<bool> ref{key_.type->id() != "ByteArray" && key_.type->id() != "Ptr_Char"};
+      std::vector<const IU*> out_ius_;
+      if (pointers_) {
+         out_ius_.push_back(pointers_);
+      }
+      std::vector<const IU*> args{&key_};
+      return std::unique_ptr<RuntimeFunctionSubop>(
+         new RuntimeFunctionSubop(
+            source,
+            std::move(fct_name),
+            std::move(in_ius),
+            std::move(out_ius_),
+            std::move(args),
+            std::move(ref),
+            pointers_,
+            hash_table_));
+   }
 
    /// Build a lookup function for a hash table with a 0-byte key.
    static std::unique_ptr<RuntimeFunctionSubop> htNoKeyLookup(const RelAlgOp* source, const IU& pointers_, const IU& input_dependency, void* hash_table_ = nullptr);

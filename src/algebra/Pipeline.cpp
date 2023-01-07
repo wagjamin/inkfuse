@@ -219,8 +219,8 @@ PrettyPrinter* Pipeline::getPrettyPrinter()
 }
 
 HashTableSimpleKey& PipelineDAG::attachHashTableSimpleKey(size_t discard_after, size_t key_size, size_t payload_size) {
-   hash_tables.push_back({discard_after, std::make_unique<HashTableSimpleKey>(key_size, payload_size)});
-   return *hash_tables.back().second;
+   auto& inserted = hash_tables.emplace_back(discard_after, std::make_unique<HashTableSimpleKey>(key_size, payload_size));
+   return *inserted.second;
 }
 
 Pipeline& PipelineDAG::getCurrentPipeline() const {

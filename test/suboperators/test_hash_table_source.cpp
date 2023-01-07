@@ -25,7 +25,7 @@ struct HashTableSourceTestT : public ::testing::TestWithParam<std::tuple<size_t,
       }
       dag.buildNewPipeline();
       auto& pipe = dag.getCurrentPipeline();
-      pipe.attachSuboperator(HashTableSource::build(nullptr, src_iu, &ht));
+      pipe.attachSuboperator(SimpleHashTableSource::build(nullptr, src_iu, &ht));
       {
          // Unpack the key.
          auto& unpack_key = pipe.attachSuboperator(KeyUnpackerSubop::build(nullptr, src_iu, read_key));

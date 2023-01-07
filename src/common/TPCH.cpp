@@ -297,7 +297,7 @@ std::unique_ptr<Print> q3(const Schema& schema) {
    o_filter_children.push_back(std::move(o_expr));
    auto o_filter = Filter::build(
       std::move(o_filter_children),
-      "filter_customer",
+      "filter_orders",
       // We will need all output columns again.
       {o_scan_ref.getOutput()[0],
        o_scan_ref.getOutput()[1],
@@ -447,6 +447,143 @@ std::unique_ptr<Print> q3(const Schema& schema) {
                        std::move(out_ius), std::move(colnames), "q3_print", 10);
 }
 
+std::unique_ptr<Print> q4(const Schema& schema) {
+   // 1. Scan from orders.
+   // 1.1 Set up the scan.
+   auto& o_rel = schema.at("orders");
+   std::vector<std::string> o_cols{
+      "o_orderkey",
+      "o_orderdate",
+      "o_orderpriority",
+   };
+   auto o_scan = TableScan::build(*o_rel, o_cols, "scan");
+   auto& o_scan_ref = *o_scan;
+   // 1.2 Filter orders on o_orderdate >= '1993-07-01' and < '1993-10-01'
+   std::vector<ExpressionOp::NodePtr> o_nodes;
+   o_nodes.emplace_back(std::make_unique<IURefNode>(o_scan_ref.getOutput()[1]));
+   o_nodes.emplace_back(
+      std::make_unique<ComputeNode>(
+         ComputeNode::Type::LessEqual,
+         IR::DateVal::build(helpers::dateStrToInt("1993-07-01")),
+         o_nodes[0].get()));
+   o_nodes.emplace_back(
+      std::make_unique<ComputeNode>(
+         ComputeNode::Type::Greater,
+         IR::DateVal::build(helpers::dateStrToInt("1993-10-01")),
+         o_nodes[0].get()));
+   o_nodes.emplace_back(
+      std::make_unique<ComputeNode>(
+         ComputeNode::Type::And,
+         std::vector<Node*>{o_nodes[1].get(), o_nodes[2].get()}));
+   auto o_nodes_root = o_nodes[3].get();
+   std::vector<RelAlgOpPtr> o_expr_children;
+   o_expr_children.push_back(std::move(o_scan));
+   auto o_expr = ExpressionOp::build(
+      std::move(o_expr_children),
+      "expr_orders",
+      {o_nodes_root},
+      std::move(o_nodes));
+   auto& o_expr_ref = *o_expr;
+
+   std::vector<RelAlgOpPtr> o_filter_children;
+   o_filter_children.push_back(std::move(o_expr));
+   auto o_filter = Filter::build(
+      std::move(o_filter_children),
+      "filter_customer",
+      // We need (o_orderkey, o_orderpriroity)
+      {o_scan_ref.getOutput()[0],
+       o_scan_ref.getOutput()[2],
+      },
+      *o_expr_ref.getOutput()[0]);
+   auto& o_filter_ref = *o_filter;
+
+   // 2. Scan from lineitem.
+   // 2.1 Set up the scan
+   auto& l_rel = schema.at("lineitem");
+   std::vector<std::string> l_cols{
+      "l_orderkey",
+      "l_commitdate",
+      "l_receiptdate",
+   };
+   auto l_scan = TableScan::build(*l_rel, l_cols, "l_scan");
+   auto& l_scan_ref = *l_scan;
+
+   // 2.2 Filter lineitem on l_commitdate < l_receiptdate
+   std::vector<ExpressionOp::NodePtr> l_nodes;
+   l_nodes.emplace_back(std::make_unique<IURefNode>(l_scan_ref.getOutput()[1]));
+   l_nodes.emplace_back(std::make_unique<IURefNode>(l_scan_ref.getOutput()[2]));
+   l_nodes.emplace_back(std::make_unique<ComputeNode>(ComputeNode::Type::Less, std::vector<Node*>{l_nodes[0].get(), l_nodes[1].get()}));
+   auto l_nodes_root = l_nodes[2].get();
+   std::vector<RelAlgOpPtr> l_expr_children;
+   l_expr_children.push_back(std::move(l_scan));
+   auto l_expr = ExpressionOp::build(
+      std::move(l_expr_children),
+      "expr_lineitem",
+      {l_nodes_root},
+      std::move(l_nodes));
+   auto& l_expr_ref = *l_expr;
+
+   std::vector<RelAlgOpPtr> l_filter_children;
+   l_filter_children.push_back(std::move(l_expr));
+   auto l_filter = Filter::build(
+      std::move(l_filter_children),
+      "filter_lineitem",
+      // We only need l_orderkey.
+      {l_scan_ref.getOutput()[0],},
+      *l_expr_ref.getOutput()[0]);
+   auto& l_filter_ref = *l_filter;
+
+   // 3. Join the two. The engine can infer it's a PK join as o_orderkey is PK of orders.
+   std::vector<RelAlgOpPtr> o_l_join_children;
+   o_l_join_children.push_back(std::move(o_filter));
+   o_l_join_children.push_back(std::move(l_filter));
+   auto o_l_join = Join::build(
+      std::move(o_l_join_children),
+      "o_l_join",
+      // Keys left (o_orderkey)
+      {o_filter_ref.getOutput()[0]},
+      // Payload left (o_orderpriority)
+      {
+         o_filter_ref.getOutput()[1],
+      },
+      // Keys right (l_orderkey)
+      {l_filter_ref.getOutput()[0]},
+      // No right payload - semi join.
+      {
+      },
+      JoinType::LeftSemi,
+      true
+   );
+   auto& o_l_join_ref = *o_l_join;
+   assert(o_l_join_ref.getOutput().size() == 2);
+
+   // 4. Aggregate.
+   std::vector<RelAlgOpPtr> agg_children;
+   agg_children.push_back(std::move(o_l_join));
+   // Group by (l_orderkey, o_orderdate, o_shippriority).
+   std::vector<const IU*> group_by{
+      o_l_join_ref.getOutput()[1],
+   };
+   std::vector<AggregateFunctions::Description> aggregates{
+      {*o_l_join_ref.getOutput()[1], AggregateFunctions::Opcode::Sum}};
+   auto agg = Aggregation::build(
+      std::move(agg_children),
+      "agg",
+      std::move(group_by),
+      std::move(aggregates));
+
+   // 5. Print.
+   std::vector<const IU*> out_ius{
+      agg->getOutput()[0],
+      agg->getOutput()[1],
+   };
+   std::vector<std::string> colnames = {"o_orderpriority", "order_count"};
+   std::vector<RelAlgOpPtr> print_children;
+   print_children.push_back(std::move(agg));
+   return Print::build(std::move(print_children),
+                       std::move(out_ius), std::move(colnames), "print");
+}
+
 std::unique_ptr<Print> q6(const Schema& schema) {
    // 1. Scan from lineitem.
    auto& rel = schema.at("lineitem");
@@ -577,10 +714,6 @@ std::unique_ptr<Print> q6(const Schema& schema) {
    print_children.push_back(std::move(agg));
    return Print::build(std::move(print_children),
                        std::move(out_ius), std::move(colnames));
-}
-
-std::unique_ptr<Print> q9(const Schema& schema) {
-
 }
 
 std::unique_ptr<Print> l_count(const inkfuse::Schema& schema) {

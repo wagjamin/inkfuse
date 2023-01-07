@@ -6,11 +6,7 @@ namespace inkfuse {
 
 const char* HashTableSourceState::name = "HashTableSourceState";
 
-HashTableSource::HashTableSource(const RelAlgOp* source, const IU& produced_iu, HashTableSimpleKey* hash_table_)
-   : TemplatedSuboperator<HashTableSourceState>(source, {&produced_iu}, {}), hash_table(hash_table_) {
-}
-
-void HashTableSource::registerRuntime() {
+void HashTableSourceState::registerRuntime() {
    RuntimeStructBuilder{HashTableSourceState::name}
       .addMember("hash_table", IR::Pointer::build(IR::Void::build()))
       .addMember("it_ptr_start", IR::Pointer::build(IR::Char::build()))
@@ -19,11 +15,25 @@ void HashTableSource::registerRuntime() {
       .addMember("it_idx_end", IR::UnsignedInt::build(8));
 }
 
-SuboperatorArc HashTableSource::build(const RelAlgOp* source, const IU& produced_iu, HashTableSimpleKey* hash_table_) {
+template<class HashTable>
+HashTableSource<HashTable>::HashTableSource(const RelAlgOp* source, const IU& produced_iu, HashTable* hash_table_)
+   : TemplatedSuboperator<HashTableSourceState>(source, {&produced_iu}, {}), hash_table(hash_table_) {
+}
+
+template<class HashTable>
+std::string HashTableSource<HashTable>::id() const
+{
+   std::string id = "hash_table_source_";
+   return id + HashTable::ID;
+}
+
+template<class HashTable>
+SuboperatorArc HashTableSource<HashTable>::build(const RelAlgOp* source, const IU& produced_iu, HashTable* hash_table_) {
    return std::unique_ptr<HashTableSource>{new HashTableSource(source, produced_iu, hash_table_)};
 }
 
-size_t HashTableSource::pickMorsel() {
+template <class HashTable>
+size_t HashTableSource<HashTable>::pickMorsel() {
    if (state->it_ptr_end == nullptr) {
       // The last morsel went until the hash table end. We are done.
       return false;
@@ -40,7 +50,8 @@ size_t HashTableSource::pickMorsel() {
    return entries_found;
 }
 
-void HashTableSource::open(CompilationContext& context) {
+template<class HashTable>
+void HashTableSource<HashTable>::open(CompilationContext& context) {
    auto& builder = context.getFctBuilder();
    const auto& program = context.getProgram();
    const auto& iu = *provided_ius.front();
@@ -89,12 +100,13 @@ void HashTableSource::open(CompilationContext& context) {
    }
 }
 
-void HashTableSource::close(CompilationContext& context) {
+template<class HashTable>
+void HashTableSource<HashTable>::close(CompilationContext& context) {
    auto& builder = context.getFctBuilder();
    const auto& iu = *provided_ius.front();
    const auto& iu_decl = context.getIUDeclaration(iu);
    // Advance the hash table iterator.
-   auto runtime_fct = context.getRuntimeFunction("ht_sk_it_advance").get();
+   auto runtime_fct = context.getRuntimeFunction("ht_" + HashTable::ID + "_it_advance").get();
    std::vector<IR::ExprPtr> args_exprs;
    args_exprs.reserve(3);
    // Hash table gets passed as-is.
@@ -111,7 +123,8 @@ void HashTableSource::close(CompilationContext& context) {
    opt_while.reset();
 }
 
-void HashTableSource::setUpStateImpl(const ExecutionContext& context) {
+template <class HashTable>
+void HashTableSource<HashTable>::setUpStateImpl(const ExecutionContext& context) {
    assert(hash_table);
    state->hash_table = hash_table;
    // Initialize start to point to the first slot of the hash table.
@@ -120,5 +133,9 @@ void HashTableSource::setUpStateImpl(const ExecutionContext& context) {
    state->it_ptr_end = state->it_ptr_start;
    state->it_idx_end = state->it_idx_start;
 }
+
+// Explicitly instantiate templates.
+template class HashTableSource<HashTableSimpleKey>;
+template class HashTableSource<HashTableComplexKey>;
 
 }

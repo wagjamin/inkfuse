@@ -9,6 +9,7 @@ namespace inkfuse {
 
 enum class JoinType {
    Inner,
+   LeftSemi,
 };
 
 /// A join in InkFuse. Joins produce very different suboperator DAGs depending on whether

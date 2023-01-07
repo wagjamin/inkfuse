@@ -1,6 +1,5 @@
 #include "codegen/backend_c/BackendC.h"
 #include "exec/InterruptableJob.h"
-#include <cstdlib>
 #include <fstream>
 #include <sstream>
 #include <unordered_map>

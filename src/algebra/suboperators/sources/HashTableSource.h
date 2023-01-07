@@ -12,6 +12,9 @@ namespace inkfuse {
 struct HashTableSourceState {
    static const char* name;
 
+   /// Register the HashTableSourceState in the global inkfuse runtime.
+   static void registerRuntime();
+
    /// Backing hash table from which we want to read.
    void* hash_table;
    /// Iterator pointer at which to start.
@@ -28,9 +31,10 @@ struct HashTableSourceState {
 /// hash table payloads.
 /// Picks morsels until all hash table payloads were produced. Within a single morsel, produces at most
 /// DEFAULT_CHUNK_SIZE elements.
+template <class HashTable>
 struct HashTableSource : public TemplatedSuboperator<HashTableSourceState> {
 
-   static SuboperatorArc build(const RelAlgOp* source, const IU& produced_iu, HashTableSimpleKey* hash_table_);
+   static SuboperatorArc build(const RelAlgOp* source, const IU& produced_iu, HashTable* hash_table_);
 
    /// Keep running as long as we have cells to read from in the backing hash table.
    size_t pickMorsel() override;
@@ -39,13 +43,10 @@ struct HashTableSource : public TemplatedSuboperator<HashTableSourceState> {
 
    void close(CompilationContext& context) override;
 
-   std::string id() const override { return "hash_table_source"; };
-
-   /// Register the HashTableSourceState in the global inkfuse runtime.
-   static void registerRuntime();
+   std::string id() const override;
 
    protected:
-   HashTableSource(const RelAlgOp* source, const IU& produced_iu, HashTableSimpleKey* hash_table_);
+   HashTableSource(const RelAlgOp* source, const IU& produced_iu, HashTable* hash_table_);
 
    void setUpStateImpl(const ExecutionContext& context) override;
 
@@ -57,8 +58,11 @@ private:
    IR::Stmt* decl_it_idx;
    /// The hash table we are reading from.
    // TODO(benjamin) it's not clean to have the actual object as a suboperator member.
-   HashTableSimpleKey* hash_table;
+   HashTable* hash_table;
 };
+
+using SimpleHashTableSource = HashTableSource<HashTableSimpleKey>;
+using ComplexHashTableSource = HashTableSource<HashTableComplexKey>;
 
 }
 

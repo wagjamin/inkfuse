@@ -140,6 +140,10 @@ int main(int argc, char* argv[]) {
                   auto q = tpch::q3(*loaded);
                   runQuery("3", std::move(q), mode);
                }
+               else if (split[1] == "q4") {
+                  auto q = tpch::q4(*loaded);
+                  runQuery("4", std::move(q), mode);
+               }
                else if (split[1] == "q6") {
                   auto q = tpch::q6(*loaded);
                   runQuery("6", std::move(q), mode);
@@ -152,7 +156,7 @@ int main(int argc, char* argv[]) {
                   auto q = tpch::l_point(*loaded);
                   runQuery("l_point", std::move(q), mode);
                } else {
-                  std::cout << "Unrecognized query - we only support {q1, q3, q6, l_count, l_point}\n";
+                  std::cout << "Unrecognized query - we only support {q1, q3, q4, q6, l_count, l_point}\n";
                }
             }
          } else {

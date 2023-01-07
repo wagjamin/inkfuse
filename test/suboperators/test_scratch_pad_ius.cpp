@@ -33,7 +33,7 @@ struct ScratchPadIUTestT : public ::testing::TestWithParam<PipelineExecutor::Exe
       reinterpret_cast<KeyPackerSubop&>(packer_2).attachRuntimeParams(std::move(params_2));
       // Do a hash table insert on the packed key.
       // We require the two packing pseudo IUs as input IUs to make sure the ht code is generated after the packing code.
-      auto& ht_insert = pipe.attachSuboperator(RuntimeFunctionSubop::htLookupOrInsert(nullptr, &out_ptrs, packed, {&pseudo_1, &pseudo_2}, &ht));
+      auto& ht_insert = pipe.attachSuboperator(RuntimeFunctionSubop::htLookupOrInsert<HashTableSimpleKey>(nullptr, &out_ptrs, packed, {&pseudo_1, &pseudo_2}, &ht));
    }
 
    PipelineDAG dag;
