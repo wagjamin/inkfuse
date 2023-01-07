@@ -24,15 +24,12 @@ std::unique_ptr<Print> q3(const Schema& schema);
 std::unique_ptr<Print> q4(const Schema& schema);
 /// Selective filters
 std::unique_ptr<Print> q6(const Schema& schema);
-/// Join (moderate build, moderate probe) ~5x difference
-std::unique_ptr<Print> q9(const Schema& schema);
-/// High-Cardinality aggregation (1.5M groups on SF1)
-std::unique_ptr<Print> q18(const Schema& schema);
+/// Join (moderate build, moderate probe) ~2x difference
+std::unique_ptr<Print> q14(const Schema& schema);
 
 /// Some interesting custom queries. See /tpch for query text.
 std::unique_ptr<Print> l_count(const Schema& schema);
 std::unique_ptr<Print> l_point(const Schema& schema);
-
 
 }
 
