@@ -50,6 +50,8 @@ struct Aggregation : public RelAlgOp {
    size_t key_size = 0;
    /// Size of the aggregation payload.
    size_t payload_size = 0;
+   /// Does this aggregation require a complex hash table?
+   bool requires_complex_ht = false;
 };
 
 }

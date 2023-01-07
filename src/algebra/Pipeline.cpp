@@ -219,7 +219,13 @@ PrettyPrinter* Pipeline::getPrettyPrinter()
 }
 
 HashTableSimpleKey& PipelineDAG::attachHashTableSimpleKey(size_t discard_after, size_t key_size, size_t payload_size) {
-   auto& inserted = hash_tables.emplace_back(discard_after, std::make_unique<HashTableSimpleKey>(key_size, payload_size));
+   auto& inserted = hash_tables_simple.emplace_back(discard_after, std::make_unique<HashTableSimpleKey>(key_size, payload_size));
+   return *inserted.second;
+}
+
+HashTableComplexKey& PipelineDAG::attachHashTableComplexKey(size_t discard_after, uint16_t slots, size_t payload_size)
+{
+   auto& inserted = hash_tables_complex.emplace_back(discard_after, std::make_unique<HashTableComplexKey>(0, slots, payload_size));
    return *inserted.second;
 }
 

@@ -24,6 +24,10 @@ std::unique_ptr<Aggregation> Aggregation::build(std::vector<std::unique_ptr<RelA
 }
 
 void Aggregation::plan(std::vector<AggregateFunctions::Description> description) {
+   // Compute the hash table required by this aggregation?
+   if (group_by.size() == 1 && dynamic_cast<IR::String*>(group_by[0]->type.get())) {
+      requires_complex_ht = true;
+   }
    // We pack the aggregation keys first.
    for (const IU* key: group_by) {
       key_size += key->type->numBytes();
@@ -94,7 +98,12 @@ void Aggregation::decay(PipelineDAG& dag) const {
 
    // Set up the backing aggregation hash table. We can drop it after the
    // pipeline which reads from the aggregation is done.
-   auto& hash_table = dag.attachHashTableSimpleKey(dag.getPipelines().size(), key_size, payload_size);
+   void* hash_table;
+   if (requires_complex_ht) {
+      hash_table = &dag.attachHashTableComplexKey(dag.getPipelines().size(), 1, payload_size);
+   } else {
+      hash_table = &dag.attachHashTableSimpleKey(dag.getPipelines().size(), key_size, payload_size);
+   }
 
    auto& curr_pipe = dag.getCurrentPipeline();
    // Step 1: Pack the aggregation key (if it needs to be packed)
@@ -128,13 +137,16 @@ void Aggregation::decay(PipelineDAG& dag) const {
       pseudo.push_back(&pseudo_iu);
    }
 
-   if (key_size) {
-      curr_pipe.attachSuboperator(RuntimeFunctionSubop::htLookupOrInsert<HashTableSimpleKey>(this, &agg_pointer_result, *packed_key_iu, std::move(pseudo), &hash_table));
+   // Dispatch the correct lookup function.
+   if (key_size && requires_complex_ht) {
+      curr_pipe.attachSuboperator(RuntimeFunctionSubop::htLookupOrInsert<HashTableComplexKey>(this, &agg_pointer_result, *packed_key_iu, std::move(pseudo), hash_table));
+   } else if (key_size) {
+      curr_pipe.attachSuboperator(RuntimeFunctionSubop::htLookupOrInsert<HashTableSimpleKey>(this, &agg_pointer_result, *packed_key_iu, std::move(pseudo), hash_table));
    } else {
       // The key size is zero - so we just aggregate a single group.
       // We use an optimized code path for this. We need to htNoKeyLookup to reference an
       // input IU as a dependency. This is
-      curr_pipe.attachSuboperator(RuntimeFunctionSubop::htNoKeyLookup(this, agg_pointer_result, *granules[0].first, &hash_table));
+      curr_pipe.attachSuboperator(RuntimeFunctionSubop::htNoKeyLookup(this, agg_pointer_result, *granules[0].first, hash_table));
    }
 
    // Step 3: Update the aggregation state.
@@ -154,7 +166,12 @@ void Aggregation::decay(PipelineDAG& dag) const {
    // Step 4: Attach readers on a new pipeline.
    auto& read_pipe = dag.buildNewPipeline();
    // First, build a reader on the aggregate hash table returning pointers to the elements.
-   read_pipe.attachSuboperator(SimpleHashTableSource::build(this, ht_scan_result, &hash_table));
+   // Dispatch the correct reader depending on the layout.
+   if (requires_complex_ht) {
+      read_pipe.attachSuboperator(ComplexHashTableSource::build(this, ht_scan_result, static_cast<HashTableComplexKey*>(hash_table)));
+   } else {
+      read_pipe.attachSuboperator(SimpleHashTableSource::build(this, ht_scan_result, static_cast<HashTableSimpleKey*>(hash_table)));
+   }
 
    // Produce the readers for the materialized keys.
    size_t key_offset = 0;

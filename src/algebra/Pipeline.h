@@ -95,14 +95,18 @@ struct PipelineDAG {
    /// Mark a pipeline as done. Allows for the release of runtime state.
    void markPipelineDone(size_t idx);
 
-   /// Attach a hash table to the runtime state of the PipelineDAG.
+   /// Attach a simple hash table to the runtime state of the PipelineDAG.
    HashTableSimpleKey& attachHashTableSimpleKey(size_t discard_after, size_t key_size, size_t payload_size);
+   /// Attach a simple hash table to the runtime state of the PipelineDAG.
+   HashTableComplexKey& attachHashTableComplexKey(size_t discard_after, uint16_t slots, size_t payload_size);
 
    private:
    /// Internally the PipelineDAG is represented as a vector of pipelines within a topological order.
    std::vector<PipelinePtr> pipelines;
    /// Hash tables, ordered by pipeline after which they can be discarded.
-   std::deque<std::pair<size_t, std::unique_ptr<HashTableSimpleKey>>> hash_tables;
+   std::deque<std::pair<size_t, std::unique_ptr<HashTableSimpleKey>>> hash_tables_simple;
+   /// Hash tables, ordered by pipeline after which they can be discarded.
+   std::deque<std::pair<size_t, std::unique_ptr<HashTableComplexKey>>> hash_tables_complex;
 };
 
 using PipelineDAGPtr = std::unique_ptr<PipelineDAG>;
