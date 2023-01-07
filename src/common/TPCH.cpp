@@ -793,4 +793,11 @@ std::unique_ptr<Print> l_point(const inkfuse::Schema& schema) {
                        std::move(out_ius), std::move(colnames));
 }
 
+// No support for case when - only aggregate
+// 100.00 * sum(l_extendedprice * (1 - l_discount)) as promo_revenue
+std::unique_ptr<Print> q14(const Schema& schema)
+{
+
+}
+
 }
