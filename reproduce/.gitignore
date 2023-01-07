@@ -1,5 +1,7 @@
 .idea
+hyperd.log
 __pycache__
 data
 tpch-dbgen
 result_**
+tpch.hyper
