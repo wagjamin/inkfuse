@@ -6,20 +6,24 @@ import subprocess
 import os
 import time
 
+
 def load_query(q_name):
     with open(f'sql/{q_name}.sql') as query:
         return query.read()
+
 
 def set_up_schema(con):
     print('Setting up schema')
     schema_q = load_query('schema')
     con.execute(schema_q)
 
+
 def load_data(con):
     tables = ['lineitem', 'customer', 'orders']
     for table in tables:
         print(f'Loading {table}')
         con.execute(f"INSERT INTO {table} SELECT * FROM read_csv_auto('data/{table}.tbl', delim='|', header=False)")
+
 
 def run_query(con, query):
     query = load_query(query)
@@ -28,12 +32,13 @@ def run_query(con, query):
     t_end = time.time()
     return int(1000 * (t_end - t_start))
 
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Benchmark DuckDB')
     parser.add_argument('scale_factor', type=str, help='The factor to run the experiment on')
     parser.add_argument('--repeat', type=int, default=10, help='How often should each query be run?')
     parser.add_argument('--no-regen', dest='regen', action='store_false', help="Don't regenerate data")
-    parser.set_defaults(regen=False)
+    parser.set_defaults(regen=True)
     args = parser.parse_args()
 
     if args.regen:
@@ -58,4 +63,3 @@ if __name__ == '__main__':
                 for _ in range(args.repeat):
                     dur = run_query(con, q_name)
                     results.write(f'{q_name},{args.scale_factor},{dur}\n')
-

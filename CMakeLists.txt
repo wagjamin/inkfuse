@@ -245,7 +245,8 @@ set(TEST_CC
         )
 
 set(TOOLS_SRC
-        "${CMAKE_SOURCE_DIR}/tools/inkfuse_runner.cc"
+        "${CMAKE_SOURCE_DIR}/tools/inkfuse_bench.cpp"
+        "${CMAKE_SOURCE_DIR}/tools/inkfuse_runner.cpp"
         )
 
 # ---------------------------------------------------------------------------
@@ -262,10 +263,15 @@ add_library(inkfuse STATIC ${SRC_CC})
 target_link_libraries(inkfuse PRIVATE xxhash_static gflags dl Threads::Threads)
 
 
-# inkfuse benchmarking binary for running TPC-H queries
-add_executable(inkfuse_runner tools/inkfuse_runner.cc)
+# inkfuse binary for running TPC-H queries in an interactive way
+add_executable(inkfuse_runner tools/inkfuse_runner.cpp)
 set_property(TARGET inkfuse_runner PROPERTY ENABLE_EXPORTS 1)
 target_link_libraries(inkfuse_runner PRIVATE inkfuse gflags Threads::Threads)
+
+# inkfuse binary for benchmarking TPC-H queries in the reproducibility folder
+add_executable(inkfuse_bench tools/inkfuse_bench.cpp)
+set_property(TARGET inkfuse_bench PROPERTY ENABLE_EXPORTS 1)
+target_link_libraries(inkfuse_bench PRIVATE inkfuse gflags Threads::Threads)
 
 # ---------------------------------------------------------------------------
 # Tests

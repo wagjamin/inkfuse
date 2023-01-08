@@ -18,14 +18,16 @@ struct InterruptableJob;
 struct CompiledRunner final : public PipelineRunner  {
    CompiledRunner(PipelinePtr pipe_, ExecutionContext& ctx_, std::string name = "");
 
-   // Prepare the compiled runner, returns whether compilation finished successfully.
-   bool prepare(InterruptableJob& interrupt);
+   void generateC();
+   bool generateMachineCode(InterruptableJob& interrupt);
 
    private:
-   /// Name of the pipeline/program to be generated.
-   std::string name;
+   // The compilation backend.
+   BackendC backend;
    /// The backing program.
    std::unique_ptr<IR::BackendProgram> program;
+   /// Name of the pipeline/program to be generated.
+   std::string name;
 };
 
 }

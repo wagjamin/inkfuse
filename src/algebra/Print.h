@@ -36,7 +36,7 @@ struct PrettyPrinter {
    /// How many morsels did we print so far?
    size_t morsel_count = 0;
    /// The output stream into which to write the pretty-printed result.
-   std::ostream* out;
+   std::ostream* out = nullptr;
 };
 
 /// Print operator. Is hooked into a PrettyPrinter that writes the
