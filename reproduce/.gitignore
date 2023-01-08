@@ -1,4 +1,5 @@
 .idea
+inkfuse_bench
 hyperd.log
 __pycache__
 data

@@ -18,11 +18,20 @@ PrettyPrinter::PrettyPrinter(std::vector<const IU*> ius_, std::vector<std::strin
 
 bool PrettyPrinter::markMorselDone(inkfuse::ExecutionContext& ctx)
 {
+   // How many rows are we allowed to write until we hit the limit?
    auto chunk_size = ctx.getColumn(*ius[0]).size;
+   size_t write = chunk_size;
+   if (limit) {
+      write = std::min(write, *limit);
+      *limit = *limit - write;
+   }
+   num_rows += write;
+
    if (!out) {
       // Nothing we can write into.
-      return false;
+      return limit && *limit == 0;
    }
+
    if (morsel_count == 0) {
       // This is the first morsel to finish - write the output header.
       *out << colnames[0];
@@ -31,13 +40,6 @@ bool PrettyPrinter::markMorselDone(inkfuse::ExecutionContext& ctx)
       }
       *out << "\n";
    }
-   // How many rows are we allowed to write until we hit the limit?
-   size_t write = chunk_size;
-   if (limit) {
-      write = std::min(write, *limit);
-      *limit = *limit - write;
-   }
-   num_rows += write;
 
    // Get the raw pointers to the data.
    std::vector<char*> data;

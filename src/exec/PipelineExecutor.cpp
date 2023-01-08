@@ -1,16 +1,15 @@
 #include "exec/PipelineExecutor.h"
 #include "algebra/Print.h"
-#include "algebra/suboperators/sources/FuseChunkSource.h"
 #include "algebra/suboperators/sinks/FuseChunkSink.h"
+#include "algebra/suboperators/sources/FuseChunkSource.h"
 #include "exec/InterruptableJob.h"
-#include "exec/runners/CompiledRunner.h"
 #include "exec/runners/InterpretedRunner.h"
 #include "runtime/MemoryRuntime.h"
 
 namespace inkfuse {
 
 PipelineExecutor::PipelineExecutor(Pipeline& pipe_, ExecutionMode mode, std::string full_name_)
-   : pipe(pipe_), context(pipe), mode(mode), full_name(std::move(full_name_)) {
+   : compile_state(std::make_shared<AsyncCompileState>(pipe_)), pipe(pipe_), mode(mode), full_name(std::move(full_name_)) {
    assert(pipe.getSubops()[0]->isSource());
    assert(pipe.getSubops().back()->isSink());
 }
@@ -22,11 +21,10 @@ PipelineExecutor::~PipelineExecutor() noexcept {
 }
 
 const ExecutionContext& PipelineExecutor::getExecutionContext() const {
-   return context;
+   return compile_state->context;
 }
 
-void PipelineExecutor::preparePipeline()
-{
+void PipelineExecutor::preparePipeline() {
    if (mode == ExecutionMode::Hybrid || mode == ExecutionMode::Interpreted) {
       if (!interpreted_set_up) {
          // Set up interpreted first to avoid races in parallel setup.
@@ -35,7 +33,7 @@ void PipelineExecutor::preparePipeline()
       }
    }
    if (mode == ExecutionMode::Hybrid || mode == ExecutionMode::Fused) {
-      if (!fused_set_up && !compilation_job.joinable()) {
+      if (!compile_state->fused_set_up && !compilation_job.joinable()) {
          // Prepare asynchronous compilation on a background thread.
          compilation_job = setUpFusedAsync();
       }
@@ -45,42 +43,43 @@ void PipelineExecutor::preparePipeline()
 void PipelineExecutor::runPipeline() {
    // First prepare the pipeline.
    preparePipeline();
-   // Scope guard for memory context and flags.
-   ExecutionContext::RuntimeGuard guard{context};
+   // Scope guard for memory compile_state->context and flags.
+   ExecutionContext::RuntimeGuard guard{compile_state->context};
    if (mode == ExecutionMode::Fused) {
       if (compilation_job.joinable()) {
          // For compiled execution we need to wait for the compiled code
          // to be ready.
          compilation_job.join();
       }
-      compiled.at({0, pipe.getSubops().size()})->setUpState();
+      compile_state->compiled->setUpState();
       while (runFusedMorsel()) {}
    } else if (mode == ExecutionMode::Interpreted) {
-      for (auto& interpreter: interpreters) {
+      for (auto& interpreter : interpreters) {
          interpreter->setUpState();
       }
       while (runInterpretedMorsel()) {}
    } else {
-      for (auto& interpreter: interpreters) {
+      for (auto& interpreter : interpreters) {
          interpreter->setUpState();
       }
       bool fused_ready = false;
       bool terminate = false;
       while (!fused_ready && !terminate) {
          terminate = !runInterpretedMorsel();
-         std::unique_lock lock(compiled_lock);
-         fused_ready = fused_set_up;
+         std::unique_lock lock(compile_state->compiled_lock);
+         fused_ready = compile_state->fused_set_up;
       }
       // Code is ready - switch over.
       if (!terminate && fused_ready) {
-         compiled.at({0, pipe.getSubops().size()})->setUpState();
+         compile_state->compiled->setUpState();
       }
       while (!terminate) {
          terminate = !runFusedMorsel();
       }
       // Stop the backing compilation job (if not finished) and clean up.
-      interrupt.interrupt();
-      compilation_job.join();
+      compile_state->interrupt.interrupt();
+      // Detach the thread, it can exceed the lifecycle of this PipelineExecutor.
+      compilation_job.detach();
    }
 }
 
@@ -89,13 +88,13 @@ bool PipelineExecutor::runMorsel() {
    if (compilation_job.joinable()) {
       compilation_job.join();
    }
-   // Scope guard for memory context and flags.
-   ExecutionContext::RuntimeGuard guard{context};
+   // Scope guard for memory compile_state->context and flags.
+   ExecutionContext::RuntimeGuard guard{compile_state->context};
    if (mode == ExecutionMode::Fused || (mode == ExecutionMode::Hybrid)) {
-      compiled.at({0, pipe.getSubops().size()})->setUpState();
+      compile_state->compiled->setUpState();
       return runFusedMorsel();
    } else {
-      for (auto& interpreter: interpreters) {
+      for (auto& interpreter : interpreters) {
          interpreter->setUpState();
       }
       return runInterpretedMorsel();
@@ -107,53 +106,58 @@ void PipelineExecutor::setUpInterpreted() {
    interpreters.reserve(count);
 
    auto isFuseChunkOp = [](const Suboperator* op) {
-     if (dynamic_cast<const FuseChunkSink*>(op)) {
-        return true;
-     }
-     if (dynamic_cast<const FuseChunkSourceIUProvider*>(op)) {
-        return true;
-     }
-     return false;
+      if (dynamic_cast<const FuseChunkSink*>(op)) {
+         return true;
+      }
+      if (dynamic_cast<const FuseChunkSourceIUProvider*>(op)) {
+         return true;
+      }
+      return false;
    };
 
    for (size_t k = 0; k < count; ++k) {
       const auto& op = *pipe.getSubops()[k];
       if (!op.outgoingStrongLinks() && !isFuseChunkOp(&op)) {
          // Only operators without outgoing strong links have to be interpreted.
-         interpreters.push_back(std::make_unique<InterpretedRunner>(pipe, k, context));
+         interpreters.push_back(std::make_unique<InterpretedRunner>(pipe, k, compile_state->context));
       }
    }
 }
 
-std::thread PipelineExecutor::setUpFusedAsync()
-{
-   return std::thread([&]() {
-     // Set up runner.
-     auto repiped = pipe.repipeRequired(0, pipe.getSubops().size());
-     auto runner = std::make_unique<CompiledRunner>(std::move(repiped), context, std::move(full_name));
-     // And Compile.
-     bool done = runner->prepare(interrupt);
-     if (done) {
-        std::unique_lock lock(compiled_lock);
-        compiled[{0, pipe.getSubops().size()}] = std::move(runner);
-        fused_set_up = true;
-     }
+std::thread PipelineExecutor::setUpFusedAsync() {
+   auto repiped = pipe.repipeRequired(0, pipe.getSubops().size());
+   auto runner = std::make_unique<CompiledRunner>(std::move(repiped), compile_state->context, full_name);
+   // To generate C we require the IUs that are tied to the lifetime of the relational algebra tree.
+   // We cannot generate the C code in an async context.
+   runner->generateC();
+   // In the hybrid mode we detach the runner thread so we don't have to wait on subprocess termination.
+   // This makes things much faster, but requires that the async thread does not access any member
+   // of this PipelineExecutor. The thread might be alive longer.
+   return std::thread([runner = std::move(runner), state = compile_state]() mutable {
+      // Generate the code and compile it.
+      bool done = runner->generateMachineCode(state->interrupt);
+      if (done) {
+         // If we were not interrupted, provide the PipelineExecutor with the compilation result.
+         std::unique_lock lock(state->compiled_lock);
+         state->compiled = std::move(runner);
+         state->fused_set_up = true;
+      }
    });
 }
 
 void PipelineExecutor::cleanUp() {
-   context.clear();
+   compile_state->context.clear();
    // Reset the restart flag to have a clean slate for the next morsel.
    ExecutionContext::getInstalledRestartFlag() = false;
 }
 
 bool PipelineExecutor::runFusedMorsel() {
-   assert(fused_set_up);
+   assert(compile_state->fused_set_up);
    // Run the whole compiled executor.
-   if (compiled.at({0, pipe.getSubops().size()})->runMorsel(true)) {
+   if (compile_state->compiled->runMorsel(true)) {
       if (auto printer = pipe.getPrettyPrinter()) {
          // Tell the printer that a morsel is done.
-         if (printer->markMorselDone(context)) {
+         if (printer->markMorselDone(compile_state->context)) {
             // Output is closed - no more work to be done.
             return false;
          }
@@ -167,9 +171,9 @@ bool PipelineExecutor::runFusedMorsel() {
 bool PipelineExecutor::runInterpretedMorsel() {
    // Run a morsel and retry it if the `restart_flag` gets set to true.
    // This is needed to defend against e.g. hash table resizes without
-   // massively complicating the generated code. 
+   // massively complicating the generated code.
    auto runMorselWithRetry = [&](PipelineRunner& runner, bool force_pick) {
-      // The restart flag was installed by the current context in `runPipeline` or `runMorsel`.
+      // The restart flag was installed by the current compile_state->context in `runPipeline` or `runMorsel`.
       bool& restart_flag = ExecutionContext::getInstalledRestartFlag();
       assert(!restart_flag);
 
@@ -194,7 +198,7 @@ bool PipelineExecutor::runInterpretedMorsel() {
       }
       if (auto printer = pipe.getPrettyPrinter()) {
          // Tell the printer that a morsel is done.
-         if (printer->markMorselDone(context)) {
+         if (printer->markMorselDone(compile_state->context)) {
             // Output is closed - no more work to be done.
             return false;
          }

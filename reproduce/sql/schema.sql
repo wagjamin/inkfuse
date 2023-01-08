@@ -1,6 +1,6 @@
 -- Decimals are turned into DOUBLE PRECISION
 -- Any VARCHARs/CHARs (apart from char(1)) are turned into TEXT
--- Removed Priamry key so other system's can't use B-Trees.
+-- Removed Primary key so other system's can't use B-Trees.
 -- InkFuse always does full scans.
 create table customer (
    c_custkey integer not null,

@@ -20,15 +20,17 @@ CompiledRunner::CompiledRunner(PipelinePtr pipe_, ExecutionContext& context_, st
    }
 }
 
-bool CompiledRunner::prepare(InterruptableJob& interrupt)
+void CompiledRunner::generateC()
 {
    // Create IR program for the pipeline.
    CompilationContext comp(name, *pipe);
    comp.compile();
-
    // Generate C code.
-   BackendC backend;
    program = backend.generate(comp.getProgram());
+}
+
+bool CompiledRunner::generateMachineCode(InterruptableJob& interrupt)
+{
    program->compileToMachinecode(interrupt);
    if (interrupt.getResult() == InterruptableJob::Change::JobDone) {
       // If we finished successfully without interrupt we can fetch the generated function.

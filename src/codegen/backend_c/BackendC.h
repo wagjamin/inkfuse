@@ -16,7 +16,7 @@ struct BackendC;
 
 /// Backend program in C.
 struct BackendProgramC : public IR::BackendProgram {
-   BackendProgramC(BackendC& backend_, std::string program_, std::string program_name_) : backend(backend_), program(std::move(program_)), program_name(std::move(program_name_)){};
+   BackendProgramC(BackendC& backend_, std::string program_, std::string program_name_) : backend(&backend_), program(std::move(program_)), program_name(std::move(program_name_)){};
 
    ~BackendProgramC() override;
 
@@ -37,7 +37,7 @@ struct BackendProgramC : public IR::BackendProgram {
 
    private:
    /// Backend from which this program was generated.
-   BackendC& backend;
+   BackendC* backend;
    /// Was this program compiled already?
    bool was_compiled = false;
    /// The actual program which is simply generated C stored within a backing string.

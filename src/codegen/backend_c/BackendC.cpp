@@ -62,7 +62,7 @@ void BackendProgramC::compileToMachinecode(InterruptableJob& interrupt) {
       }
 
       // Add to compiled programs.
-      backend.generated.insert(program_name);
+      backend->generated.insert(program_name);
    }
    was_compiled = true;
 }
@@ -111,7 +111,7 @@ void BackendProgramC::dump() {
    // And close the stream.
    out.close();
    // Add to dumped programs.
-   backend.dumped.insert(program_name);
+   backend->dumped.insert(program_name);
 }
 
 std::unique_ptr<IR::BackendProgram> BackendC::generate(const IR::Program& program) {

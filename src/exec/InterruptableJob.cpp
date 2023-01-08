@@ -8,6 +8,7 @@
 #include <sys/poll.h>
 #include <sys/syscall.h>
 #include <sys/unistd.h>
+#include <thread>
 
 namespace inkfuse {
 
@@ -18,8 +19,8 @@ InterruptableJob::InterruptableJob() {
 }
 
 InterruptableJob::~InterruptableJob() noexcept(false) {
-   int success = close(fd_event);
-   if (success == -1) {
+   int exit = close(fd_event);
+   if (exit == -1) {
       throw std::runtime_error("Unable to close eventfd.");
    }
 }
@@ -78,8 +79,8 @@ InterruptableJob::Change InterruptableJob::getResult() const {
 
 int Command::run(const char* command[], InterruptableJob& interrupt) {
    subprocess_s bash_process;
-   int success = subprocess_create(command, subprocess_option_inherit_environment, &bash_process);
-   if (success != 0) {
+   int exit = subprocess_create(command, subprocess_option_inherit_environment, &bash_process);
+   if (exit != 0) {
       throw std::runtime_error("Unable to start command");
    }
 
@@ -90,11 +91,12 @@ int Command::run(const char* command[], InterruptableJob& interrupt) {
 
    if (result == InterruptableJob::Change::Interrupted) {
       // Terminate the subprocess if an interrupt was requested.
-      success = subprocess_terminate(&bash_process);
-      if (success != 0) {
+      exit = subprocess_terminate(&bash_process);
+      if (exit != 0) {
          throw std::runtime_error("Unable to terminate command");
       }
    } else {
+      std::cout << "Healthy" << std::endl;
       // The subprocess should be finished (can't run in above branch as kill signal is async).
       assert(!subprocess_alive(&bash_process));
    }
@@ -128,33 +130,34 @@ int Command::runShell(const std::string& command, InterruptableJob& interrupt) {
       command.c_str(),
       NULL};
 
-   subprocess_s bash_process;
-   int success = subprocess_create(command_line.data(), subprocess_option_inherit_environment, &bash_process);
-   if (success != 0) {
-      throw std::runtime_error("Unable to start bash command " + command);
+   subprocess_s shell_process;
+   int exit = subprocess_create(command_line.data(), subprocess_option_inherit_environment, &shell_process);
+   if (exit != 0) {
+      throw std::runtime_error("Unable to start shell command " + command);
    }
 
    // And hook it up into the InterruptableJob.
-   interrupt.registerJobPID(bash_process.child);
+   interrupt.registerJobPID(shell_process.child);
    // Now we wait until either an interrupt was triggered or compilation finished.
    auto result = interrupt.awaitChange();
 
    if (result == InterruptableJob::Change::Interrupted) {
       // Terminate the subprocess if an interrupt was requested.
-      success = subprocess_terminate(&bash_process);
-      if (success != 0) {
+      exit = subprocess_terminate(&shell_process);
+      if (exit != 0) {
          throw std::runtime_error("Unable to terminate bash command " + command);
       }
    } else {
       // The subprocess should be finished (can't run in above branch as kill signal is async).
-      assert(!subprocess_alive(&bash_process));
+      assert(!subprocess_alive(&shell_process));
    }
 
-   // Properly clean up the process and get the exit code.
+   // Clean up the process and return the exit code.
    int exit_code;
-   if (subprocess_join(&bash_process, &exit_code) != 0) {
+   if (subprocess_join(&shell_process, &exit_code) != 0) {
       throw std::runtime_error("Waiting for InterruptableJob failed.");
    };
+   auto stop = std::chrono::steady_clock::now();
    return exit_code;
 }
 

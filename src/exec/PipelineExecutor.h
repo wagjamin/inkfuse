@@ -3,6 +3,7 @@
 
 #include "algebra/Pipeline.h"
 #include "exec/InterruptableJob.h"
+#include "exec/runners/CompiledRunner.h"
 #include "exec/runners/PipelineRunner.h"
 #include <map>
 #include <utility>
@@ -63,29 +64,36 @@ struct PipelineExecutor {
    /// Clean up the fuse chunks for a new morsel.
    void cleanUp();
 
+   /// Asynchronous state used for background compilation that may outlive this PipelineExecutor.
+   struct AsyncCompileState {
+      AsyncCompileState(Pipeline& pipe) : context(pipe) {};
+
+      /// Lock protecting shared state with the background thread doing async compilation.
+      std::mutex compiled_lock;
+      /// Compiled fragments identified by [start, end[ index pairs.
+      std::unique_ptr<CompiledRunner> compiled;
+      /// Execution context. Unified across all runners as fuse chunks have to be shared.
+      ExecutionContext context;
+      /// Compilation interrupt. Allows aborting compilation if interpretation
+      /// is done before the compiled code is ready.
+      InterruptableJob interrupt;
+      /// Was fused mode set up successfully? Atomic since this is done asynchronously.
+      bool fused_set_up = false;
+   };
+
+   /// Shared compilation state with the background thread doing code generation.
+   std::shared_ptr<AsyncCompileState> compile_state;
    /// Backing pipeline.
    Pipeline& pipe;
-   /// Execution context. Unified across all runners as fuse chunks have to be shared.
-   ExecutionContext context;
    /// Interpreters for the different sub-operators.
    std::vector<PipelineRunnerPtr> interpreters;
-   /// Lock protecting shared state with the backgruond thread doing async compilation.
-   std::mutex compiled_lock;
-   /// Compiled fragments identified by [start, end[ index pairs.
-   std::map<std::pair<size_t, size_t>, PipelineRunnerPtr> compiled;
    /// Backing execution mode.
    ExecutionMode mode;
    /// Potential full name of the generated program.
    std::string full_name;
-   /// Was fused mode set up successfully? Atomic since this is done asynchronously.
-   bool fused_set_up = false;
-
-   /// Was interpreted mode set up succesfully?
+   /// Was interpreted mode set up successfully?
    bool interpreted_set_up = false;
 
-   /// Compilation interrupt. Allows aborting compilation if interpretation
-   /// is done before the compiled code is ready.
-   InterruptableJob interrupt;
    /// The background thread performing compilation.
    std::thread compilation_job;
 };
