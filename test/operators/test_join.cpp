@@ -80,9 +80,6 @@ struct PkJoinTestT : public ::testing::TestWithParam<PipelineExecutor::Execution
    const IU* iu_rel_2_col_2;
    const IU* iu_rel_2_col_3;
    std::optional<std::unique_ptr<TableScan>> scan_2;
-
-   /// Backing pipeline DAG.
-   PipelineDAG dag;
 };
 
 /// PK join with a single int4 key.
@@ -95,20 +92,20 @@ TEST_P(PkJoinTestT, one_key) {
    std::vector<const IU*> payload_left{iu_rel_1_col_2, iu_rel_1_col_3};
    std::vector<const IU*> keys_right{iu_rel_2_col_1};
    std::vector<const IU*> payload_right{iu_rel_2_col_2, iu_rel_2_col_3};
-   Join join(std::move(children), "join", std::move(keys_left), std::move(payload_left), std::move(keys_right), std::move(payload_right), JoinType::Inner, true);
-   join.decay(dag);
+   auto join = Join::build(std::move(children), "join", std::move(keys_left), std::move(payload_left), std::move(keys_right), std::move(payload_right), JoinType::Inner, true);
+   auto control_block = std::make_shared<PipelineExecutor::QueryControlBlock>(std::move(join));
 
    // Count the number of result rows, counting all output columns separately to
    // make sure they get accessed in the read pipeline.
    // Every row on the probe side should have a match, meaning that there should be PROBE_SIZE result rows.
-   for (const IU* out : join.getOutput()) {
-      dag.getPipelines()[1]->attachSuboperator(CountingSink::build(*out, [](size_t count) {
+   for (const IU* out : control_block->root->getOutput()) {
+      control_block->dag.getPipelines()[1]->attachSuboperator(CountingSink::build(*out, [](size_t count) {
          EXPECT_EQ(count, PROBE_SIZE);
       }));
    }
-   ASSERT_EQ(dag.getPipelines().size(), 2);
+   ASSERT_EQ(control_block->dag.getPipelines().size(), 2);
    // Run the query.
-   QueryExecutor::runQuery(dag, GetParam(), "join_one_key");
+   QueryExecutor::runQuery(control_block, GetParam(), "join_one_key");
 }
 
 /// PK join with a compound (int4, uint1) key.
@@ -121,20 +118,20 @@ TEST_P(PkJoinTestT, two_keys) {
    std::vector<const IU*> payload_left{iu_rel_1_col_2};
    std::vector<const IU*> keys_right{iu_rel_2_col_1, iu_rel_2_col_2};
    std::vector<const IU*> payload_right{iu_rel_2_col_3};
-   Join join(std::move(children), "join", std::move(keys_left), std::move(payload_left), std::move(keys_right), std::move(payload_right), JoinType::Inner, true);
-   join.decay(dag);
+   auto join = Join::build(std::move(children), "join", std::move(keys_left), std::move(payload_left), std::move(keys_right), std::move(payload_right), JoinType::Inner, true);
+   auto control_block = std::make_shared<PipelineExecutor::QueryControlBlock>(std::move(join));
 
    // Count the number of result rows, counting all output columns separately to
    // make sure they get accessed in the read pipeline.
    // Every tenth row on the probe side should have a match, meaning that there should be PROBE_SIZE / 10 result rows.
-   for (const IU* out : join.getOutput()) {
-      dag.getPipelines()[1]->attachSuboperator(CountingSink::build(*out, [](size_t count) {
+   for (const IU* out : control_block->root->getOutput()) {
+      control_block->dag.getPipelines()[1]->attachSuboperator(CountingSink::build(*out, [](size_t count) {
         EXPECT_EQ(count, PROBE_SIZE / 10);
       }));
    }
-   ASSERT_EQ(dag.getPipelines().size(), 2);
+   ASSERT_EQ(control_block->dag.getPipelines().size(), 2);
    // Run the query.
-   QueryExecutor::runQuery(dag, GetParam(), "join_two_keys");
+   QueryExecutor::runQuery(control_block, GetParam(), "join_two_keys");
 }
 
 INSTANTIATE_TEST_CASE_P(PkJoinTest, PkJoinTestT, ::testing::Values(PipelineExecutor::ExecutionMode::Fused,

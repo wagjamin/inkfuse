@@ -77,8 +77,6 @@ struct AggregationTestT {
    const IU* iu_col_4;
    /// The scan on the relation.
    std::optional<std::unique_ptr<TableScan>> scan;
-   /// Backing pipeline DAG.
-   PipelineDAG dag;
 };
 
 struct StringAggTestT : public AggregationTestT, public ::testing::TestWithParam<PipelineExecutor::ExecutionMode> {
@@ -98,19 +96,19 @@ TEST_P(StringAggTestT, group_by_text) {
    });
    std::vector<RelAlgOpPtr> children;
    children.push_back(std::move(*scan));
-   Aggregation agg({std::move(children)}, "aggregator", std::vector<const IU*>{iu_col_4}, std::move(agg_fct));
-   agg.decay(dag);
+   auto agg = Aggregation::build(std::move(children), "aggregator", std::vector<const IU*>{iu_col_4}, std::move(agg_fct));
+   auto control_block = std::make_shared<PipelineExecutor::QueryControlBlock>(std::move(agg));
    // Count the number of result rows, counting all output columns separately to
    // make sure they get accessed in the read pipeline.
    // The aggregation should produce 4 rows, since we only have four strings.
-   for (const IU* out : agg.getOutput()) {
-      dag.getPipelines()[1]->attachSuboperator(CountingSink::build(*out, [](size_t count) {
+   for (const IU* out : control_block->root->getOutput()) {
+      control_block->dag.getPipelines()[1]->attachSuboperator(CountingSink::build(*out, [](size_t count) {
          EXPECT_EQ(count, 4);
       }));
    }
-   ASSERT_EQ(dag.getPipelines().size(), 2);
+   ASSERT_EQ(control_block->dag.getPipelines().size(), 2);
    // Run the query.
-   QueryExecutor::runQuery(dag, GetParam(), "StringAggTestT");
+   QueryExecutor::runQuery(control_block, GetParam(), "StringAggTestT");
 }
 
 INSTANTIATE_TEST_CASE_P(
@@ -137,19 +135,19 @@ TEST_P(SimpleAggTestT, one_key) {
    }
    std::vector<RelAlgOpPtr> children;
    children.push_back(std::move(*scan));
-   Aggregation agg({std::move(children)}, "aggregator", std::vector<const IU*>{iu_col_1}, std::move(agg_fct));
-   agg.decay(dag);
+   auto agg = Aggregation::build({std::move(children)}, "aggregator", std::vector<const IU*>{iu_col_1}, std::move(agg_fct));
+   auto control_block = std::make_shared<PipelineExecutor::QueryControlBlock>(std::move(agg));
    // Count the number of result rows, counting all output columns separately to
    // make sure they get accessed in the read pipeline.
    // The aggregation should produce 10k rows.
-   for (const IU* out : agg.getOutput()) {
-      dag.getPipelines()[1]->attachSuboperator(CountingSink::build(*out, [](size_t count) {
+   for (const IU* out : control_block->root->getOutput()) {
+      control_block->dag.getPipelines()[1]->attachSuboperator(CountingSink::build(*out, [](size_t count) {
          EXPECT_EQ(count, 10000);
       }));
    }
-   ASSERT_EQ(dag.getPipelines().size(), 2);
+   ASSERT_EQ(control_block->dag.getPipelines().size(), 2);
    // Run the query.
-   QueryExecutor::runQuery(dag, std::get<1>(GetParam()), buildTestCaseName(std::get<0>(GetParam())));
+   QueryExecutor::runQuery(control_block, std::get<1>(GetParam()), buildTestCaseName(std::get<0>(GetParam())));
 }
 
 // SELECT col_1, col_2 AGG_FCT1(col_3), AGG_FCT2(col_3), ..., AGG_FCT(col_3) FROM t GROUP BY col_1, col_2
@@ -165,19 +163,19 @@ TEST_P(SimpleAggTestT, two_keys) {
    }
    std::vector<RelAlgOpPtr> children;
    children.push_back(std::move(*scan));
-   Aggregation agg({std::move(children)}, "aggregator", std::vector<const IU*>{iu_col_1, iu_col_2}, std::move(agg_fct));
-   agg.decay(dag);
+   auto agg = Aggregation::build({std::move(children)}, "aggregator", std::vector<const IU*>{iu_col_1, iu_col_2}, std::move(agg_fct));
+   auto control_block = std::make_shared<PipelineExecutor::QueryControlBlock>(std::move(agg));
    // Count the number of result rows, counting all output columns separately to
    // make sure they get accessed in the read pipeline.
    // The aggregation should produce 10k rows.
-   for (const IU* out : agg.getOutput()) {
-      dag.getPipelines()[1]->attachSuboperator(CountingSink::build(*out, [](size_t count) {
+   for (const IU* out : control_block->root->getOutput()) {
+      control_block->dag.getPipelines()[1]->attachSuboperator(CountingSink::build(*out, [](size_t count) {
          EXPECT_EQ(count, 10000);
       }));
    }
-   ASSERT_EQ(dag.getPipelines().size(), 2);
+   ASSERT_EQ(control_block->dag.getPipelines().size(), 2);
    // Run the query.
-   QueryExecutor::runQuery(dag, std::get<1>(GetParam()), "two_keys_" + buildTestCaseName(std::get<0>(GetParam())));
+   QueryExecutor::runQuery(control_block, std::get<1>(GetParam()), "two_keys_" + buildTestCaseName(std::get<0>(GetParam())));
 }
 
 INSTANTIATE_TEST_CASE_P(

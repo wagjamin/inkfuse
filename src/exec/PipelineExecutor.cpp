@@ -6,10 +6,12 @@
 #include "exec/runners/InterpretedRunner.h"
 #include "runtime/MemoryRuntime.h"
 
+#include <iostream>
+
 namespace inkfuse {
 
-PipelineExecutor::PipelineExecutor(Pipeline& pipe_, ExecutionMode mode, std::string full_name_)
-   : compile_state(std::make_shared<AsyncCompileState>(pipe_)), pipe(pipe_), mode(mode), full_name(std::move(full_name_)) {
+PipelineExecutor::PipelineExecutor(Pipeline& pipe_, ExecutionMode mode, std::string full_name_, PipelineExecutor::QueryControlBlockArc control_block_)
+   : compile_state(std::make_shared<AsyncCompileState>(std::move(control_block_), pipe_)), pipe(pipe_), mode(mode), full_name(std::move(full_name_)) {
    assert(pipe.getSubops()[0]->isSource());
    assert(pipe.getSubops().back()->isSink());
 }
@@ -25,19 +27,20 @@ const ExecutionContext& PipelineExecutor::getExecutionContext() const {
 }
 
 void PipelineExecutor::preparePipeline() {
+   if (set_up_started) {
+      // Only set up once.
+      return;
+   }
+
    if (mode == ExecutionMode::Hybrid || mode == ExecutionMode::Interpreted) {
-      if (!interpreted_set_up) {
-         // Set up interpreted first to avoid races in parallel setup.
-         setUpInterpreted();
-         interpreted_set_up = true;
-      }
+      // Set up interpreted first to avoid races in parallel setup.
+      setUpInterpreted();
    }
    if (mode == ExecutionMode::Hybrid || mode == ExecutionMode::Fused) {
-      if (!compile_state->fused_set_up && !compilation_job.joinable()) {
-         // Prepare asynchronous compilation on a background thread.
-         compilation_job = setUpFusedAsync();
-      }
+      // Prepare asynchronous compilation on a background thread.
+      compilation_job = setUpFusedAsync();
    }
+   set_up_started = true;
 }
 
 void PipelineExecutor::runPipeline() {
@@ -76,10 +79,13 @@ void PipelineExecutor::runPipeline() {
       while (!terminate) {
          terminate = !runFusedMorsel();
       }
-      // Stop the backing compilation job (if not finished) and clean up.
-      compile_state->interrupt.interrupt();
-      // Detach the thread, it can exceed the lifecycle of this PipelineExecutor.
-      compilation_job.detach();
+      // Async interrupt trigger - saves us some wall clock time.
+      std::thread([compilation_job = std::move(compilation_job), compile_state = compile_state]() mutable {
+         // Stop the backing compilation job (if not finished) and clean up.
+         compile_state->interrupt.interrupt();
+         // Detach the thread, it can exceed the lifecycle of this PipelineExecutor.
+         compilation_job.detach();
+      }).detach();
    }
 }
 
@@ -127,14 +133,13 @@ void PipelineExecutor::setUpInterpreted() {
 std::thread PipelineExecutor::setUpFusedAsync() {
    auto repiped = pipe.repipeRequired(0, pipe.getSubops().size());
    auto runner = std::make_unique<CompiledRunner>(std::move(repiped), compile_state->context, full_name);
-   // To generate C we require the IUs that are tied to the lifetime of the relational algebra tree.
-   // We cannot generate the C code in an async context.
-   runner->generateC();
-   // In the hybrid mode we detach the runner thread so we don't have to wait on subprocess termination.
+   // In the hybrid mode we detach the runner thread so that we don't have to wait on subprocess termination.
    // This makes things much faster, but requires that the async thread does not access any member
    // of this PipelineExecutor. The thread might be alive longer.
-   return std::thread([runner = std::move(runner), state = compile_state]() mutable {
-      // Generate the code and compile it.
+   auto ret = std::thread([runner = std::move(runner), state = compile_state]() mutable {
+      // Generate C code in the backend.
+      runner->generateC();
+      // Turn the generated C into machine code.
       bool done = runner->generateMachineCode(state->interrupt);
       if (done) {
          // If we were not interrupted, provide the PipelineExecutor with the compilation result.
@@ -143,6 +148,7 @@ std::thread PipelineExecutor::setUpFusedAsync() {
          state->fused_set_up = true;
       }
    });
+   return ret;
 }
 
 void PipelineExecutor::cleanUp() {

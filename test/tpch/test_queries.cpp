@@ -53,12 +53,12 @@ TEST_P(TPCHQueriesTestT, run) {
    std::string test_name = std::get<0>(GetParam());
    const FunctionT& query_generator = generator_map.at(test_name);
    auto root = query_generator(*schema);
-   PipelineDAG dag;
-   root->decay(dag);
+   auto& printer = root->printer;
+   auto control_block = std::make_shared<PipelineExecutor::QueryControlBlock>(std::move(root));
    std::stringstream stream;
-   root->printer->setOstream(stream);
-   QueryExecutor::runQuery(dag, std::get<1>(GetParam()), test_name);
-   EXPECT_EQ(root->printer->num_rows, expected_rows.at(test_name));
+   printer->setOstream(stream);
+   QueryExecutor::runQuery(control_block, std::get<1>(GetParam()), test_name);
+   EXPECT_EQ(printer->num_rows, expected_rows.at(test_name));
 }
 
 INSTANTIATE_TEST_CASE_P(
