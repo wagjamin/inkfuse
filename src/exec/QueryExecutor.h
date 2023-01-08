@@ -9,7 +9,7 @@ namespace inkfuse {
 namespace QueryExecutor {
 
 /// Run a complete query to completion.
-void runQuery(const PipelineDAG& dag, PipelineExecutor::ExecutionMode mode, const std::string& qname = "query");
+void runQuery(PipelineExecutor::QueryControlBlockArc control_block_, PipelineExecutor::ExecutionMode mode, const std::string& qname = "query");
 
 };
 

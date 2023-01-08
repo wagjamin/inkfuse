@@ -4,8 +4,8 @@
 #include "gflags/gflags.h"
 #include "interpreter/FragmentCache.h"
 #include <chrono>
-#include <iostream>
 #include <fstream>
+#include <iostream>
 #include <string>
 #include <vector>
 
@@ -85,10 +85,9 @@ int main(int argc, char* argv[]) {
          std::cout << "Benchmarking query " << q_name << "\n";
          for (int32_t rep = 0; rep < reps; ++rep) {
             auto root = query_f(schema);
-            PipelineDAG dag;
-            root->decay(dag);
+            auto control_block = std::make_shared<PipelineExecutor::QueryControlBlock>(std::move(root));
             const auto start = std::chrono::steady_clock::now();
-            QueryExecutor::runQuery(dag, backend_mode, q_name + "_" + std::to_string(rep));
+            QueryExecutor::runQuery(control_block, backend_mode, q_name + "_" + std::to_string(rep));
             const auto stop = std::chrono::steady_clock::now();
             const auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count();
             observations.push_back(millis);
@@ -104,7 +103,7 @@ int main(int argc, char* argv[]) {
       }
       for (size_t k = 0; k < queries.size(); ++k) {
          const auto& [q_name, _] = queries[k];
-         for (auto& measurement: milliseconds[k]) {
+         for (auto& measurement : milliseconds[k]) {
             outfile << q_name << "," << sf << "," << measurement << "\n";
          }
       }

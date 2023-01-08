@@ -40,6 +40,7 @@ std::vector<std::string> splitCommand(const std::string& command) {
 }
 
 void runQuery(const std::string& q_name, std::unique_ptr<Print> root, PipelineExecutor::ExecutionMode mode) {
+   static size_t q_id = 0;
    std::ifstream input("q/" + q_name + ".sql");
    if (!mute && input.is_open()) {
       std::stringstream str;
@@ -47,13 +48,13 @@ void runQuery(const std::string& q_name, std::unique_ptr<Print> root, PipelineEx
       std::cout << "Running query\n"
                 << str.str() << std::endl;
    }
-   root->printer->setOstream(std::cout);
-   PipelineDAG dag;
-   root->decay(dag);
+   auto& printer = root->printer;
+   printer->setOstream(std::cout);
+   auto control_block = std::make_shared<PipelineExecutor::QueryControlBlock>(std::move(root));
    auto start = std::chrono::steady_clock::now();
-   QueryExecutor::runQuery(dag, mode, q_name);
+   QueryExecutor::runQuery(control_block, mode, q_name + "_" + std::to_string(q_id++));
    auto stop = std::chrono::steady_clock::now();
-   std::cout << "Produced " << root->printer->num_rows << " rows after ";
+   std::cout << "Produced " << printer->num_rows << " rows after ";
    std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms\n";
 }
 
@@ -134,19 +135,19 @@ int main(int argc, char* argv[]) {
                }
                if (split[1] == "q1") {
                   auto q = tpch::q1(*loaded);
-                  runQuery("1", std::move(q), mode);
+                  runQuery("q1", std::move(q), mode);
                }
                else if (split[1] == "q3") {
                   auto q = tpch::q3(*loaded);
-                  runQuery("3", std::move(q), mode);
+                  runQuery("q3", std::move(q), mode);
                }
                else if (split[1] == "q4") {
                   auto q = tpch::q4(*loaded);
-                  runQuery("4", std::move(q), mode);
+                  runQuery("q4", std::move(q), mode);
                }
                else if (split[1] == "q6") {
                   auto q = tpch::q6(*loaded);
-                  runQuery("6", std::move(q), mode);
+                  runQuery("q6", std::move(q), mode);
                }
                else if (split[1] == "l_count") {
                   auto q = tpch::l_count(*loaded);
