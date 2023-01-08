@@ -3,6 +3,7 @@ inkfuse_bench
 hyperd.log
 __pycache__
 data
+plots
 tpch-dbgen
 result_**
 tpch.hyper

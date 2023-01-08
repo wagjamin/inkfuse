@@ -25,4 +25,4 @@ if [[ ! -f inkfuse_bench ]]; then
   cd reproduce
 fi
 
-./inkfuse_bench -scale_factor $1 -repetitions 50
+./inkfuse_bench -scale_factor $1
