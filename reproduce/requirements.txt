@@ -1,0 +1,4 @@
+duckdb
+tableauhyperapi
+numpy
+matplotlib

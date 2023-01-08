@@ -62,4 +62,4 @@ if __name__ == '__main__':
                 print(f'Running query {q_name}')
                 for _ in range(args.repeat):
                     dur = run_query(con, q_name)
-                    results.write(f'{q_name},{args.scale_factor},{dur}\n')
+                    results.write(f'duckdb,{q_name},{args.scale_factor},{dur}\n')

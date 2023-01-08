@@ -104,7 +104,7 @@ int main(int argc, char* argv[]) {
       for (size_t k = 0; k < queries.size(); ++k) {
          const auto& [q_name, _] = queries[k];
          for (auto& measurement : milliseconds[k]) {
-            outfile << q_name << "," << sf << "," << measurement << "\n";
+            outfile << "inkfuse_" << backend_name << "," << q_name << "," << sf << "," << measurement << "\n";
          }
       }
       outfile.close();
