@@ -60,7 +60,7 @@ TEST_P(HashTableSourceTestT, hash_table_source) {
     auto& col_key = exec.getExecutionContext().getColumn(read_key);
     auto& col_val = exec.getExecutionContext().getColumn(read_val);
     std::unordered_set<uint64_t> found_keys;
-    while (exec.runMorsel()) {
+    while (std::holds_alternative<Suboperator::PickedMorsel>(exec.runMorsel())) {
         // We have to manually reconstruct the morsel size here, as cleanUp() within runMorsel
         // discards them.
         size_t morsel_size = (morsel_counter + 1) * DEFAULT_CHUNK_SIZE <= num_tuples ? DEFAULT_CHUNK_SIZE : num_tuples - (morsel_counter * DEFAULT_CHUNK_SIZE);

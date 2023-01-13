@@ -37,7 +37,7 @@ struct HashTableSource : public TemplatedSuboperator<HashTableSourceState> {
    static SuboperatorArc build(const RelAlgOp* source, const IU& produced_iu, HashTable* hash_table_);
 
    /// Keep running as long as we have cells to read from in the backing hash table.
-   size_t pickMorsel() override;
+   PickMorselResult pickMorsel() override;
 
    void open(CompilationContext& context) override;
 

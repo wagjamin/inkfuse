@@ -741,7 +741,13 @@ int subprocess_create_ex(const char *const commandLine[], int options,
     }
   }
 
-  child = fork();
+  // Note! Original subprocess.h uses fork() here. Using vfork is pretty dangerous,
+  // but we need it for performance.
+  // Problem is that fork turns the page tables readonly, causing every future memory
+  // write in the parent to copy the page. This leads to performance issues
+  // in the hybrid backend.
+  // In the way we use `subprocess_t`, vfork is safe.
+  child = vfork();
 
   if (-1 == child) {
     return -1;

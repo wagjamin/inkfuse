@@ -8,12 +8,14 @@ void QueryExecutor::runQuery(PipelineExecutor::QueryControlBlockArc control_bloc
    const auto& pipes = control_block_->dag.getPipelines();
    std::list<PipelineExecutor> executors;
    for (size_t idx = 0; idx < pipes.size(); ++idx) {
-      // Step 1: Set up the executors. This is triggers async compilation for compiled/hybrid mode.
-      // Doing this first is smart because it means that later pipelines are not as stalled
-      // waiting for compiled code to become ready.
+      // Step 1: Set up the executors for the pipelines.
       const auto& pipe = pipes[idx];
       auto& executor = executors.emplace_back(*pipe, mode, qname + "_pipe_" + std::to_string(idx), control_block_);
-      executor.preparePipeline();
+      if (mode != PipelineExecutor::ExecutionMode::Interpreted) {
+         // If we have to generate code, already kick off asynchronous compilation.
+         // This hides compilation latency much better than kicking it off at the beginning of each pipeline.
+         executor.preparePipeline(PipelineExecutor::ExecutionMode::Fused);
+      }
    }
    for (auto& executor : executors) {
       // Step 2: Run the pipelines.
