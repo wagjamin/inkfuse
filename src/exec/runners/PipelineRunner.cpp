@@ -40,30 +40,37 @@ void PipelineRunner::setUpState() {
    set_up = true;
 }
 
-bool PipelineRunner::runMorsel(bool force_pick) {
+Suboperator::PickMorselResult PipelineRunner::runMorsel(bool force_pick) {
    assert(prepared && fct);
-   size_t morsel_size = 1;
+
+   // By default we assume a morsel was picked successfully by the source of the pipeline.
+   Suboperator::PickMorselResult morsel = Suboperator::PickedMorsel{
+      .morsel_size = 1,
+   };
+
    if (fuseChunkSource || force_pick) {
       // If we are driven by a fuse chunk source or are forced to pick, we have to
       // pick a morsel.
-      morsel_size = pipe->suboperators[0]->pickMorsel();
+      morsel = pipe->suboperators[0]->pickMorsel();
 
-      // FIXME - HACKFIX - Tread With Caution
-      // It could be that we provide scratch pad IUs within this pipeline.
-      // As these are never officially produced by an expression, we need
-      // to make sure their sizes are set up properly.
-      for (const auto& subop : pipe->getSubops()) {
-         if (dynamic_cast<KeyPackerSubop*>(subop.get())) {
-            assert(subop->getSourceIUs().size() == 2);
-            const IU* scratch_pad_iu = subop->getSourceIUs()[1];
-            context.getColumn(*scratch_pad_iu).size = morsel_size;
+      if (auto picked = std::get_if<Suboperator::PickedMorsel>(&morsel)) {
+         // FIXME - HACKFIX - Tread With Caution
+         // It could be that we provide scratch pad IUs within this pipeline.
+         // As these are never officially produced by an expression, we need
+         // to make sure their sizes are set up properly.
+         for (const auto& subop : pipe->getSubops()) {
+            if (dynamic_cast<KeyPackerSubop*>(subop.get())) {
+               assert(subop->getSourceIUs().size() == 2);
+               const IU* scratch_pad_iu = subop->getSourceIUs()[1];
+               context.getColumn(*scratch_pad_iu).size = picked->morsel_size;
+            }
          }
       }
    }
-   if (morsel_size) {
+   if (std::holds_alternative<Suboperator::PickedMorsel>(morsel)) {
       fct(states.data());
    }
-   return morsel_size;
+   return morsel;
 }
 
 void PipelineRunner::prepareForRerun() {

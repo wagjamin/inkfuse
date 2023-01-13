@@ -7,6 +7,7 @@
 #include <set>
 #include <sstream>
 #include <unordered_set>
+#include <variant>
 #include <vector>
 
 namespace inkfuse {
@@ -87,9 +88,19 @@ struct Suboperator {
    virtual void tearDownState(){};
    /// Get a raw pointer to the state of this operator.
    virtual void* accessState() const { return nullptr; };
+
+   struct NoMoreMorsels {};
+   struct PickedMorsel {
+      /// How many rows the picked morsel contains.
+      size_t morsel_size;
+      /// Estimated progress of the pipeline [0, 1].
+      double pipeline_progress;
+   };
+   using PickMorselResult = std::variant<NoMoreMorsels, PickedMorsel>;
+   /// Either returns that there are no more morsels, or progress [0, 1]
    /// Pick a morsel of work. Only relevant for source operators.
    /// Returns the size of the picked morsel - or 0 if picking was unsuccessful.
-   virtual size_t pickMorsel() { throw std::runtime_error("Operator does not support picking morsels"); }
+   virtual PickMorselResult pickMorsel() { throw std::runtime_error("Operator does not support picking morsels"); }
 
    /// Build a unique identifier for this suboperator (unique given the parameter set).
    /// This is neded to effectively use the fragment cache during vectorized interpretation.
@@ -122,7 +133,6 @@ struct EmptyState {};
 /// @tparam GlobalState execution state of the operator hooked up into the inkfuse runtime.
 template <class GlobalState>
 struct TemplatedSuboperator : public Suboperator {
-
    void setUpState(const ExecutionContext& context) override {
       if (state) {
          return;
@@ -146,10 +156,10 @@ struct TemplatedSuboperator : public Suboperator {
 
    /// Set up the state given that the precondition that both params and state
    /// are non-empty is satisfied.
-   virtual void setUpStateImpl(const ExecutionContext& context) {};
+   virtual void setUpStateImpl(const ExecutionContext& context){};
 
    /// Tear down the state - allows to run custom cleanup logic when a query is done.
-   virtual void tearDownStateImpl() {};
+   virtual void tearDownStateImpl(){};
 
    /// Global state of the respective operator.
    std::unique_ptr<GlobalState> state;

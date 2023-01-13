@@ -15,28 +15,27 @@ void HashTableSourceState::registerRuntime() {
       .addMember("it_idx_end", IR::UnsignedInt::build(8));
 }
 
-template<class HashTable>
+template <class HashTable>
 HashTableSource<HashTable>::HashTableSource(const RelAlgOp* source, const IU& produced_iu, HashTable* hash_table_)
    : TemplatedSuboperator<HashTableSourceState>(source, {&produced_iu}, {}), hash_table(hash_table_) {
 }
 
-template<class HashTable>
-std::string HashTableSource<HashTable>::id() const
-{
+template <class HashTable>
+std::string HashTableSource<HashTable>::id() const {
    std::string id = "hash_table_source_";
    return id + HashTable::ID;
 }
 
-template<class HashTable>
+template <class HashTable>
 SuboperatorArc HashTableSource<HashTable>::build(const RelAlgOp* source, const IU& produced_iu, HashTable* hash_table_) {
    return std::unique_ptr<HashTableSource>{new HashTableSource(source, produced_iu, hash_table_)};
 }
 
 template <class HashTable>
-size_t HashTableSource<HashTable>::pickMorsel() {
+Suboperator::PickMorselResult HashTableSource<HashTable>::pickMorsel() {
    if (state->it_ptr_end == nullptr) {
       // The last morsel went until the hash table end. We are done.
-      return false;
+      return Suboperator::NoMoreMorsels{};
    }
    // The current end becomes the new start.
    state->it_ptr_start = state->it_ptr_end;
@@ -47,10 +46,13 @@ size_t HashTableSource<HashTable>::pickMorsel() {
       hash_table->iteratorAdvance(&state->it_ptr_end, &state->it_idx_end);
       entries_found++;
    }
-   return entries_found;
+   return PickedMorsel {
+      .morsel_size = entries_found,
+      .pipeline_progress = static_cast<double>(state->it_idx_end) / hash_table->capacity(),
+   };
 }
 
-template<class HashTable>
+template <class HashTable>
 void HashTableSource<HashTable>::open(CompilationContext& context) {
    auto& builder = context.getFctBuilder();
    const auto& program = context.getProgram();
@@ -100,7 +102,7 @@ void HashTableSource<HashTable>::open(CompilationContext& context) {
    }
 }
 
-template<class HashTable>
+template <class HashTable>
 void HashTableSource<HashTable>::close(CompilationContext& context) {
    auto& builder = context.getFctBuilder();
    const auto& iu = *provided_ius.front();

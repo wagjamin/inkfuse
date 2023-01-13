@@ -26,8 +26,8 @@ struct PipelineRunner {
 
    /// Run a single morsel of the backing pipeline.
    /// @param force_pick should we always pick, even if we are not a fuse chunk source?
-   /// @return whether there are more morsels to execute.
-   bool runMorsel(bool force_pick);
+   /// @return result of picking a morsel.
+   Suboperator::PickMorselResult runMorsel(bool force_pick);
 
    /// Clean up the intermediate morsel state from a previous failure.
    /// Purges the morsel size of the sinks to make sure we get a fresh

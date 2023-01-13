@@ -16,7 +16,7 @@ TScanDriver::TScanDriver(const RelAlgOp* source, size_t rel_size_)
    : LoopDriver(source), rel_size(rel_size_) {
 }
 
-size_t TScanDriver::pickMorsel() {
+Suboperator::PickMorselResult TScanDriver::pickMorsel() {
    assert(state);
 
    if (!first_picked) {
@@ -30,11 +30,16 @@ size_t TScanDriver::pickMorsel() {
    state->end = std::min(state->start + DEFAULT_CHUNK_SIZE, static_cast<uint64_t>(rel_size));
 
    // If the starting point advanced to the end, then we know there are no more morsels to pick.
-   return state->end - state->start;
+   if (state->end == state->start) {
+      return NoMoreMorsels{};
+   }
+   return PickedMorsel {
+      .morsel_size = state->end - state->start,
+      .pipeline_progress = static_cast<double>(state->end) / rel_size,
+   };
 }
 
-std::string TScanDriver::id() const
-{
+std::string TScanDriver::id() const {
    return "TScanDriver";
 }
 

@@ -55,20 +55,20 @@ struct PipelineExecutor {
    /// compiled/hybrid mode.
    /// Does not have to be called before `runPipeline`, but allows kicking
    /// off asynchronous preparation work.
-   void preparePipeline();
+   void preparePipeline(ExecutionMode prep_mode);
 
    /// Run the full pipeline to completion.
    void runPipeline();
 
    /// Run only a single morsel.
    /// @return true if there are more morsels.
-   bool runMorsel();
+   Suboperator::PickMorselResult runMorsel();
 
    private:
    /// Run a full morsel through the compiled path.
-   bool runFusedMorsel();
+   Suboperator::PickMorselResult runFusedMorsel();
    /// Run a full morsel through the interpreted path.
-   bool runInterpretedMorsel();
+   Suboperator::PickMorselResult runInterpretedMorsel();
 
    /// Set up interpreted state in a synchronous way.
    void setUpInterpreted();
@@ -109,8 +109,10 @@ struct PipelineExecutor {
    ExecutionMode mode;
    /// Potential full name of the generated program.
    std::string full_name;
-   /// Was the pipeline set-up started?
-   bool set_up_started = false;
+   /// Was the pipeline set-up started for the interpreted mode?
+   bool interpreter_setup_started = false;
+   /// Was the pipeline set-up started for the compiled mode?
+   bool compiler_setup_started = false;
 
    /// The background thread performing compilation.
    std::thread compilation_job;

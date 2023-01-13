@@ -90,6 +90,7 @@ int main(int argc, char* argv[]) {
             QueryExecutor::runQuery(control_block, backend_mode, q_name + "_" + std::to_string(rep));
             const auto stop = std::chrono::steady_clock::now();
             const auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count();
+            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
             observations.push_back(millis);
          }
       }

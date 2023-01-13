@@ -14,7 +14,7 @@ label_map = {
     'inkfuse_interpreted': 'Inkfuse (Vectorized)',
     'inkfuse_hybrid': 'Inkfuse (Hybrid)',
 }
-scale_factors = ['0.01', '0.1', '1']
+scale_factors = ['0.01', '0.1', '1', '10']
 
 if __name__ == '__main__':
     con = duckdb.connect(database=':memory:')
@@ -30,8 +30,8 @@ if __name__ == '__main__':
     queries = ['Q1', 'Q3', 'Q4', 'Q6']
 
     # Plot 1: Backends at Different Scale Factors
-    fig, axs = plt.subplots(1, 3)
-    fig.set_size_inches(15, 5)
+    fig, axs = plt.subplots(1, 4)
+    fig.set_size_inches(20, 5)
     x_vals = np.array([0, 1.5, 3, 4.5])
     for idx, sf in enumerate(scale_factors):
         offset = -0.5

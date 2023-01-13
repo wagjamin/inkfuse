@@ -6,6 +6,7 @@
 #include "exec/runners/InterpretedRunner.h"
 #include "runtime/MemoryRuntime.h"
 
+#include <chrono>
 #include <iostream>
 
 namespace inkfuse {
@@ -26,58 +27,94 @@ const ExecutionContext& PipelineExecutor::getExecutionContext() const {
    return compile_state->context;
 }
 
-void PipelineExecutor::preparePipeline() {
-   if (set_up_started) {
-      // Only set up once.
-      return;
+void PipelineExecutor::preparePipeline(ExecutionMode prep_mode) {
+   if (prep_mode == ExecutionMode::Hybrid) {
+      throw std::runtime_error("Prepare can only be called with compiled/interpreted mode");
    }
 
-   if (mode == ExecutionMode::Hybrid || mode == ExecutionMode::Interpreted) {
-      // Set up interpreted first to avoid races in parallel setup.
-      setUpInterpreted();
-   }
-   if (mode == ExecutionMode::Hybrid || mode == ExecutionMode::Fused) {
+   if (prep_mode == ExecutionMode::Fused && !compiler_setup_started) {
       // Prepare asynchronous compilation on a background thread.
       compilation_job = setUpFusedAsync();
+      compiler_setup_started = true;
    }
-   set_up_started = true;
+
+   if (prep_mode == ExecutionMode::Interpreted && !interpreter_setup_started) {
+      setUpInterpreted();
+      interpreter_setup_started = true;
+   }
 }
 
 void PipelineExecutor::runPipeline() {
-   // First prepare the pipeline.
-   preparePipeline();
    // Scope guard for memory compile_state->context and flags.
    ExecutionContext::RuntimeGuard guard{compile_state->context};
    if (mode == ExecutionMode::Fused) {
+      preparePipeline(ExecutionMode::Fused);
       if (compilation_job.joinable()) {
          // For compiled execution we need to wait for the compiled code
          // to be ready.
          compilation_job.join();
       }
       compile_state->compiled->setUpState();
-      while (runFusedMorsel()) {}
+      while (std::holds_alternative<Suboperator::PickedMorsel>(runFusedMorsel())) {}
    } else if (mode == ExecutionMode::Interpreted) {
+      preparePipeline(ExecutionMode::Interpreted);
       for (auto& interpreter : interpreters) {
          interpreter->setUpState();
       }
-      while (runInterpretedMorsel()) {}
+      while (std::holds_alternative<Suboperator::PickedMorsel>(runInterpretedMorsel())) {}
    } else {
+      preparePipeline(ExecutionMode::Interpreted);
+      preparePipeline(ExecutionMode::Fused);
+
+      // Last measured pipeline throughput.
+      // TODO(benjamin): More robust as exponential decaying average.
+      double compiled_throughput = 0.0;
+      double interpreted_throughput = 0.0;
+
+      auto timeAndRunInterpreted = [&] {
+         const auto start = std::chrono::steady_clock::now();
+         const auto morsel = runInterpretedMorsel();
+         const auto stop = std::chrono::steady_clock::now();
+         const auto nanos = std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start).count();
+         if (auto picked = std::get_if<Suboperator::PickedMorsel>(&morsel)) {
+            interpreted_throughput = static_cast<double>(picked->morsel_size) / nanos;
+         }
+         return std::holds_alternative<Suboperator::NoMoreMorsels>(morsel);
+      };
+
+      auto timeAndRunCompiled = [&] {
+         const auto start = std::chrono::steady_clock::now();
+         const auto morsel = runFusedMorsel();
+         const auto stop = std::chrono::steady_clock::now();
+         const auto nanos = std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start).count();
+         if (auto picked = std::get_if<Suboperator::PickedMorsel>(&morsel)) {
+            compiled_throughput = static_cast<double>(picked->morsel_size) / nanos;
+         }
+         return std::holds_alternative<Suboperator::NoMoreMorsels>(morsel);
+      };
+
       for (auto& interpreter : interpreters) {
          interpreter->setUpState();
       }
       bool fused_ready = false;
       bool terminate = false;
       while (!fused_ready && !terminate) {
-         terminate = !runInterpretedMorsel();
+         terminate = timeAndRunInterpreted();
          std::unique_lock lock(compile_state->compiled_lock);
          fused_ready = compile_state->fused_set_up;
       }
-      // Code is ready - switch over.
+      // Code is ready - set up for compiled execution.
       if (!terminate && fused_ready) {
          compile_state->compiled->setUpState();
       }
       while (!terminate) {
-         terminate = !runFusedMorsel();
+         if (compiled_throughput == 0.0 || (compiled_throughput > (0.95 * interpreted_throughput))) {
+            // If the compiled throughput approaches the interpreted one, use the generated code.
+            terminate = timeAndRunCompiled();
+         } else {
+            // But in some cases the vectorized interpreter is better - stick with it.
+            terminate = timeAndRunInterpreted();
+         }
       }
       // Async interrupt trigger - saves us some wall clock time.
       std::thread([compilation_job = std::move(compilation_job), compile_state = compile_state]() mutable {
@@ -89,17 +126,21 @@ void PipelineExecutor::runPipeline() {
    }
 }
 
-bool PipelineExecutor::runMorsel() {
-   preparePipeline();
+Suboperator::PickMorselResult PipelineExecutor::runMorsel() {
    if (compilation_job.joinable()) {
       compilation_job.join();
    }
    // Scope guard for memory compile_state->context and flags.
    ExecutionContext::RuntimeGuard guard{compile_state->context};
    if (mode == ExecutionMode::Fused || (mode == ExecutionMode::Hybrid)) {
+      preparePipeline(ExecutionMode::Fused);
+      if (compilation_job.joinable()) {
+         compilation_job.join();
+      }
       compile_state->compiled->setUpState();
       return runFusedMorsel();
    } else {
+      preparePipeline(ExecutionMode::Interpreted);
       for (auto& interpreter : interpreters) {
          interpreter->setUpState();
       }
@@ -157,24 +198,24 @@ void PipelineExecutor::cleanUp() {
    ExecutionContext::getInstalledRestartFlag() = false;
 }
 
-bool PipelineExecutor::runFusedMorsel() {
+Suboperator::PickMorselResult PipelineExecutor::runFusedMorsel() {
    assert(compile_state->fused_set_up);
    // Run the whole compiled executor.
-   if (compile_state->compiled->runMorsel(true)) {
+   auto morsel = compile_state->compiled->runMorsel(true);
+   if (std::holds_alternative<Suboperator::PickedMorsel>(morsel)) {
       if (auto printer = pipe.getPrettyPrinter()) {
          // Tell the printer that a morsel is done.
          if (printer->markMorselDone(compile_state->context)) {
             // Output is closed - no more work to be done.
-            return false;
+            return Suboperator::NoMoreMorsels{};
          }
       }
       cleanUp();
-      return true;
    }
-   return false;
+   return morsel;
 }
 
-bool PipelineExecutor::runInterpretedMorsel() {
+Suboperator::PickMorselResult PipelineExecutor::runInterpretedMorsel() {
    // Run a morsel and retry it if the `restart_flag` gets set to true.
    // This is needed to defend against e.g. hash table resizes without
    // massively complicating the generated code.
@@ -185,20 +226,20 @@ bool PipelineExecutor::runInterpretedMorsel() {
 
       // Run the morsel until the flag is not set. The flag can be set multiple times if e.g.
       // multiple hash table resizes happen for the same chunk.
-      bool pickResult = runner.runMorsel(force_pick);
+      auto pick_result = runner.runMorsel(force_pick);
       while (restart_flag) {
          restart_flag = false;
          runner.prepareForRerun();
          runner.runMorsel(false);
       }
 
-      return pickResult;
+      return pick_result;
    };
 
    // Only the first interpreter is allowed to pick a morsel - the morsel of that source is then
    // fixed for all remaining interpreters in the pipeline.
-   bool pickResult = runMorselWithRetry(*interpreters[0], true);
-   if (pickResult) {
+   auto morsel = runMorselWithRetry(*interpreters[0], true);
+   if (std::holds_alternative<Suboperator::PickedMorsel>(morsel)) {
       for (auto interpreter = interpreters.begin() + 1; interpreter < interpreters.end(); ++interpreter) {
          runMorselWithRetry(**interpreter, false);
       }
@@ -206,12 +247,12 @@ bool PipelineExecutor::runInterpretedMorsel() {
          // Tell the printer that a morsel is done.
          if (printer->markMorselDone(compile_state->context)) {
             // Output is closed - no more work to be done.
-            return false;
+            return Suboperator::NoMoreMorsels{};
          }
       }
       cleanUp();
    }
-   return pickResult;
+   return morsel;
 }
 
 }
