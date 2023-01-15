@@ -46,7 +46,7 @@ void BackendProgramC::compileToMachinecode(InterruptableJob& interrupt) {
       if constexpr (debug_mode) {
          command << " -g -O0 -fPIC";
       } else {
-         command << " -g -O3 -fPIC";
+         command << " -O3 -fPIC";
       }
       command << " -shared";
       command << " -o ";
@@ -83,8 +83,7 @@ void BackendProgramC::link() {
    }
 }
 
-void BackendProgramC::unlink()
-{
+void BackendProgramC::unlink() {
    if (handle) {
       dlclose(handle);
    }
@@ -208,7 +207,9 @@ void BackendC::typeDescription(const IR::Type& type, ScopedWriter::Statement& st
 
       void visitPointer(const IR::Pointer& type, ScopedWriter::Statement& arg) override {
          typeDescription(*type.pointed_to, arg);
-         arg.stream() << "*";
+         // InkFuse doesn't generate C where pointers are aliased. Adding the restrict
+         // here makes it far easier for the compiler to generate efficient code.
+         arg.stream() << "*restrict";
       }
    };
 
@@ -245,6 +246,9 @@ void BackendC::compileFunction(const IR::Function& fct, ScopedWriter& writer) {
       fct_decl.stream() << " " << fct.name << "(";
       for (size_t k = 0; k < fct.arguments.size(); ++k) {
          const auto& arg = fct.arguments[k];
+         if (fct.const_args[k]) {
+            fct_decl.stream() << "const ";
+         }
          const auto& decl = dynamic_cast<const IR::DeclareStmt&>(*arg);
          typeDescription(*decl.type, fct_decl);
          fct_decl.stream() << " " << decl.name;
@@ -311,7 +315,6 @@ void BackendC::compileStatement(const IR::Stmt& statement, ScopedWriter& writer)
 
    // Regular statements can meanwhile directly take a statement to write into.
    struct StatementVisitor final : public IR::StmtVisitor<ScopedWriter::Statement&> {
-
       bool visitDeclare(const IR::DeclareStmt& stmt, ScopedWriter::Statement& writer) override {
          typeDescription(*stmt.type, writer);
          writer.stream() << " " << stmt.name;

@@ -3,9 +3,9 @@
 
 #include "codegen/IRBuilder.h"
 #include "codegen/Statement.h"
+#include <deque>
 #include <string>
 #include <utility>
-#include <deque>
 #include <vector>
 
 /// This file contains all the central building blocks for the InkFuse IR.
@@ -31,13 +31,16 @@ using ProgramArc = std::shared_ptr<Program>;
 /// IR function getting a set of parameters and returning a result.
 struct Function {
    /// Create a new function, throws if not all of the arguments are pointing to declare statements.
-   Function(std::string name_, std::vector<StmtPtr> arguments_, TypeArc return_type_);
+   Function(std::string name_, std::vector<StmtPtr> arguments_, std::vector<bool> const_args, TypeArc return_type_);
 
    /// The unique function name.
    std::string name;
 
    /// The arguments. All of the statements are Declare statements.
    std::vector<StmtPtr> arguments;
+
+   /// Which of the arguments are const?
+   std::vector<bool> const_args;
 
    /// Return type of the function.
    TypeArc return_type;
@@ -58,7 +61,7 @@ using FunctionArc = std::shared_ptr<Function>;
 
 /// A block of statements within a function.
 struct Block {
-   Block(std::deque<StmtPtr> statements_) : statements(std::move(statements_)) {};
+   Block(std::deque<StmtPtr> statements_) : statements(std::move(statements_)){};
 
    /// Append statement to the block.
    void appendStmt(StmtPtr stmt);

@@ -37,13 +37,38 @@ void AggReaderSubop::consumeAllChildren(CompilationContext& context) {
    auto& out_declare = builder.appendStmt(IR::DeclareStmt::build(iu_name, out_iu.type));
    context.declareIU(out_iu, out_declare);
 
+   // Resolve the offsets once in the opening scope of the program.
+   IR::Stmt* rt_o1;
+   IR::Stmt* rt_o2;
+   {
+      auto& root = builder.getRootBlock();
+
+      // Offset 1.
+      auto rt_o1_name = getVarIdentifier();
+      rt_o1_name << "_rt_offset_1";
+      auto rt_o1_declare = IR::DeclareStmt::build(rt_o1_name.str(), IR::UnsignedInt::build(2));
+      auto rt_o1_load = IR::AssignmentStmt::build(IR::VarRefExpr::build(*rt_o1_declare), runtime_params.offset_1Resolve(*this, context));
+      rt_o1 = rt_o1_declare.get();
+      root.appendStmt(std::move(rt_o1_declare));
+      root.appendStmt(std::move(rt_o1_load));
+
+      // Offset 2. Always load, might just not be used.
+      auto rt_o2_name = getVarIdentifier();
+      rt_o2_name << "_rt_offset_2";
+      auto rt_o2_declare = IR::DeclareStmt::build(rt_o2_name.str(), IR::UnsignedInt::build(2));
+      auto rt_o2_load = IR::AssignmentStmt::build(IR::VarRefExpr::build(*rt_o2_declare), runtime_params.offset_2Resolve(*this, context));
+      rt_o2 = rt_o2_declare.get();
+      root.appendStmt(std::move(rt_o2_declare));
+      root.appendStmt(std::move(rt_o2_load));
+   }
+
    std::vector<IR::Stmt*> granule_declares;
    {
       // Compute the pointer to the first granule in the aggregate state.
       // Always needed.
       auto ptr_loc = IR::ArithmeticExpr::build(
          IR::VarRefExpr::build(packed_ptr),
-         runtime_params.offset_1Resolve(*this, context),
+         IR::VarRefExpr::build(*rt_o1),
          IR::ArithmeticExpr::Opcode::Add);
       auto& ptr_declare = builder.appendStmt(IR::DeclareStmt::build(var_identifier + "_packed_state_1", ptr_loc->type));
       builder.appendStmt(IR::AssignmentStmt::build(ptr_declare, std::move(ptr_loc)));
@@ -54,7 +79,7 @@ void AggReaderSubop::consumeAllChildren(CompilationContext& context) {
       // This aggregate function needs a second granule - add it to the runtime state.
       auto ptr_loc = IR::ArithmeticExpr::build(
          IR::VarRefExpr::build(packed_ptr),
-         runtime_params.offset_2Resolve(*this, context),
+         IR::VarRefExpr::build(*rt_o2),
          IR::ArithmeticExpr::Opcode::Add);
       auto& ptr_declare = builder.appendStmt(IR::DeclareStmt::build(var_identifier + "_packed_state_2", ptr_loc->type));
       builder.appendStmt(IR::AssignmentStmt::build(ptr_declare, std::move(ptr_loc)));

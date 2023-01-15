@@ -31,10 +31,23 @@ void AggregatorSubop::consumeAllChildren(CompilationContext& context) {
    auto& agg_iu_stmt = context.getIUDeclaration(*source_ius[1]);
    auto var_identifier = getVarIdentifier().str();
 
+   // Resolve the offset once in the opening scope of the program.
+   IR::Stmt* rt_o_declare;
+   {
+      auto& root = builder.getRootBlock();
+      auto rt_offset_name = getVarIdentifier();
+      rt_offset_name << "_rt_offset";
+      auto rt_offset_declare = IR::DeclareStmt::build(rt_offset_name.str(), IR::UnsignedInt::build(2));
+      auto rt_offset_load = IR::AssignmentStmt::build(IR::VarRefExpr::build(*rt_offset_declare), runtime_params.offsetResolve(*this, context));
+      rt_o_declare = rt_offset_declare.get();
+      root.appendStmt(std::move(rt_offset_declare));
+      root.appendStmt(std::move(rt_offset_load));
+   }
+
    // Compute the pointer to the aggregate state.
    auto ptr_loc = IR::ArithmeticExpr::build(
       IR::VarRefExpr::build(packed_ptr),
-      runtime_params.offsetResolve(*this, context),
+      IR::VarRefExpr::build(*rt_o_declare),
       IR::ArithmeticExpr::Opcode::Add);
    auto& ptr_declare = builder.appendStmt(IR::DeclareStmt::build(var_identifier + "_packed_state", ptr_loc->type));
    builder.appendStmt(IR::AssignmentStmt::build(ptr_declare, std::move(ptr_loc)));

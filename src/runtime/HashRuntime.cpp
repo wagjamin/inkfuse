@@ -18,13 +18,13 @@ extern "C" uint64_t hash8(void* in) {
 
 void HashRuntime::registerRuntime() {
    RuntimeFunctionBuilder("hash", IR::UnsignedInt::build(8))
-      .addArg("in", IR::Pointer::build(IR::Void::build()))
+      .addArg("in", IR::Pointer::build(IR::Void::build()), true)
       .addArg("len", IR::UnsignedInt::build(8));
 
    RuntimeFunctionBuilder("hash4", IR::UnsignedInt::build(8))
-      .addArg("in", IR::Pointer::build(IR::Void::build()));
+      .addArg("in", IR::Pointer::build(IR::Void::build()), true);
 
    RuntimeFunctionBuilder("hash8", IR::UnsignedInt::build(8))
-      .addArg("in", IR::Pointer::build(IR::Void::build()));
+      .addArg("in", IR::Pointer::build(IR::Void::build()), true);
 }
 }
