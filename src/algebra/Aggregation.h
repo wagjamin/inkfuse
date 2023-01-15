@@ -48,6 +48,8 @@ struct Aggregation : public RelAlgOp {
    IU ht_scan_result;
    /// Size of the aggregation key.
    size_t key_size = 0;
+   /// Offset of the payload - i.e. after how many bytes does the first granule start.
+   size_t payload_offset = 0;
    /// Size of the aggregation payload.
    size_t payload_size = 0;
    /// Does this aggregation require a complex hash table?

@@ -46,7 +46,7 @@ void BackendProgramC::compileToMachinecode(InterruptableJob& interrupt) {
       if constexpr (debug_mode) {
          command << " -g -O0 -fPIC";
       } else {
-         command << " -O3 -fPIC";
+         command << " -g -O3 -fPIC";
       }
       command << " -shared";
       command << " -o ";
