@@ -107,14 +107,17 @@ void PipelineExecutor::runPipeline() {
       if (!terminate && fused_ready) {
          compile_state->compiled->setUpState();
       }
+      size_t it_counter = 0;
       while (!terminate) {
-         if (compiled_throughput == 0.0 || (compiled_throughput > (0.95 * interpreted_throughput))) {
+         // We run 2 out of 25 morsels with the interpreter just to repeatedly check on performance.
+         if ((it_counter % 50 < 2) || compiled_throughput == 0.0 || (compiled_throughput > (0.95 * interpreted_throughput))) {
             // If the compiled throughput approaches the interpreted one, use the generated code.
             terminate = timeAndRunCompiled();
          } else {
             // But in some cases the vectorized interpreter is better - stick with it.
             terminate = timeAndRunInterpreted();
          }
+         it_counter++;
       }
       // Async interrupt trigger - saves us some wall clock time.
       std::thread([compilation_job = std::move(compilation_job), compile_state = compile_state]() mutable {

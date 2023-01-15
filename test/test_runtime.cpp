@@ -5,8 +5,8 @@
 #include "codegen/Value.h"
 #include "codegen/backend_c/BackendC.h"
 #include "exec/InterruptableJob.h"
-#include <gtest/gtest.h>
 #include <unordered_set>
+#include <gtest/gtest.h>
 
 namespace inkfuse {
 
@@ -29,7 +29,7 @@ TEST(test_runtime, runtime_hashing) {
    params.push_back(std::move(arg_size));
 
    // Function we are building.
-   auto fct = std::make_shared<IR::Function>("test_hash", std::move(params), IR::UnsignedInt::build(8));
+   auto fct = std::make_shared<IR::Function>("test_hash", std::move(params), std::vector<bool>{false, false}, IR::UnsignedInt::build(8));
    auto fct_builder = ir_builder.createFunctionBuilder(std::move(fct));
 
    // Return the size by accessing the respective member in ColumnScanState.
@@ -86,7 +86,7 @@ TEST(test_runtime, runtime_real) {
    std::vector<IR::StmtPtr> params;
    params.push_back(std::move(arg));
    // Function we are building.
-   auto fct = std::make_shared<IR::Function>("test_fct", std::move(params), IR::UnsignedInt::build(8));
+   auto fct = std::make_shared<IR::Function>("test_fct", std::move(params), std::vector<bool>{false}, IR::UnsignedInt::build(8));
    auto fct_builder = ir_builder.createFunctionBuilder(std::move(fct));
 
    // Return the size by accessing the respective member in ColumnScanState.

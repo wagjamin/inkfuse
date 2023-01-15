@@ -145,16 +145,17 @@ CompilationContext::Builder::Builder(IR::Program& program, std::string fct_name)
 
 IR::FunctionBuilder CompilationContext::createFctBuilder(IR::IRBuilder& program, std::string fct_name) {
    // Generated functions for execution have a void** arguments for operator state.
-   static const std::vector<std::pair<std::string, IR::TypeArc>> arg_names{
-      {"global_state", IR::Pointer::build(IR::Pointer::build(IR::Void::build()))}
-   };
+   static const std::vector<std::tuple<std::string, IR::TypeArc, bool>> arg_names{
+      {"global_state", IR::Pointer::build(IR::Pointer::build(IR::Void::build())), false}};
    std::vector<IR::StmtPtr> args;
-   for (const auto& [arg, type] : arg_names) {
+   std::vector<bool> constness;
+   for (const auto& [arg, type, is_const] : arg_names) {
       args.push_back(IR::DeclareStmt::build(arg, type));
+      constness.push_back(is_const);
    }
    // Return 1 byte integer which can be cast to a yield-state enum.
    auto return_type = IR::UnsignedInt::build(1);
-   return program.createFunctionBuilder(std::make_shared<IR::Function>(std::move(fct_name), std::move(args), std::move(return_type)));
+   return program.createFunctionBuilder(std::make_shared<IR::Function>(std::move(fct_name), std::move(args), std::move(constness), std::move(return_type)));
 }
 
 }

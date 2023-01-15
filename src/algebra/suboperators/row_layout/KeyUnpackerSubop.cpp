@@ -49,8 +49,21 @@ void KeyUnpackerSubop::consumeAllChildren(CompilationContext& context) {
 
    const IR::Stmt& ptr = context.getIUDeclaration(*source_ius[0]);
 
+   // Resolve the offset once in the opening scope of the program.
+   IR::Stmt* rt_o_declare;
+   {
+      auto& root = builder.getRootBlock();
+      auto rt_offset_name = getVarIdentifier();
+      rt_offset_name << "_rt_offset";
+      auto rt_offset_declare = IR::DeclareStmt::build(rt_offset_name.str(), IR::UnsignedInt::build(2));
+      auto rt_offset_load = IR::AssignmentStmt::build(IR::VarRefExpr::build(*rt_offset_declare), runtime_params.offsetResolve(*this, context));
+      rt_o_declare = rt_offset_declare.get();
+      root.appendStmt(std::move(rt_offset_declare));
+      root.appendStmt(std::move(rt_offset_load));
+   }
+
    // Unpack the key.
-   auto unpack_stmt = KeyPacking::unpackFrom(IR::VarRefExpr::build(ptr), IR::VarRefExpr::build(declare), runtime_params.offsetResolve(*this, context));
+   auto unpack_stmt = KeyPacking::unpackFrom(IR::VarRefExpr::build(ptr), IR::VarRefExpr::build(declare), IR::VarRefExpr::build(*rt_o_declare));
    // And write from the pointer offset to the provided IU.
    builder.appendStmt(std::move(unpack_stmt));
 

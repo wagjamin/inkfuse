@@ -49,7 +49,7 @@ namespace inkfuse {
         ~RuntimeFunctionBuilder();
 
         /// Add a new argument with the given name to the function.
-        RuntimeFunctionBuilder& addArg(std::string arg_name, IR::TypeArc type);
+        RuntimeFunctionBuilder& addArg(std::string arg_name, IR::TypeArc type, bool const_arg = false);
 
     private:
         /// Function name.
@@ -58,6 +58,8 @@ namespace inkfuse {
         IR::TypeArc return_type;
         /// Arguments of the function being built.
         std::vector<IR::StmtPtr> arguments;
+        /// Which arguments are const?
+        std::vector<bool> is_const;
     };
 
 }

@@ -46,13 +46,26 @@ void RuntimeExpressionSubop::consumeAllChildren(CompilationContext& context) {
    auto& declare = builder.appendStmt(IR::DeclareStmt::build(iu_name, out->type));
    context.declareIU(*out, declare);
 
-   // Then, compute it. Lazily resolve the second argument.
+   // Resolve the runtime parameter once in the opening scope of the program.
+   IR::Stmt* rt_c_declare;
+   {
+      auto& root = builder.getRootBlock();
+      auto rt_constant_name = getVarIdentifier();
+      rt_constant_name << "_rt_constant";
+      auto rt_const_declare = IR::DeclareStmt::build(rt_constant_name.str(), runtime_param_type);
+      auto rt_const_load = IR::AssignmentStmt::build(IR::VarRefExpr::build(*rt_const_declare), runtime_params.dataResolveErased(*this, runtime_param_type, context));
+      rt_c_declare = rt_const_declare.get();
+      root.appendStmt(std::move(rt_const_declare));
+      root.appendStmt(std::move(rt_const_load));
+   }
+
+   // Then, compute the expression in the current scope based on the loaded constant.
    const IR::Stmt& child = context.getIUDeclaration(*source_ius[0]);
    builder.appendStmt(
       IR::AssignmentStmt::build(
          declare,
          IR::ArithmeticExpr::build(
-            runtime_params.dataResolveErased(*this, runtime_param_type, context),
+            IR::VarRefExpr::build(*rt_c_declare),
             IR::VarRefExpr::build(child),
             ExpressionHelpers::code_map.at(type))));
 

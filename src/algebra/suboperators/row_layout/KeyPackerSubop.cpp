@@ -46,8 +46,21 @@ void KeyPackerSubop::consumeAllChildren(CompilationContext& context) {
    const IR::Stmt& ptr = context.getIUDeclaration(*source_ius[1]);
    const IR::Stmt& pack = context.getIUDeclaration(*source_ius[0]);
 
+   // Resolve the offset once in the opening scope of the program.
+   IR::Stmt* rt_o_declare;
+   {
+      auto& root = builder.getRootBlock();
+      auto rt_offset_name = getVarIdentifier();
+      rt_offset_name << "_rt_offset";
+      auto rt_offset_declare = IR::DeclareStmt::build(rt_offset_name.str(), IR::UnsignedInt::build(2));
+      auto rt_offset_load = IR::AssignmentStmt::build(IR::VarRefExpr::build(*rt_offset_declare), runtime_params.offsetResolve(*this, context));
+      rt_o_declare = rt_offset_declare.get();
+      root.appendStmt(std::move(rt_offset_declare));
+      root.appendStmt(std::move(rt_offset_load));
+   }
+
    // Pack the key.
-   auto pack_stmt = KeyPacking::packInto(IR::VarRefExpr::build(ptr), IR::VarRefExpr::build(pack), runtime_params.offsetResolve(*this, context));
+   auto pack_stmt = KeyPacking::packInto(IR::VarRefExpr::build(ptr), IR::VarRefExpr::build(pack), IR::VarRefExpr::build(*rt_o_declare));
    builder.appendStmt(std::move(pack_stmt));
 
    // There might be pseudo-IUs that we now have to mark as ready.
@@ -59,7 +72,7 @@ void KeyPackerSubop::consumeAllChildren(CompilationContext& context) {
 std::string KeyPackerSubop::id() const {
    std::stringstream res;
    res << "key_packer";
-   for (const IU* iu: source_ius) {
+   for (const IU* iu : source_ius) {
       res << "_" << iu->type->id();
    }
    return res.str();

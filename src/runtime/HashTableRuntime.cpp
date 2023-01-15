@@ -48,44 +48,44 @@ extern "C" void HashTableRuntime::ht_ck_it_advance(void* table, char** it_data, 
 void HashTableRuntime::registerRuntime() {
    RuntimeFunctionBuilder("ht_sk_insert", IR::Pointer::build(IR::Char::build()))
       .addArg("table", IR::Pointer::build(IR::Void::build()))
-      .addArg("key", IR::Pointer::build(IR::Char::build()));
+      .addArg("key", IR::Pointer::build(IR::Char::build()), true);
 
    RuntimeFunctionBuilder("ht_sk_lookup", IR::Pointer::build(IR::Char::build()))
-      .addArg("table", IR::Pointer::build(IR::Void::build()))
-      .addArg("key", IR::Pointer::build(IR::Char::build()));
+      .addArg("table", IR::Pointer::build(IR::Void::build()), true)
+      .addArg("key", IR::Pointer::build(IR::Char::build()), true);
 
    RuntimeFunctionBuilder("ht_sk_lookup_disable", IR::Pointer::build(IR::Char::build()))
       .addArg("table", IR::Pointer::build(IR::Void::build()))
-      .addArg("key", IR::Pointer::build(IR::Char::build()));
+      .addArg("key", IR::Pointer::build(IR::Char::build()), true);
 
    RuntimeFunctionBuilder("ht_sk_lookup_or_insert", IR::Pointer::build(IR::Char::build()))
       .addArg("table", IR::Pointer::build(IR::Void::build()))
-      .addArg("key", IR::Pointer::build(IR::Char::build()));
+      .addArg("key", IR::Pointer::build(IR::Char::build()), true);
 
    RuntimeFunctionBuilder("ht_sk_lookup_or_insert_with_init", IR::Void::build())
       .addArg("table", IR::Pointer::build(IR::Void::build()))
       .addArg("result", IR::Pointer::build(IR::Pointer::build(IR::Char::build())))
       .addArg("is_new_key", IR::Pointer::build(IR::Bool::build()))
-      .addArg("key", IR::Pointer::build(IR::Char::build()));
+      .addArg("key", IR::Pointer::build(IR::Char::build()), true);
 
    RuntimeFunctionBuilder("ht_sk_it_advance", IR::Pointer::build(IR::Char::build()))
-      .addArg("table", IR::Pointer::build(IR::Void::build()))
+      .addArg("table", IR::Pointer::build(IR::Void::build()), true)
       .addArg("it_data", IR::Pointer::build(IR::Pointer::build(IR::Char::build())))
       .addArg("it_idx", IR::Pointer::build(IR::UnsignedInt::build(8)));
 
    RuntimeFunctionBuilder("ht_nk_lookup", IR::Pointer::build(IR::Char::build()))
-      .addArg("table", IR::Pointer::build(IR::Void::build()));
+      .addArg("table", IR::Pointer::build(IR::Void::build()), true);
 
    RuntimeFunctionBuilder("ht_ck_lookup", IR::Pointer::build(IR::Char::build()))
-      .addArg("table", IR::Pointer::build(IR::Void::build()))
-      .addArg("key", IR::Pointer::build(IR::Char::build()));
+      .addArg("table", IR::Pointer::build(IR::Void::build()), true)
+      .addArg("key", IR::Pointer::build(IR::Char::build()), true);
 
    RuntimeFunctionBuilder("ht_ck_lookup_or_insert", IR::Pointer::build(IR::Char::build()))
       .addArg("table", IR::Pointer::build(IR::Void::build()))
-      .addArg("key", IR::Pointer::build(IR::Char::build()));
+      .addArg("key", IR::Pointer::build(IR::Char::build()), true);
 
    RuntimeFunctionBuilder("ht_ck_it_advance", IR::Pointer::build(IR::Char::build()))
-      .addArg("table", IR::Pointer::build(IR::Void::build()))
+      .addArg("table", IR::Pointer::build(IR::Void::build()), true)
       .addArg("it_data", IR::Pointer::build(IR::Pointer::build(IR::Char::build())))
       .addArg("it_idx", IR::Pointer::build(IR::UnsignedInt::build(8)));
 }

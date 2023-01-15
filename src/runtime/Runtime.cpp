@@ -42,11 +42,12 @@ RuntimeStructBuilder& RuntimeStructBuilder::addMember(std::string member_name, I
 }
 
 RuntimeFunctionBuilder::~RuntimeFunctionBuilder() {
-   global_runtime.program->getIRBuilder().addFunction(std::make_shared<IR::Function>(std::move(name), std::move(arguments), std::move(return_type)));
+   global_runtime.program->getIRBuilder().addFunction(std::make_shared<IR::Function>(std::move(name), std::move(arguments), std::move(is_const), std::move(return_type)));
 }
 
-RuntimeFunctionBuilder& RuntimeFunctionBuilder::addArg(std::string arg_name, IR::TypeArc type) {
+RuntimeFunctionBuilder& RuntimeFunctionBuilder::addArg(std::string arg_name, IR::TypeArc type, bool const_arg) {
    arguments.push_back(IR::DeclareStmt::build(std::move(arg_name), std::move(type)));
+   is_const.push_back(const_arg);
    return *this;
 }
 
