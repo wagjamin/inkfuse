@@ -33,7 +33,6 @@ struct HashTableSourceState {
 /// DEFAULT_CHUNK_SIZE elements.
 template <class HashTable>
 struct HashTableSource : public TemplatedSuboperator<HashTableSourceState> {
-
    static SuboperatorArc build(const RelAlgOp* source, const IU& produced_iu, HashTable* hash_table_);
 
    /// Keep running as long as we have cells to read from in the backing hash table.
@@ -50,7 +49,7 @@ struct HashTableSource : public TemplatedSuboperator<HashTableSourceState> {
 
    void setUpStateImpl(const ExecutionContext& context) override;
 
-private:
+   private:
    /// In-flight while loop being generated between calls to open() and close().
    std::optional<IR::While> opt_while;
    /// Global state copied into the function preamble.
@@ -63,6 +62,7 @@ private:
 
 using SimpleHashTableSource = HashTableSource<HashTableSimpleKey>;
 using ComplexHashTableSource = HashTableSource<HashTableComplexKey>;
+using DirectLookupHashTableSource = HashTableSource<HashTableDirectLookup>;
 
 }
 

@@ -139,5 +139,6 @@ void HashTableSource<HashTable>::setUpStateImpl(const ExecutionContext& context)
 // Explicitly instantiate templates.
 template class HashTableSource<HashTableSimpleKey>;
 template class HashTableSource<HashTableComplexKey>;
+template class HashTableSource<HashTableDirectLookup>;
 
 }

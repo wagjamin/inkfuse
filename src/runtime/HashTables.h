@@ -139,6 +139,43 @@ struct HashTableComplexKey {
    void reserveSlot();
 };
 
+/// A hash table using direct lookup on the key index. No hashing, no nothing.
+/// Should be used for 2 byte keys. Okay - this is a bit micro-optimized for TPC-H Q1,
+/// we should also have a one byte variation. But we don't need it a the moment.
+/// This is not an architectural limitation.
+struct HashTableDirectLookup {
+   /// Unique Hash Table ID.
+   static const std::string ID;
+
+   HashTableDirectLookup(uint16_t payload_size_);
+
+   /// Get the pointer to a given key, or nullptr if the group does not exist.
+   char* lookup(const char* key);
+   /// Get the pointer to a given key, creating a new group if it does not exist yet.
+   char* lookupOrInsert(const char* key);
+
+
+   /// Get an iterator to the first non-empty element of the hash table.
+   /// Sets it_data to nullptr if the iterator is exhausted.
+   void iteratorStart(char** it_data, uint64_t* it_idx);
+   /// Advance an iterator to the next non-empty element in the hash table.
+   /// Sets it_data to nullptr if the iterator is exhausted.
+   void iteratorAdvance(char** it_data, uint64_t* it_idx);
+   /// Get the current size. Mainly used for testing.
+   size_t size() const;
+   /// Get the current capacity. Mainly used for testing.
+   size_t capacity() const;
+
+   /// Data managed by the hash table.
+   std::unique_ptr<char[]> data;
+   /// Tags indicating which slot contains data.
+   std::unique_ptr<bool[]> tags;
+   /// Size of the materialized simple key.
+   uint16_t key_size;
+   /// Total slot size.
+   uint16_t slot_size;
+};
+
 }
 
 #endif //INKFUSE_HASHTABLES_H

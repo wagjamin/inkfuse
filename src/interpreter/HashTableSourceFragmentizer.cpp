@@ -16,6 +16,12 @@ HashTableSourceFragmentizer::HashTableSourceFragmentizer() {
       auto& op = pipe.attachSuboperator(ComplexHashTableSource::build(nullptr, target_iu, nullptr));
       name = op.id();
    }
+   {
+      auto& [name, pipe] = pipes.emplace_back();
+      auto& target_iu = generated_ius.emplace_back(IR::Pointer::build(IR::Char::build()), "");
+      auto& op = pipe.attachSuboperator(DirectLookupHashTableSource::build(nullptr, target_iu, nullptr));
+      name = op.id();
+   }
 }
     
 } // namespace inkfuse
