@@ -8,7 +8,10 @@
 #include "algebra/suboperators/row_layout/KeyUnpackerSubop.h"
 #include "algebra/suboperators/sources/HashTableSource.h"
 #include "algebra/suboperators/sources/ScratchPadIUProvider.h"
+#include <functional>
 #include <map>
+#include <numeric>
+#include <set>
 
 namespace inkfuse {
 
@@ -18,8 +21,7 @@ Aggregation::Aggregation(std::vector<std::unique_ptr<RelAlgOp>> children_, std::
    plan(std::move(aggregates_));
 }
 
-std::unique_ptr<Aggregation> Aggregation::build(std::vector<std::unique_ptr<RelAlgOp>> children_, std::string op_name_, std::vector<const IU*> group_by_, std::vector<AggregateFunctions::Description> aggregates_)
-{
+std::unique_ptr<Aggregation> Aggregation::build(std::vector<std::unique_ptr<RelAlgOp>> children_, std::string op_name_, std::vector<const IU*> group_by_, std::vector<AggregateFunctions::Description> aggregates_) {
    return std::make_unique<Aggregation>(std::move(children_), std::move(op_name_), std::move(group_by_), std::move(aggregates_));
 }
 
@@ -29,7 +31,7 @@ void Aggregation::plan(std::vector<AggregateFunctions::Description> description)
       requires_complex_ht = true;
    }
    // We pack the aggregation keys first.
-   for (const IU* key: group_by) {
+   for (const IU* key : group_by) {
       key_size += key->type->numBytes();
       const auto& out = out_key_ius.emplace_back(key->type);
       output_ius.push_back(&out);
@@ -42,43 +44,75 @@ void Aggregation::plan(std::vector<AggregateFunctions::Description> description)
    // We know the key size - so we can now create the properly sized byte array.
    packed_ht_key.emplace(IR::ByteArray::build(key_size));
 
-   // Basic planning of the aggregate key. There are some easy performance improvements:
-   // - Compute granule layout ordered by IU
-   // - Proper aligned state
-   // The granules on a given IU that were computed already mapping to the offset in the 'granules' vector.
+   // Plan the aggregate key. We perform the following optimizations when optimizing aggregate state:
+   // - An aggregate function is divided into a 'compute' and 'extract' step.
+   //   A query such as SELECT sum(x), avg(x) FROM T can share the sum state across both aggregate functions.
+   //   We call this "granule", and turn the aggregate into a minimal set of aggregate granules.
+   // - We then properly align the aggregate state. Even though x86 supports it, there should be no unaligned
+   //   writes when doing aggregate state updates.
+   // - For state with the same alignment requirement, we try to put aggregate updates on the same IU next
+   //   to each other. This hopefully minimizes cache misses as it gets more likely that successive updates
+   //   happen on the same cache line.
 
-   // Mapping from the granule ID to its payload state offset within the payload.
-   std::map<std::pair<const IU*, std::string>, size_t> computed_granules;
-   for (auto& func : description) {
+   // The granules we need to compute. Outlined as (granule_size, iu, compute_id).
+   // The order of the set gives us a good aggregate state setup.
+   // Note that the lexicographic ordering on (granule_size, iu) allows for both efficient aligned
+   // access, as well as putting the same IU updates next to each other.
+   using GranuleDescription = std::tuple<size_t, const IU*, std::string>;
+   std::set<GranuleDescription, std::greater<>> to_compute;
+   // The actual aggregate functions we have to compute.
+   std::vector<std::pair<const IU*, AggregateFunctions::RegistryEntry>> functions;
+   functions.reserve(description.size());
+
+   // Extract all the granules we need to compute.
+   for (const auto& func : description) {
       // Get the suboperators that make up this aggregate function.
-      auto ops = AggregateFunctions::lookupSubops(func);
-      std::vector<size_t> granule_offsets;
-      granule_offsets.reserve(ops.agg_reader->requiredGranules());
-      for (auto& granule : ops.granules) {
-         std::pair<const IU*, std::string> granule_id = {&func.agg_iu, granule->id()};
-         if (computed_granules.count(granule_id) == 0) {
-            // First time we see this granule, add it to the total set of granules.
-            size_t granule_state_size = granule->getStateSize();
-            granules.emplace_back(&func.agg_iu, std::move(granule));
-            // Offset within the packed payload is the current offset.
-            computed_granules.emplace(granule_id, payload_size);
-            granule_offsets.push_back(payload_size);
-            // Increase payload size by the state size of the fresh granule.
-            payload_size += granule_state_size;
-         } else {
-            // We already computed this granule, reuse it.
-            auto offset = computed_granules.at(granule_id);
-            granule_offsets.push_back(offset);
-         }
+      const auto& [iu, entry] = functions.emplace_back(&func.agg_iu, AggregateFunctions::lookupSubops(func));
+      // Add the granules we have to compute.
+      for (const auto& granule : entry.granules) {
+         to_compute.insert({granule->getStateSize(), iu, granule->id()});
       }
-      // Construct plan for this aggregation.
+   }
+   granules.resize(to_compute.size());
+
+   assert(!to_compute.empty());
+   // The `granules` set did all the heavy lifting for us - now we just have to extract them
+   // and re-attach the correct offsets to the aggregate functions.
+   const size_t largest_state = std::get<0>(*to_compute.rbegin());
+   // Find the starting offset for serializing the payload state.
+   // This is the first aligned offset after the key.
+   payload_offset = 0;
+   while (payload_offset < key_size) {
+      payload_offset += largest_state;
+   }
+   // We measure the offset _after_ the key, so subtract key size again.
+   payload_offset -= key_size;
+   auto offset_accumulator = [](size_t sum, const GranuleDescription& desc) {
+      return sum + std::get<0>(desc);
+   };
+   payload_size = std::accumulate(to_compute.begin(), to_compute.end(), payload_offset, offset_accumulator);
+
+   // Now plan each aggregate function.
+   for (auto& [iu, entry] : functions) {
+      std::vector<size_t> granule_offsets;
+      granule_offsets.reserve(entry.granules.size());
+      for (auto& granule : entry.granules) {
+         auto granule_it = to_compute.find({granule->getStateSize(), iu, granule->id()});
+         auto idx = std::distance(to_compute.begin(), granule_it);
+         // Compute the prefix sum of all previous .
+         const auto granule_offset = std::accumulate(to_compute.begin(), granule_it, payload_offset, offset_accumulator);
+         granule_offsets.push_back(granule_offset);
+         // Last writer wins - all granules are the same, so it doesn't matter which `AggStatePtr` we use.
+         granules[idx] = {iu, std::move(granule)};
+      }
+      // Construct plan for this aggregate function.
       compute.push_back(PlannedAggCompute{
-         .compute = std::move(ops.agg_reader),
+         .compute = std::move(entry.agg_reader),
          .granule_offsets = std::move(granule_offsets),
       });
       // And set up the output iu.
-      assert(ops.result_type.get());
-      auto& out_iu = out_aggregate_ius.emplace_back(ops.result_type);
+      assert(entry.result_type.get());
+      auto& out_iu = out_aggregate_ius.emplace_back(entry.result_type);
       output_ius.push_back(&out_iu);
    }
 }
@@ -118,7 +152,7 @@ void Aggregation::decay(PipelineDAG& dag) const {
       // Now pack the key into the provided scratch pad IU.
       size_t key_offset = 0;
       auto pseudo = pseudo_ius.begin();
-      for (const auto& key: group_by) {
+      for (const auto& key : group_by) {
          auto& packer = curr_pipe.attachSuboperator(KeyPackerSubop::build(this, *key, *packed_ht_key, {&(*pseudo)}));
          // Attach the runtime parameter that represents the state offset.
          KeyPackingRuntimeParams param;
@@ -133,7 +167,7 @@ void Aggregation::decay(PipelineDAG& dag) const {
 
    // Step 2: Lookup or insert the key in the aggregation hash table
    std::vector<const IU*> pseudo;
-   for (const auto& pseudo_iu: pseudo_ius) {
+   for (const auto& pseudo_iu : pseudo_ius) {
       pseudo.push_back(&pseudo_iu);
    }
 
@@ -151,7 +185,7 @@ void Aggregation::decay(PipelineDAG& dag) const {
 
    // Step 3: Update the aggregation state.
    // The current offset into the serialized aggregate state. The aggregate state starts after the serialized key.
-   size_t curr_offset = key_size;
+   size_t curr_offset = key_size + payload_offset;
    for (const auto& [agg_iu, agg_state] : granules) {
       // Create the aggregator which will compute the granule.
       auto& aggregator = reinterpret_cast<AggregatorSubop&>(curr_pipe.attachSuboperator(AggregatorSubop::build(this, *agg_state, agg_pointer_result, *agg_iu)));
@@ -191,7 +225,7 @@ void Aggregation::decay(PipelineDAG& dag) const {
       auto& reader = reinterpret_cast<AggReaderSubop&>(read_pipe.attachSuboperator(AggReaderSubop::build(this, ht_scan_result, out_agg_iu, *out_compute->compute)));
       // Attach the runtime parameter that represents the state offset.
       const auto& g_offsets = out_compute->granule_offsets;
-         KeyPackingRuntimeParamsTwo param;
+      KeyPackingRuntimeParamsTwo param;
       param.offset_1Set(IR::UI<2>::build(key_size + g_offsets[0]));
       if (out_compute->compute->requiredGranules() == 2) {
          assert(out_compute->granule_offsets.size() == 2);
@@ -201,5 +235,4 @@ void Aggregation::decay(PipelineDAG& dag) const {
       out_compute++;
    }
 }
-
 }
