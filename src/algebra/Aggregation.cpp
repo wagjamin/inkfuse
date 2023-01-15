@@ -135,6 +135,8 @@ void Aggregation::decay(PipelineDAG& dag) const {
    void* hash_table;
    if (requires_complex_ht) {
       hash_table = &dag.attachHashTableComplexKey(dag.getPipelines().size(), 1, payload_size);
+   } else if (key_size == 2) {
+      hash_table = &dag.attachHashTableDirectLookup(dag.getPipelines().size(), payload_size);
    } else {
       hash_table = &dag.attachHashTableSimpleKey(dag.getPipelines().size(), key_size, payload_size);
    }
@@ -174,7 +176,9 @@ void Aggregation::decay(PipelineDAG& dag) const {
    // Dispatch the correct lookup function.
    if (key_size && requires_complex_ht) {
       curr_pipe.attachSuboperator(RuntimeFunctionSubop::htLookupOrInsert<HashTableComplexKey>(this, &agg_pointer_result, *packed_key_iu, std::move(pseudo), hash_table));
-   } else if (key_size) {
+   } else if (key_size == 2) {
+      curr_pipe.attachSuboperator(RuntimeFunctionSubop::htLookupOrInsert<HashTableDirectLookup>(this, &agg_pointer_result, *packed_key_iu, std::move(pseudo), hash_table));
+   } else if (key_size != 0) {
       curr_pipe.attachSuboperator(RuntimeFunctionSubop::htLookupOrInsert<HashTableSimpleKey>(this, &agg_pointer_result, *packed_key_iu, std::move(pseudo), hash_table));
    } else {
       // The key size is zero - so we just aggregate a single group.
@@ -203,6 +207,8 @@ void Aggregation::decay(PipelineDAG& dag) const {
    // Dispatch the correct reader depending on the layout.
    if (requires_complex_ht) {
       read_pipe.attachSuboperator(ComplexHashTableSource::build(this, ht_scan_result, static_cast<HashTableComplexKey*>(hash_table)));
+   } else if (key_size == 2) {
+      read_pipe.attachSuboperator(DirectLookupHashTableSource::build(this, ht_scan_result, static_cast<HashTableDirectLookup*>(hash_table)));
    } else {
       read_pipe.attachSuboperator(SimpleHashTableSource::build(this, ht_scan_result, static_cast<HashTableSimpleKey*>(hash_table)));
    }

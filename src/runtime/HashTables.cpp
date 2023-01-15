@@ -17,6 +17,7 @@ const uint8_t tag_hash_mask = tag_fill_mask - 1;
 
 const std::string HashTableSimpleKey::ID = "sk";
 const std::string HashTableComplexKey::ID = "ck";
+const std::string HashTableDirectLookup::ID = "dl";
 
 SharedHashTableState::SharedHashTableState(uint16_t total_slot_size_, size_t start_slots_)
    : mod_mask(start_slots_ - 1), total_slot_size(total_slot_size_), max_fill(start_slots_ / 2) {
@@ -403,6 +404,59 @@ size_t HashTableComplexKey::size() const {
 
 size_t HashTableComplexKey::capacity() const {
    return state.mod_mask + 1;
+}
+
+HashTableDirectLookup::HashTableDirectLookup(uint16_t payload_size_)
+   : slot_size(2 + payload_size_) {
+   // Allocate array for direct lookup.
+   data = std::make_unique<char[]>((1 << 16) * slot_size);
+   tags = std::make_unique<bool[]>(1 << 16);
+}
+
+char* HashTableDirectLookup::lookup(const char* key) {
+   const uint16_t idx = *reinterpret_cast<const uint16_t*>(key);
+   return tags[idx] ? &data[slot_size * idx] : nullptr;
+}
+
+char* HashTableDirectLookup::lookupOrInsert(const char* key) {
+   const uint16_t idx = *reinterpret_cast<const uint16_t*>(key);
+   tags[idx] = true;
+   char* ptr = &data[slot_size * idx];
+   *reinterpret_cast<uint16_t*>(ptr) = idx;
+   return ptr;
+}
+
+void HashTableDirectLookup::iteratorStart(char** it_data, uint64_t* it_idx) {
+   *it_data = &data[0];
+   *it_idx = 0;
+   if (!tags[*it_idx]) {
+      iteratorAdvance(it_data, it_idx);
+   }
+}
+
+void HashTableDirectLookup::iteratorAdvance(char** it_data, uint64_t* it_idx) {
+   (*it_idx)++;
+   (*it_data) += slot_size;
+   while (*it_idx < (1 << 16)) {
+      if (tags[*it_idx]) {
+         return;
+      }
+      (*it_idx)++;
+      (*it_data) += slot_size;
+   }
+   *it_data = nullptr;
+}
+
+size_t HashTableDirectLookup::size() const {
+   size_t count = 0;
+   for (size_t k = 0; k < 1 << 16; ++k) {
+      count += tags[k];
+   }
+   return count;
+}
+
+size_t HashTableDirectLookup::capacity() const {
+   return 1 << 16;
 }
 
 }

@@ -4,11 +4,11 @@
 #include "algebra/suboperators/Suboperator.h"
 #include "exec/FuseChunk.h"
 #include "runtime/HashTables.h"
+#include <deque>
 #include <map>
 #include <memory>
 #include <unordered_set>
 #include <vector>
-#include <deque>
 
 namespace inkfuse {
 
@@ -31,7 +31,6 @@ struct PipelineGraph {
 /// Internally, the pipeline is a DAG of suboperators.
 struct Pipeline {
    public:
-
    /// Rebuild the pipeline for a subset of the sub-operators in the given range.
    /// Inserts fake sources and fake sinks. Materializes all IUs that are produced by nodes that don't have a strong output link.
    std::unique_ptr<Pipeline> repipeAll(size_t start, size_t end) const;
@@ -97,8 +96,10 @@ struct PipelineDAG {
 
    /// Attach a simple hash table to the runtime state of the PipelineDAG.
    HashTableSimpleKey& attachHashTableSimpleKey(size_t discard_after, size_t key_size, size_t payload_size);
-   /// Attach a simple hash table to the runtime state of the PipelineDAG.
+   /// Attach a complex hash table to the runtime state of the PipelineDAG.
    HashTableComplexKey& attachHashTableComplexKey(size_t discard_after, uint16_t slots, size_t payload_size);
+   /// Attach a direct lookup hash table to the runtime state of the PipelineDAG.
+   HashTableDirectLookup& attachHashTableDirectLookup(size_t discard_after, size_t payload_size);
 
    private:
    /// Internally the PipelineDAG is represented as a vector of pipelines within a topological order.
@@ -107,6 +108,8 @@ struct PipelineDAG {
    std::deque<std::pair<size_t, std::unique_ptr<HashTableSimpleKey>>> hash_tables_simple;
    /// Hash tables, ordered by pipeline after which they can be discarded.
    std::deque<std::pair<size_t, std::unique_ptr<HashTableComplexKey>>> hash_tables_complex;
+   /// Hash tables, ordered by pipeline after which they can be discarded.
+   std::deque<std::pair<size_t, std::unique_ptr<HashTableDirectLookup>>> hash_tables_dl;
 };
 
 using PipelineDAGPtr = std::unique_ptr<PipelineDAG>;

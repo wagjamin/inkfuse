@@ -229,6 +229,12 @@ HashTableComplexKey& PipelineDAG::attachHashTableComplexKey(size_t discard_after
    return *inserted.second;
 }
 
+HashTableDirectLookup& PipelineDAG::attachHashTableDirectLookup(size_t discard_after, size_t payload_size)
+{
+   auto& inserted = hash_tables_dl.emplace_back(discard_after, std::make_unique<HashTableDirectLookup>(payload_size));
+   return *inserted.second;
+}
+
 Pipeline& PipelineDAG::getCurrentPipeline() const {
    assert(!pipelines.empty());
    return *pipelines.back();
