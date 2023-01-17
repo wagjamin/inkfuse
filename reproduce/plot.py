@@ -26,13 +26,15 @@ if __name__ == '__main__':
             f_name = f'result_{engine}_{sf}.csv'
             con.execute(f"INSERT INTO results SELECT * FROM read_csv_auto('{f_name}', header=False)")
             con.execute(f"DELETE FROM results WHERE query in ('l_count', 'l_point')")
+            # Kinda nasty, change ordering so Q1x come last.
+            con.execute(f"UPDATE results SET query = case when query = 'q14' then 'q9' else query end")
 
-    queries = ['Q1', 'Q3', 'Q4', 'Q6']
+    queries = ['Q1', 'Q3', 'Q4', 'Q6', 'Q14']
 
     # Plot 1: Backends at Different Scale Factors
     fig, axs = plt.subplots(1, 4)
     fig.set_size_inches(20, 5)
-    x_vals = np.array([0, 1.5, 3, 4.5])
+    x_vals = np.array([0, 1.5, 3, 4.5, 6])
     for idx, sf in enumerate(scale_factors):
         offset = -0.5
         for engine in systems:
@@ -54,4 +56,4 @@ if __name__ == '__main__':
     fig.legend(loc='upper center', ncol=len(systems), fancybox=True)
     # plt.show()
     os.makedirs('plots', exist_ok=True)
-    plt.savefig('plots/main.pdf', dpi=300)
+    plt.savefig('plots/main.pdf', bbox_inches='tight', dpi=300)

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 if [[ $# < 1 ]]; then
-  echo "Run as ./generate_tpch.sh <scale factor> <system={duckdb|hyper|inkfuse}>"
+  echo "Run as ./generate_tpch.sh <scale factor> <system={duckdb|hyper|inkfuse|umbra}>"
   exit 1
 fi
 
@@ -23,6 +23,11 @@ rm -rf tpch-dbgen
 if [[ $# -ge 2 ]]; then
   if [[ $2 == "duckdb" ]]; then
     echo "Cleaning up .tbl for DuckDB"
+    # Remove trailing '|' which make this invalid CSV
+    sed -i 's/.$//' data/*.tbl
+  fi
+  if [[ $2 == "umbra" ]]; then
+    echo "Cleaning up .tbl for Umbra"
     # Remove trailing '|' which make this invalid CSV
     sed -i 's/.$//' data/*.tbl
   fi

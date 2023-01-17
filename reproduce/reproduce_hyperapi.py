@@ -7,6 +7,8 @@ import subprocess
 import os
 import time
 
+# TODO Abandoned after four or five queries - some queries like q14 are missing.
+
 # Reproducibility script running our sample workload on the Hyper API.
 # For anyone who wants to play around with a really, really fast compiling system,
 # this should be a great starting point.
