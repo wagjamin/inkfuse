@@ -80,6 +80,20 @@ StoredRelationPtr tableCustomer() {
    return rel;
 }
 
+StoredRelationPtr tablePart() {
+   auto rel = std::make_unique<StoredRelation>();
+   rel->attachPODColumn("p_partkey", t_i4);
+   rel->attachStringColumn("p_name");
+   rel->attachStringColumn("p_mfgr");
+   rel->attachStringColumn("p_brand");
+   rel->attachStringColumn("p_type");
+   rel->attachPODColumn("p_size", t_i4);
+   rel->attachStringColumn("p_container");
+   rel->attachPODColumn("p_retailprice", t_f8);
+   rel->attachStringColumn("p_comment");
+   return rel;
+}
+
 }
 
 Schema getTPCHSchema() {
@@ -87,6 +101,7 @@ Schema getTPCHSchema() {
    schema.emplace("lineitem", tableLineitem());
    schema.emplace("orders", tableOrders());
    schema.emplace("customer", tableCustomer());
+   schema.emplace("part", tablePart());
    return schema;
 }
 
@@ -299,10 +314,11 @@ std::unique_ptr<Print> q3(const Schema& schema) {
       std::move(o_filter_children),
       "filter_orders",
       // We will need all output columns again.
-      {o_scan_ref.getOutput()[0],
-       o_scan_ref.getOutput()[1],
-       o_scan_ref.getOutput()[2],
-       o_scan_ref.getOutput()[3],
+      {
+         o_scan_ref.getOutput()[0],
+         o_scan_ref.getOutput()[1],
+         o_scan_ref.getOutput()[2],
+         o_scan_ref.getOutput()[3],
       },
       *o_expr_ref.getOutput()[0]);
    auto& o_filter_ref = *o_filter;
@@ -328,8 +344,7 @@ std::unique_ptr<Print> q3(const Schema& schema) {
          o_filter_ref.getOutput()[3],
       },
       JoinType::Inner,
-      true
-      );
+      true);
    auto& c_o_join_ref = *c_o_join;
 
    // 2. Join This on Lineitem
@@ -339,8 +354,7 @@ std::unique_ptr<Print> q3(const Schema& schema) {
       "l_orderkey",
       "l_discount",
       "l_shipdate",
-      "l_extendedprice"
-   };
+      "l_extendedprice"};
    auto l_scan = TableScan::build(*l_rel, l_cols, "l_scan");
    auto& l_scan_ref = *l_scan;
 
@@ -364,9 +378,10 @@ std::unique_ptr<Print> q3(const Schema& schema) {
       std::move(l_filter_children),
       "filter_lineitem",
       // We will need all output columns apart from l_shipdate.
-      {l_scan_ref.getOutput()[0],
-       l_scan_ref.getOutput()[1],
-       l_scan_ref.getOutput()[3],
+      {
+         l_scan_ref.getOutput()[0],
+         l_scan_ref.getOutput()[1],
+         l_scan_ref.getOutput()[3],
       },
       *l_expr_ref.getOutput()[0]);
    auto& l_filter_ref = *l_filter;
@@ -395,8 +410,7 @@ std::unique_ptr<Print> q3(const Schema& schema) {
          l_filter_ref.getOutput()[2],
       },
       JoinType::Inner,
-      true
-   );
+      true);
    auto& c_o_l_join_ref = *c_o_l_join;
 
    // 3. Aggregate
@@ -491,8 +505,9 @@ std::unique_ptr<Print> q4(const Schema& schema) {
       std::move(o_filter_children),
       "filter_customer",
       // We need (o_orderkey, o_orderpriroity)
-      {o_scan_ref.getOutput()[0],
-       o_scan_ref.getOutput()[2],
+      {
+         o_scan_ref.getOutput()[0],
+         o_scan_ref.getOutput()[2],
       },
       *o_expr_ref.getOutput()[0]);
    auto& o_filter_ref = *o_filter;
@@ -529,7 +544,9 @@ std::unique_ptr<Print> q4(const Schema& schema) {
       std::move(l_filter_children),
       "filter_lineitem",
       // We only need l_orderkey.
-      {l_scan_ref.getOutput()[0],},
+      {
+         l_scan_ref.getOutput()[0],
+      },
       *l_expr_ref.getOutput()[0]);
    auto& l_filter_ref = *l_filter;
 
@@ -549,11 +566,9 @@ std::unique_ptr<Print> q4(const Schema& schema) {
       // Keys right (l_orderkey)
       {l_filter_ref.getOutput()[0]},
       // No right payload - semi join.
-      {
-      },
+      {},
       JoinType::LeftSemi,
-      true
-   );
+      true);
    auto& o_l_join_ref = *o_l_join;
    assert(o_l_join_ref.getOutput().size() == 2);
 
@@ -716,6 +731,142 @@ std::unique_ptr<Print> q6(const Schema& schema) {
                        std::move(out_ius), std::move(colnames));
 }
 
+// No support for case when - only aggregate
+// sum(l_extendedprice * (1 - l_discount)) as promo_revenue
+// Note that we swap build + probe side compared to DuckDB/Umbra.
+// That way the join becomes a PK join.
+std::unique_ptr<Print> q14(const Schema& schema) {
+   // 1. Scan from part.
+   auto& p_rel = schema.at("part");
+   std::vector<std::string> p_cols{"p_partkey"};
+   auto p_scan = TableScan::build(*p_rel, p_cols, "p_scan");
+   auto& p_scan_ref = *p_scan;
+
+   // 2. Scan from lineitem with a filter.
+   auto& l_rel = schema.at("lineitem");
+   std::vector<std::string> l_cols{
+      "l_partkey",
+      "l_shipdate",
+      "l_extendedprice",
+      "l_discount",
+   };
+   auto l_scan = TableScan::build(*l_rel, l_cols, "l_scan");
+   auto& l_scan_ref = *l_scan;
+   // 1.2 Filter orders on l_oshipdate >= '1993-07-01' and < '1993-10-01'
+   std::vector<ExpressionOp::NodePtr> l_nodes;
+   l_nodes.emplace_back(std::make_unique<IURefNode>(l_scan_ref.getOutput()[1]));
+   l_nodes.emplace_back(
+      std::make_unique<ComputeNode>(
+         ComputeNode::Type::LessEqual,
+         IR::DateVal::build(helpers::dateStrToInt("1995-09-01")),
+         l_nodes[0].get()));
+   l_nodes.emplace_back(
+      std::make_unique<ComputeNode>(
+         ComputeNode::Type::Greater,
+         IR::DateVal::build(helpers::dateStrToInt("1995-10-01")),
+         l_nodes[0].get()));
+   l_nodes.emplace_back(
+      std::make_unique<ComputeNode>(
+         ComputeNode::Type::And,
+         std::vector<Node*>{l_nodes[1].get(), l_nodes[2].get()}));
+   auto l_nodes_root = l_nodes[3].get();
+   std::vector<RelAlgOpPtr> l_expr_children;
+   l_expr_children.push_back(std::move(l_scan));
+   auto l_expr = ExpressionOp::build(
+      std::move(l_expr_children),
+      "expr_lineitem",
+      {l_nodes_root},
+      std::move(l_nodes));
+   auto& l_expr_ref = *l_expr;
+
+   std::vector<RelAlgOpPtr> l_filter_children;
+   l_filter_children.push_back(std::move(l_expr));
+   auto l_filter = Filter::build(
+      std::move(l_filter_children),
+      "filter_lineitem",
+      // We need (l_partkey, l_extendedprice, l_discount)
+      {
+         l_scan_ref.getOutput()[0],
+         l_scan_ref.getOutput()[2],
+         l_scan_ref.getOutput()[3],
+      },
+      *l_expr_ref.getOutput()[0]);
+   auto& l_filter_ref = *l_filter;
+
+   // 3. Join
+   std::vector<RelAlgOpPtr> p_l_join_children;
+   p_l_join_children.push_back(std::move(p_scan));
+   p_l_join_children.push_back(std::move(l_filter));
+   auto p_l_join = Join::build(
+      std::move(p_l_join_children),
+      "p_l_join",
+      // Keys left (p_partkey)
+      {p_scan_ref.getOutput()[0]},
+      // Payload left (none)
+      {},
+      // Keys right (l_partkey)
+      {l_filter_ref.getOutput()[0]},
+      // Right payload (l_extendedprice, l_discount)
+      {
+         l_filter_ref.getOutput()[1],
+         l_filter_ref.getOutput()[2],
+      },
+      JoinType::Inner,
+      true);
+   auto& p_l_join_ref = *p_l_join;
+   assert(p_l_join_ref.getOutput().size() == 4);
+
+   // 4. Project and Aggregate
+   // 4.1 Project l_extendedprice * (1 - l_discount)
+   std::vector<ExpressionOp::NodePtr> pr_nodes;
+   pr_nodes.emplace_back(std::make_unique<IURefNode>(p_l_join_ref.getOutput()[2]));
+   pr_nodes.emplace_back(std::make_unique<IURefNode>(p_l_join_ref.getOutput()[3]));
+   pr_nodes.emplace_back(
+      std::make_unique<ComputeNode>(
+         ComputeNode::Type::Subtract,
+         IR::F8::build(1.0),
+         pr_nodes[1].get()));
+   pr_nodes.emplace_back(
+      std::make_unique<ComputeNode>(
+         ComputeNode::Type::And,
+         std::vector<Node*>{pr_nodes[1].get(), pr_nodes[2].get()}));
+   pr_nodes.emplace_back(
+      std::make_unique<ComputeNode>(
+         ComputeNode::Type::Multiply,
+         std::vector<ExpressionOp::Node*>{pr_nodes[0].get(),
+                                          pr_nodes[2].get()}));
+   auto pr_nodes_root = pr_nodes[4].get();
+   std::vector<RelAlgOpPtr> pr_expr_children;
+   pr_expr_children.push_back(std::move(p_l_join));
+   auto pr_expr = ExpressionOp::build(
+      std::move(pr_expr_children),
+      "pre_agg_project",
+      {pr_nodes_root},
+      std::move(pr_nodes));
+   auto& pr_expr_ref = *pr_expr;
+
+   // 4.2 Aggregate sum(l_extendedprice * (1 - l_discount))
+   std::vector<RelAlgOpPtr> agg_children;
+   agg_children.push_back(std::move(pr_expr));
+   // Don't group by anything on this query.
+   std::vector<const IU*> group_by{};
+   std::vector<AggregateFunctions::Description> aggregates{
+      {*pr_expr_ref.getOutput()[0], AggregateFunctions::Opcode::Sum}};
+   auto agg = Aggregation::build(
+      std::move(agg_children),
+      "agg",
+      std::move(group_by),
+      std::move(aggregates));
+
+   // 5. Print
+   std::vector<const IU*> out_ius{agg->getOutput()[0]};
+   std::vector<std::string> colnames = {"pomo_revenue"};
+   std::vector<RelAlgOpPtr> print_children;
+   print_children.push_back(std::move(agg));
+   return Print::build(std::move(print_children),
+                       std::move(out_ius), std::move(colnames));
+}
+
 std::unique_ptr<Print> l_count(const inkfuse::Schema& schema) {
    // 1. Scan from lineitem.
    auto& rel = schema.at("lineitem");
@@ -791,13 +942,6 @@ std::unique_ptr<Print> l_point(const inkfuse::Schema& schema) {
    std::vector<std::string> colnames = {"l_tax"};
    return Print::build(std::move(print_children),
                        std::move(out_ius), std::move(colnames));
-}
-
-// No support for case when - only aggregate
-// 100.00 * sum(l_extendedprice * (1 - l_discount)) as promo_revenue
-std::unique_ptr<Print> q14(const Schema& schema)
-{
-
 }
 
 }
