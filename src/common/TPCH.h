@@ -26,6 +26,8 @@ std::unique_ptr<Print> q4(const Schema& schema);
 std::unique_ptr<Print> q6(const Schema& schema);
 /// Join (moderate build, moderate probe) ~2x difference
 std::unique_ptr<Print> q14(const Schema& schema);
+/// High cardinality aggregation.
+std::unique_ptr<Print> q18(const Schema& schema);
 
 /// Some interesting custom queries. See /tpch for query text.
 std::unique_ptr<Print> l_count(const Schema& schema);

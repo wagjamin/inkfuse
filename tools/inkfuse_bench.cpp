@@ -38,6 +38,7 @@ const std::vector<std::pair<std::string, decltype(tpch::q1)*>> queries = {
    {"q4", tpch::q4},
    {"q6", tpch::q6},
    {"q14", tpch::q14},
+   {"q18", tpch::q18},
    {"l_count", tpch::l_count},
    {"l_point", tpch::l_point},
 };
