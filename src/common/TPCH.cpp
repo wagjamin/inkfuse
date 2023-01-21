@@ -867,6 +867,161 @@ std::unique_ptr<Print> q14(const Schema& schema) {
                        std::move(out_ius), std::move(colnames));
 }
 
+std::unique_ptr<Print> q18(const Schema& schema) {
+   // 1. Scan Lineitem & Aggregate
+   // 1.1 Scan from lineitem.
+   auto& l_1_rel = schema.at("lineitem");
+   std::vector<std::string> l_1_cols{"l_orderkey", "l_quantity"};
+   auto l_1_scan = TableScan::build(*l_1_rel, l_1_cols, "scan_lineitem_1");
+   auto& l_1_scan_ref = *l_1_scan;
+
+   // 1.2 Aggregate.
+   std::vector<RelAlgOpPtr> l_agg_children;
+   l_agg_children.push_back(std::move(l_1_scan));
+   // Group by l_orderkey
+   std::vector<const IU*> l_group_by{l_1_scan_ref.getOutput()[0]};
+   std::vector<AggregateFunctions::Description> aggregates{
+      {*l_1_scan_ref.getOutput()[1], AggregateFunctions::Opcode::Sum}};
+   auto agg = Aggregation::build(
+      std::move(l_agg_children),
+      "l_agg",
+      std::move(l_group_by),
+      std::move(aggregates));
+   auto& agg_ref = *agg;
+
+   // 2. Filter sum(l_quantity) > 300
+   std::vector<RelAlgOpPtr> expr_children;
+   expr_children.push_back(std::move(agg));
+   std::vector<ExpressionOp::NodePtr> pred_nodes;
+   pred_nodes.emplace_back(std::make_unique<IURefNode>(agg_ref.getOutput()[1]));
+   pred_nodes.emplace_back(
+      std::make_unique<ComputeNode>(
+         ComputeNode::Type::Less,
+         IR::F8::build(300.0),
+         pred_nodes[0].get()));
+   auto filter_col = pred_nodes[1].get();
+   auto expr_node = ExpressionOp::build(
+      std::move(expr_children),
+      "sum_filter",
+      std::vector<Node*>{filter_col},
+      std::move(pred_nodes));
+   auto& expr_ref = *expr_node;
+   assert(expr_ref.getOutput().size() == 1);
+
+   std::vector<RelAlgOpPtr> filter_children;
+   filter_children.push_back(std::move(expr_node));
+   std::vector<const IU*> redefined{
+      agg_ref.getOutput()[0]};
+   auto filter = Filter::build(std::move(filter_children), "filter", std::move(redefined), *expr_ref.getOutput()[0]);
+   auto& filter_ref = *filter;
+   assert(filter->getOutput().size() == 1);
+
+   // 3. Join on orders.
+   auto& o_rel = schema.at("orders");
+   std::vector<std::string> o_cols{"o_orderkey", "o_custkey"};
+   auto o_scan = TableScan::build(*o_rel, o_cols, "scan_orders");
+   auto& o_scan_ref = *o_scan;
+
+   std::vector<RelAlgOpPtr> l_o_join_children;
+   l_o_join_children.push_back(std::move(filter));
+   l_o_join_children.push_back(std::move(o_scan));
+   auto l_o_join = Join::build(
+      std::move(l_o_join_children),
+      "l_o_join",
+      // Keys left (l_orderkey)
+      {filter_ref.getOutput()[0]},
+      // Payload left (none)
+      {},
+      // Keys right (o_orderkey)
+      {o_scan_ref.getOutput()[0]},
+      // Right payload (o_custkey)
+      {
+         o_scan_ref.getOutput()[1],
+      },
+      JoinType::Inner,
+      true);
+   auto& l_o_join_ref = *l_o_join;
+   assert(l_o_join_ref.getOutput().size() == 3);
+
+   // 4. Join on customer.
+   auto& c_rel = schema.at("customer");
+   std::vector<std::string> c_cols{"c_custkey"};
+   auto c_scan = TableScan::build(*c_rel, c_cols, "scan_customer");
+   auto& c_scan_ref = *c_scan;
+
+   std::vector<RelAlgOpPtr> l_o_c_join_children;
+   l_o_c_join_children.push_back(std::move(c_scan));
+   l_o_c_join_children.push_back(std::move(l_o_join));
+   auto l_o_c_join = Join::build(
+      std::move(l_o_c_join_children),
+      "l_o_c_join",
+      // Keys left (c_custkey)
+      {c_scan_ref.getOutput()[0]},
+      // Payload left (none)
+      {},
+      // Keys right (o_custkey)
+      {l_o_join_ref.getOutput()[2]},
+      // Right payload (o_orderkey)
+      {
+         l_o_join_ref.getOutput()[1],
+      },
+      JoinType::Inner,
+      true);
+   auto& l_o_c_join_ref = *l_o_c_join;
+   assert(l_o_c_join_ref.getOutput().size() == 3);
+
+   // 5. Join back on lineitem.
+   std::vector<std::string> l_2_cols{"l_orderkey", "l_quantity"};
+   auto l_2_scan = TableScan::build(*l_1_rel, l_2_cols, "scan_lineitem_2");
+   auto& l_2_scan_ref = *l_2_scan;
+
+   std::vector<RelAlgOpPtr> l_o_c_l_join_children;
+   l_o_c_l_join_children.push_back(std::move(l_o_c_join));
+   l_o_c_l_join_children.push_back(std::move(l_2_scan));
+   auto l_o_c_l_join = Join::build(
+      std::move(l_o_c_l_join_children),
+      "l_o_c_l_join",
+      // Keys left (o_orderkey)
+      {l_o_c_join_ref.getOutput()[2]},
+      // Payload left (none)
+      {},
+      // Keys right (l_orderkey)
+      {l_2_scan_ref.getOutput()[0]},
+      // Right payload (l_quantity)
+      {
+         l_2_scan_ref.getOutput()[1],
+      },
+      JoinType::Inner,
+      true);
+   auto& l_o_c_l_join_ref = *l_o_c_l_join;
+   assert(l_o_c_l_join_ref.getOutput().size() == 3);
+
+   // 6. Aggregate
+   std::vector<RelAlgOpPtr> agg_children;
+   agg_children.push_back(std::move(l_o_c_l_join));
+   // Group by l_orderkey
+   std::vector<const IU*> group_by{l_o_c_l_join_ref.getOutput()[1]};
+   std::vector<AggregateFunctions::Description> final_aggregates{
+      {*l_o_c_l_join_ref.getOutput()[2], AggregateFunctions::Opcode::Sum}};
+   auto final_agg = Aggregation::build(
+      std::move(agg_children),
+      "l_agg",
+      std::move(group_by),
+      std::move(final_aggregates));
+   auto& final_agg_ref = *final_agg;
+
+   // 4. Print
+   std::vector<const IU*> out_ius{
+      final_agg_ref.getOutput()[0],
+      final_agg_ref.getOutput()[1],
+   };
+   std::vector<std::string> colnames = {"o_orderkey", "sum(l_quantity)"};
+   std::vector<RelAlgOpPtr> print_children;
+   print_children.push_back(std::move(final_agg));
+   return Print::build(std::move(print_children),
+                       std::move(out_ius), std::move(colnames));
+}
+
 std::unique_ptr<Print> l_count(const inkfuse::Schema& schema) {
    // 1. Scan from lineitem.
    auto& rel = schema.at("lineitem");
