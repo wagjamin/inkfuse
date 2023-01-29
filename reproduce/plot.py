@@ -3,11 +3,19 @@
 import duckdb
 import os
 import numpy as np
+import matplotlib
 import matplotlib.pyplot as plt
 
-plt.style.use('ggplot')
+matplotlib.rcParams.update({'font.size': 18})
 
-systems = ['duckdb', 'umbra_adaptive', 'umbra_optimized', 'inkfuse_fused', 'inkfuse_interpreted', 'inkfuse_hybrid']
+systems = ['duckdb', 'umbra_optimized', 'umbra_adaptive', 'inkfuse_fused', 'inkfuse_interpreted', 'inkfuse_hybrid']
+# Colors of the different systems 
+# DuckDB orange
+# colors = ['#df6f00', '#c5d31f', '#8d9511','#daa6f5','#b056d0', '#782993']
+# DuckDB blue
+colors = ['#04718a', '#c5d31f', '#8d9511','#daa6f5','#b056d0', '#782993']
+
+# Legend labels of the different systems
 label_map = {
     'duckdb': 'DuckDB',
     'umbra_adaptive': 'Umbra (Hybrid)',
@@ -17,6 +25,7 @@ label_map = {
     'inkfuse_hybrid': 'Inkfuse (Hybrid)',
 }
 scale_factors = ['0.01', '0.1', '1', '10']
+# scale_factors = ['0.01', '0.1']
 
 if __name__ == '__main__':
     con = duckdb.connect(database=':memory:')
@@ -35,12 +44,15 @@ if __name__ == '__main__':
     queries = ['Q1', 'Q3', 'Q4', 'Q6', 'Q14', 'Q18']
 
     # Plot 1: Backends at Different Scale Factors
-    fig, axs = plt.subplots(1, 4)
-    fig.set_size_inches(22, 5)
+    fig, axs = plt.subplots(2, 2)
+    fig.set_size_inches(22, 9)
+    plt.set_cmap('Set3')
     x_vals = np.array([0, 1.5, 3, 4.5, 6, 7.5])
     for idx, sf in enumerate(scale_factors):
+        pos_y = idx % 2
+        pos_x = idx // 2
         offset = -0.5
-        for engine in systems:
+        for engine_idx, engine in enumerate(systems):
             res = con.execute(
                 f"SELECT query, engine, min(latency) as latency "
                 f"FROM results WHERE sf = '{sf}' and engine = '{engine}' "
@@ -49,16 +61,36 @@ if __name__ == '__main__':
             if len(res['latency']) != 6:
                 print(f'missing {engine}, {sf}')
             # If we completely cut the x bars it looks like there is no data.
-            # Some queries on sf0.01 do take 0 ms (rounded). Put them at 0.5 nevertheless to show there is data.
+            # Some queries on sf0.01 do take 0 ms (rounded). Put them at 1 nevertheless to show there is data.
             # Note that xmax on that plot lies around 50, so this is still representative.
-            res['latency'] = np.maximum(res['latency'], [0.5])
-            axs[idx].bar(x_vals + offset, res['latency'], width=0.2, label=label_map[engine] if idx == 0 else "")
-            axs[idx].set_xticks(x_vals, queries)
-            axs[idx].set_ylabel('Latency [ms]')
-            axs[idx].set_xlabel('TPC-H Query')
-            axs[idx].set_title(f'Scale Factor {sf}')
+            res['latency'] = np.maximum(res['latency'], [1.5])
+            # Set the color of the current engine
+            bar_color = len(queries) * [colors[engine_idx]]
+            if (pos_x == 0):
+                # Milliseconds
+                axs[pos_x, pos_y].bar(x_vals + offset, res['latency'], width=0.2, label=label_map[engine] if idx == 0 else "", color=bar_color)
+            else:
+                # Seconds
+                axs[pos_x, pos_y].bar(x_vals + offset, res['latency'] / 1000, width=0.2, label=label_map[engine] if idx == 0 else "", color=bar_color)
+            axs[pos_x, pos_y].set_xticks(x_vals, queries)
+            if (pos_y == 0 and pos_x == 0):
+                axs[pos_x, pos_y].set_ylabel('Latency [ms]')
+            if (pos_y == 0 and pos_x == 1):
+                axs[pos_x, pos_y].set_ylabel('Latency [s]')
+            if (pos_x == 1):
+                axs[pos_x, pos_y].set_xlabel('TPC-H Query')
+            axs[pos_x, pos_y].set_title(f'Scale Factor {sf}')
+            axs[pos_x, pos_y].locator_params(axis='y', nbins=6) 
             offset += 0.2
-    fig.legend(loc='upper center', ncol=len(systems), fancybox=False)
+    fig.legend(loc='upper center', ncol=len(systems), fancybox=True)
+    # Different style things
+    # 1. Aligned y labels
+    fig.align_ylabels(axs[:, 0])
+    # 2. Better figure spacing
+    plt.subplots_adjust(wspace=0.07, hspace=0.25)
+    # 3. Nicer colors
+    # 4. Space legend (actually okay)
+    # plt.subplots_adjust(top=0.82)
     # plt.show()
     os.makedirs('plots', exist_ok=True)
     plt.savefig('plots/main.pdf', bbox_inches='tight', dpi=300)

@@ -7,6 +7,7 @@ pip3 install -r requirements.txt
 echo "Reproducing DuckDB"
 ./reproduce_duckdb.py 0.01
 ./reproduce_duckdb.py 0.1
+./reproduce_duckdb.py 1
 ./reproduce_duckdb.py 10
 
 # Benchmark InkFuse
