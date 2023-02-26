@@ -1,7 +1,7 @@
 #!/bin/bash
 
-if [[ $# -ne 1 ]]; then
-  echo "Run as ./reproduce_inkfuse.sh <scale_factor>"
+if [[ $# -lt 1 ]]; then
+  echo "Run as ./reproduce_inkfuse.sh <scale_factor> [<write_perf_events>]"
   exit 1
 fi
 
@@ -25,4 +25,9 @@ if [[ ! -f inkfuse_bench ]]; then
   cd reproduce
 fi
 
-./inkfuse_bench -scale_factor $1
+if [[ $# -eq 1 ]]; then
+    ./inkfuse_bench -scale_factor $1
+fi
+if [[ $# -eq 2 ]]; then
+    ./inkfuse_bench -scale_factor $1 -perf_events $2
+fi
