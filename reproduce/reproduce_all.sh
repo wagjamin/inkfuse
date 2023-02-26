@@ -29,3 +29,7 @@ echo "Generating Plots"
 ./plot.py
 
 echo "Result plots can be found in `plots`"
+
+echo "Performing Microbenchmark for CPU Counters"
+./reproduce_inkfuse.sh 1 true
+./analyze_microbenchmark.py
