@@ -6,13 +6,19 @@ target. Target creates per-query observations which are aggreagted here.
 Normalization factors assume that everything was run at SF1.
 """
 
+import argparse
 import duckdb
 import os
 import pandas as pd
 
-f_name = 'inkfuse_bench_perf_result.csv'
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Get a detailed report of the microbenchmark results.')
+    parser.add_argument('scale_factor', type=str, nargs='?', default='1', help='The scale factor the microbenchmark was performed at.')
+    args = parser.parse_args()
+    
+    f_name = f'inkfuse_bench_perf_result_{args.scale_factor}.csv'
+
     con = duckdb.connect(database=':memory:')
     con.execute(f"CREATE TABLE results AS SELECT * FROM read_csv_auto('{f_name}', header=True);")
 
@@ -57,12 +63,12 @@ if __name__ == '__main__':
 
     res = con.execute(
             "SELECT ltrim(backend) as backend, n.query as query, " \
-            " cycles/(r.sf*tuples) as cycles, "
-            " instructions/(r.sf*tuples) as instructions, " \
-            " l1_misses/(r.sf*tuples) as l1_misses, " \
-            " llc_misses/(r.sf*tuples) as llc_misses, " \
-            " branch_misses/(r.sf*tuples) as branch_misses, " \
-            " ipc as ipc " \
+            " round(cycles/(r.sf*tuples), 2) as cycles, "
+            " round(instructions/(r.sf*tuples), 2) as instructions, " \
+            " round(l1_misses/(r.sf*tuples), 2) as l1_misses, " \
+            " round(llc_misses/(r.sf*tuples), 2) as llc_misses, " \
+            " round(branch_misses/(r.sf*tuples), 2) as branch_misses, " \
+            " round(ipc, 2) as ipc " \
             " FROM aggregated r INNER JOIN normalizer n ON (ltrim(r.query) = n.query) "  \
             " WHERE ltrim(backend) != 'hybrid'" \
             " ORDER BY n.query, ltrim(backend)"
