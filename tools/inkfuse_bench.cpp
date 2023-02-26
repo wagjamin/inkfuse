@@ -76,12 +76,12 @@ int main(int argc, char* argv[]) {
    // Benchmark each backend.
    for (const auto& [backend_name, backend_mode] : backends) {
       std::cout << "Benchmarking backend " << backend_name << "\n";
-      // Measurements.
-      std::vector<std::vector<size_t>> milliseconds(reps);
+      // Measurements. Pairs of (total_time <milliseconds>, compilation_stalled <microseconds>).
+      std::vector<std::vector<std::pair<size_t, size_t>>> measurements(reps);
 
       // Run the queries.
       for (size_t k = 0; k < queries.size(); ++k) {
-         auto& observations = milliseconds[k];
+         auto& observations = measurements[k];
          observations.reserve(reps);
          const auto& [q_name, query_f] = queries[k];
          std::cout << "Benchmarking query " << q_name << "\n";
@@ -89,11 +89,11 @@ int main(int argc, char* argv[]) {
             auto root = query_f(schema);
             auto control_block = std::make_shared<PipelineExecutor::QueryControlBlock>(std::move(root));
             const auto start = std::chrono::steady_clock::now();
-            QueryExecutor::runQuery(control_block, backend_mode, q_name + "_" + std::to_string(rep));
+            const auto query_stats = QueryExecutor::runQuery(control_block, backend_mode, q_name + "_" + std::to_string(rep));
             const auto stop = std::chrono::steady_clock::now();
             const auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count();
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
-            observations.push_back(millis);
+            observations.emplace_back(millis, query_stats.codegen_microseconds);
          }
       }
 
@@ -106,8 +106,8 @@ int main(int argc, char* argv[]) {
       }
       for (size_t k = 0; k < queries.size(); ++k) {
          const auto& [q_name, _] = queries[k];
-         for (auto& measurement : milliseconds[k]) {
-            outfile << "inkfuse_" << backend_name << "," << q_name << "," << sf << "," << measurement << "\n";
+         for (auto& measurement : measurements[k]) {
+            outfile << "inkfuse_" << backend_name << "," << q_name << "," << sf << "," << measurement.first << "," << measurement.second << "\n";
          }
       }
       outfile.close();

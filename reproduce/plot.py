@@ -6,7 +6,7 @@ import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 
-matplotlib.rcParams.update({'font.size': 18})
+matplotlib.rcParams.update({'font.size': 20})
 
 systems = ['duckdb', 'umbra_optimized', 'umbra_adaptive', 'inkfuse_fused', 'inkfuse_interpreted', 'inkfuse_hybrid']
 # Colors of the different systems 
@@ -14,6 +14,7 @@ systems = ['duckdb', 'umbra_optimized', 'umbra_adaptive', 'inkfuse_fused', 'inkf
 # colors = ['#df6f00', '#c5d31f', '#8d9511','#daa6f5','#b056d0', '#782993']
 # DuckDB blue
 colors = ['#04718a', '#c5d31f', '#8d9511','#daa6f5','#b056d0', '#782993']
+global_hatch = '///'
 
 # Legend labels of the different systems
 label_map = {
@@ -29,7 +30,7 @@ scale_factors = ['0.01', '0.1', '1', '10']
 
 if __name__ == '__main__':
     con = duckdb.connect(database=':memory:')
-    con.execute("CREATE TABLE results (engine text, query text, sf text, latency int);")
+    con.execute("CREATE TABLE results (engine text, query text, sf text, latency int, codegen_stalled int);")
 
     # Insert engine results
     for engine in systems:
@@ -53,9 +54,11 @@ if __name__ == '__main__':
         pos_x = idx // 2
         offset = -0.5
         for engine_idx, engine in enumerate(systems):
+            # Get the queries with minimal latency for the different queries and engines.
             res = con.execute(
-                f"SELECT query, engine, min(latency) as latency "
-                f"FROM results WHERE sf = '{sf}' and engine = '{engine}' "
+                f"SELECT query, engine, first(latency) as latency, first(codegen_stalled) as codegen_stalled "
+                f"FROM results o WHERE sf = '{sf}' and engine = '{engine}' "
+                f"  and latency = (SELECT min(latency) FROM results i WHERE sf = '{sf}' and engine = '{engine}' and i.query = o.query)"
                 f"GROUP BY query, engine "
                 f"ORDER BY query").fetchnumpy()
             if len(res['latency']) != 6:
@@ -68,10 +71,16 @@ if __name__ == '__main__':
             bar_color = len(queries) * [colors[engine_idx]]
             if (pos_x == 0):
                 # Milliseconds
-                axs[pos_x, pos_y].bar(x_vals + offset, res['latency'], width=0.2, label=label_map[engine] if idx == 0 else "", color=bar_color)
+                stalled = res['codegen_stalled'] / 1000
+                non_stalled = res['latency'] - stalled
+                axs[pos_x, pos_y].bar(x_vals + offset, stalled, width=0.2, color=bar_color, edgecolor= 'black', hatch = global_hatch)
+                axs[pos_x, pos_y].bar(x_vals + offset, non_stalled, bottom=stalled, width=0.2, label=label_map[engine] if idx == 0 else "", color=bar_color, edgecolor= 'black')
             else:
+                stalled = res['codegen_stalled'] / 1000000
+                non_stalled = res['latency'] / 1000 - stalled
                 # Seconds
-                axs[pos_x, pos_y].bar(x_vals + offset, res['latency'] / 1000, width=0.2, label=label_map[engine] if idx == 0 else "", color=bar_color)
+                axs[pos_x, pos_y].bar(x_vals + offset, stalled, width=0.2, color=bar_color, edgecolor= 'black', hatch = global_hatch)
+                axs[pos_x, pos_y].bar(x_vals + offset, non_stalled, bottom=stalled, width=0.2, label=label_map[engine] if idx == 0 else "", color=bar_color, edgecolor = 'black')
             axs[pos_x, pos_y].set_xticks(x_vals, queries)
             if (pos_y == 0 and pos_x == 0):
                 axs[pos_x, pos_y].set_ylabel('Latency [ms]')
@@ -87,10 +96,11 @@ if __name__ == '__main__':
     # 1. Aligned y labels
     fig.align_ylabels(axs[:, 0])
     # 2. Better figure spacing
-    plt.subplots_adjust(wspace=0.07, hspace=0.25)
+    plt.subplots_adjust(wspace=0.065, hspace=0.25)
     # 3. Nicer colors
     # 4. Space legend (actually okay)
     # plt.subplots_adjust(top=0.82)
+    plt.subplots_adjust(left=0.01, right=0.99)
     # plt.show()
     os.makedirs('plots', exist_ok=True)
     plt.savefig('plots/main.pdf', bbox_inches='tight', dpi=300)

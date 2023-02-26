@@ -8,8 +8,8 @@ namespace inkfuse {
 /// Central query executor responsible for executing a query through incremental fusion.
 namespace QueryExecutor {
 
-/// Run a complete query to completion.
-void runQuery(PipelineExecutor::QueryControlBlockArc control_block_, PipelineExecutor::ExecutionMode mode, const std::string& qname = "query");
+/// Run a complete query to completion. Returns aggregated (summed) pipeline statistics.
+PipelineExecutor::PipelineStats runQuery(PipelineExecutor::QueryControlBlockArc control_block_, PipelineExecutor::ExecutionMode mode, const std::string& qname = "query");
 
 };
 
