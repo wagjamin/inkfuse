@@ -4,7 +4,7 @@
 
 namespace inkfuse {
 
-void QueryExecutor::runQuery(PipelineExecutor::QueryControlBlockArc control_block_, PipelineExecutor::ExecutionMode mode, const std::string& qname) {
+PipelineExecutor::PipelineStats QueryExecutor::runQuery(PipelineExecutor::QueryControlBlockArc control_block_, PipelineExecutor::ExecutionMode mode, const std::string& qname) {
    const auto& pipes = control_block_->dag.getPipelines();
    std::list<PipelineExecutor> executors;
    for (size_t idx = 0; idx < pipes.size(); ++idx) {
@@ -17,10 +17,13 @@ void QueryExecutor::runQuery(PipelineExecutor::QueryControlBlockArc control_bloc
          executor.preparePipeline(PipelineExecutor::ExecutionMode::Fused);
       }
    }
+   PipelineExecutor::PipelineStats total_stats;
    for (auto& executor : executors) {
       // Step 2: Run the pipelines.
-      executor.runPipeline();
+      const auto pipe_stats = executor.runPipeline();
+      total_stats.codegen_microseconds += pipe_stats.codegen_microseconds;
    }
+   return total_stats;
 }
 
 } // namespace inkfuse

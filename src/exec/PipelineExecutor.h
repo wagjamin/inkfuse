@@ -57,8 +57,13 @@ struct PipelineExecutor {
    /// off asynchronous preparation work.
    void preparePipeline(ExecutionMode prep_mode);
 
+   /// Statistics about the execution of a finished pipeline.
+   struct PipelineStats {
+      /// How many microseconds was execution stalled on waiting for code generation?
+      size_t codegen_microseconds = 0;
+   };
    /// Run the full pipeline to completion.
-   void runPipeline();
+   PipelineStats runPipeline();
 
    /// Run only a single morsel.
    /// @return true if there are more morsels.

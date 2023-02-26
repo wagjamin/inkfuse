@@ -44,7 +44,9 @@ void PipelineExecutor::preparePipeline(ExecutionMode prep_mode) {
    }
 }
 
-void PipelineExecutor::runPipeline() {
+PipelineExecutor::PipelineStats PipelineExecutor::runPipeline() {
+   PipelineStats result;
+   const auto start_execution_ts = std::chrono::steady_clock::now();
    // Scope guard for memory compile_state->context and flags.
    ExecutionContext::RuntimeGuard guard{compile_state->context};
    if (mode == ExecutionMode::Fused) {
@@ -54,6 +56,9 @@ void PipelineExecutor::runPipeline() {
          // to be ready.
          compilation_job.join();
       }
+      const auto compilation_done_ts = std::chrono::steady_clock::now();
+      // Store how long we were stalled waiting for compilation to finish.
+      result.codegen_microseconds = std::chrono::duration_cast<std::chrono::microseconds>(compilation_done_ts - start_execution_ts).count();
       compile_state->compiled->setUpState();
       while (std::holds_alternative<Suboperator::PickedMorsel>(runFusedMorsel())) {}
    } else if (mode == ExecutionMode::Interpreted) {
@@ -127,6 +132,7 @@ void PipelineExecutor::runPipeline() {
          compilation_job.detach();
       }).detach();
    }
+   return result;
 }
 
 Suboperator::PickMorselResult PipelineExecutor::runMorsel() {
