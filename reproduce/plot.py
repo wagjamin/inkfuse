@@ -86,12 +86,14 @@ if __name__ == '__main__':
                 axs[pos_x, pos_y].set_ylabel('Latency [ms]')
             if (pos_y == 0 and pos_x == 1):
                 axs[pos_x, pos_y].set_ylabel('Latency [s]')
-            if (pos_x == 1):
-                axs[pos_x, pos_y].set_xlabel('TPC-H Query')
-            axs[pos_x, pos_y].set_title(f'Scale Factor {sf}')
+            # if (pos_x == 1):
+                # axs[pos_x, pos_y].set_xlabel('TPC-H Query')
+            axs[pos_x, pos_y].set_title(f'TPC-H Scale Factor {sf}', y=0.85)
             axs[pos_x, pos_y].locator_params(axis='y', nbins=6) 
             offset += 0.2
-    fig.legend(loc='upper center', ncol=len(systems), fancybox=True)
+    # HACK - Add empty bar to just get the legend to contain compliation latency
+    axs[0, 0].bar(x_vals + offset - 0.19, [0, 0, 0, 0, 0, 0], bottom=[0, 0, 0, 0, 0, 0], width=0.00001, label='Compilation Latency', hatch = global_hatch, color='white', edgecolor = 'black')
+    fig.legend(loc='upper center', ncol=len(systems) + 1, fancybox=True, labelspacing=0.1, handlelength=1.8, handletextpad=0.4, columnspacing=1.0)
     # Different style things
     # 1. Aligned y labels
     fig.align_ylabels(axs[:, 0])
