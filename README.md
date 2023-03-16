@@ -25,7 +25,7 @@ Let's take a look at the main directories:
 - `exec`: Code that takes a suboperator DAG and executes it.
 - `interpreter`: Generates the InkFuse vectorized interpreter from the suboperators.
 - `runtime`: Runtime structs like hash tables that can be accessed from within the generated code.
-- `sotrage`: Backing storage engine containing relations of certain types. A table is effectively a collection of vectors containing raw data. This part of InkFuse probably received the least amount of love. It's all about being functional.
+- `storage`: Backing storage engine containing relations of certain types. A table is effectively a collection of vectors containing raw data. This part of InkFuse probably received the least amount of love. It's all about being functional.
 
 ## Configuring Inkfuse 
 Inkfuse comes with the following CMake settings that can be configured:
