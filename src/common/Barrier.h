@@ -1,3 +1,6 @@
+#ifndef INKFUSE_BARRIER_H
+#define INKFUSE_BARRIER_H
+
 #include <condition_variable>
 #include <functional>
 #include <mutex>
@@ -34,3 +37,5 @@ struct OnceBarrier {
 };
 
 } // namespace inkfuse
+
+#endif //INKFUSE_BARRIER_H
