@@ -31,7 +31,7 @@ struct AggregatorSubopTest {
       std::vector<Column*> cols;
       cols.resize(5);
       for (const auto iu : target_iu_idxs) {
-         auto& col = ctx.getColumn(src_ius[iu]);
+         auto& col = ctx.getColumn(src_ius[iu], 0);
          col.size = 1000;
          cols[iu] = &col;
       }
@@ -80,13 +80,13 @@ struct AggregatorSubopTestCount : public AggregatorSubopTest, public ::testing::
       static_cast<AggregatorSubop&>(op).attachRuntimeParams(std::move(params));
       PipelineExecutor::ExecutionMode mode = std::get<0>(GetParam());
       repiped = pipe.repipeAll(0, pipe.getSubops().size());
-      exec.emplace(*repiped, mode, "AggregatorSubopCount_init_" + std::to_string(std::get<1>(GetParam())));
+      exec.emplace(*repiped, 1, mode, "AggregatorSubopCount_init_" + std::to_string(std::get<1>(GetParam())));
    }
 
    /// Set the count state at a given index.
    void setCountState(const std::function<int64_t(size_t)>& target_state) {
       auto& ctx = exec->getExecutionContext();
-      auto agg_state = reinterpret_cast<char**>(ctx.getColumn(src_ius[0]).raw_data);
+      auto agg_state = reinterpret_cast<char**>(ctx.getColumn(src_ius[0], 0).raw_data);
       for (size_t k = 0; k < block_size; ++k) {
          *reinterpret_cast<int64_t*>(agg_state[k] + std::get<1>(GetParam())) = target_state(k);
       }
@@ -95,7 +95,7 @@ struct AggregatorSubopTestCount : public AggregatorSubopTest, public ::testing::
    /// Check the count state at a given index.
    void checkCountState(const std::function<int64_t(size_t)>& expected_state) {
       auto& ctx = exec->getExecutionContext();
-      auto agg_state = reinterpret_cast<char**>(ctx.getColumn(src_ius[0]).raw_data);
+      auto agg_state = reinterpret_cast<char**>(ctx.getColumn(src_ius[0], 0).raw_data);
       for (size_t k = 0; k < block_size; ++k) {
          EXPECT_EQ(*reinterpret_cast<int64_t*>(agg_state[k] + std::get<1>(GetParam())), expected_state(k));
       }
@@ -118,7 +118,7 @@ TEST_P(AggregatorSubopTestCount, test_update_from_zero) {
    // Counts should be zero before the first update.
    checkCountState([](size_t) { return 0; });
    // Run the block.
-   ASSERT_NO_THROW(exec->runMorsel());
+   ASSERT_NO_THROW(exec->runMorsel(0));
    // Counts should be one everywhere.
    checkCountState([](size_t) { return 1; });
 }
@@ -129,12 +129,12 @@ TEST_P(AggregatorSubopTestCount, test_update_higher) {
    genChunkImpl(exec->getExecutionContext(), 0);
    setCountState([](size_t idx) { return 2 * idx; });
    // Run the block.
-   ASSERT_NO_THROW(exec->runMorsel());
+   ASSERT_NO_THROW(exec->runMorsel(0));
    // Count should be updated by one.
    checkCountState([](size_t idx) { return 2 * idx + 1; });
    // Run another chunk on the same values.
    genChunkImpl(exec->getExecutionContext(), 0);
-   ASSERT_NO_THROW(exec->runMorsel());
+   ASSERT_NO_THROW(exec->runMorsel(0));
    checkCountState([](size_t idx) { return 2 * idx + 2; });
 }
 
@@ -144,12 +144,12 @@ TEST_P(AggregatorSubopTestCount, test_update_mixed) {
    genChunkImpl(exec->getExecutionContext(), 0);
    setCountState([](size_t idx) { return idx % 2 == 0 ? 0 : 2 * idx; });
    // Run the block.
-   ASSERT_NO_THROW(exec->runMorsel());
+   ASSERT_NO_THROW(exec->runMorsel(0));
    // Count should be updated by one everywhere.
    checkCountState([](size_t idx) { return idx % 2 == 0 ? 1 : 2 * idx + 1; });
    // Run another chunk on the same values.
    genChunkImpl(exec->getExecutionContext(), 0);
-   ASSERT_NO_THROW(exec->runMorsel());
+   ASSERT_NO_THROW(exec->runMorsel(0));
    checkCountState([](size_t idx) { return idx % 2 == 0 ? 2 : 2 * idx + 2; });
 }
 

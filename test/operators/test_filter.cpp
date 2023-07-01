@@ -103,12 +103,12 @@ TEST_P(FilterTParametrized, exec) {
 
    // Get ready for execution on the parametrized execution mode.
    PipelineExecutor::ExecutionMode mode = GetParam();
-   PipelineExecutor exec(*repiped, mode, "FilterT_exec");
+   PipelineExecutor exec(*repiped, 1, mode, "FilterT_exec");
 
    // Prepare input chunk.
    auto& ctx = exec.getExecutionContext();
-   auto& c_in1 = ctx.getColumn(read_col_1);
-   auto& c_in2 = ctx.getColumn(read_col_2);
+   auto& c_in1 = ctx.getColumn(read_col_1, 0);
+   auto& c_in2 = ctx.getColumn(read_col_2, 0);
 
    c_in1.size = 10;
    c_in2.size = 10;
@@ -124,10 +124,10 @@ TEST_P(FilterTParametrized, exec) {
    }
 
    // And run a single morsel.
-   exec.runMorsel();
+   exec.runMorsel(0);
    // Get the output.
-   auto& col_filter_1 = ctx.getColumn(*filter->getOutput()[0]);
-   auto& col_filter_2 = ctx.getColumn(*filter->getOutput()[1]);
+   auto& col_filter_1 = ctx.getColumn(*filter->getOutput()[0], 0);
+   auto& col_filter_2 = ctx.getColumn(*filter->getOutput()[1], 0);
 
    for (uint16_t k = 0; k < 5; ++k) {
       EXPECT_EQ(reinterpret_cast<uint16_t*>(col_filter_1.raw_data)[k], 2*k + 1);

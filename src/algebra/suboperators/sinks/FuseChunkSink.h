@@ -21,15 +21,12 @@ struct FuseChunkSinkStateRuntimeParams {
    uint64_t* size;
 };
 
-struct FuseChunkSink : public Suboperator {
-
+struct FuseChunkSink : public TemplatedSuboperator<FuseChunkSinkState> {
    static std::unique_ptr<FuseChunkSink> build(const RelAlgOp* source, const IU& iu_to_write);
 
    void consume(const IU& iu, CompilationContext& context) override;
 
-   void setUpState(const ExecutionContext& context) override;
-   void tearDownState() override;
-   void* accessState() const override;
+   void setUpStateImpl(const ExecutionContext& context) override;
 
    std::string id() const override;
 
@@ -38,10 +35,7 @@ struct FuseChunkSink : public Suboperator {
 
    private:
    FuseChunkSink(const RelAlgOp* source, const IU& iu_to_write);
-   /// Runtime state.
-   std::unique_ptr<FuseChunkSinkState> state;
 };
-
 }
 
 

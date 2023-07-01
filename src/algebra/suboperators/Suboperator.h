@@ -2,6 +2,7 @@
 #define INKFUSE_SUBOPERATOR_H
 
 #include "algebra/IU.h"
+#include "exec/ExecutionContext.h"
 #include <memory>
 #include <optional>
 #include <set>
@@ -13,7 +14,6 @@
 namespace inkfuse {
 
 struct CompilationContext;
-struct ExecutionContext;
 struct FuseChunk;
 struct RelAlgOp;
 struct Pipeline;
@@ -86,8 +86,8 @@ struct Suboperator {
    virtual void setUpState(const ExecutionContext& context){};
    /// Tear down the state needed by this operator.
    virtual void tearDownState(){};
-   /// Get a raw pointer to the state of this operator.
-   virtual void* accessState() const { return nullptr; };
+   /// Get a raw pointer to the local state of a thread working on this operator.
+   virtual void* accessState(size_t thread_id) const { return nullptr; };
 
    struct NoMoreMorsels {};
    struct PickedMorsel {
@@ -100,7 +100,10 @@ struct Suboperator {
    /// Either returns that there are no more morsels, or progress [0, 1]
    /// Pick a morsel of work. Only relevant for source operators.
    /// Returns the size of the picked morsel - or 0 if picking was unsuccessful.
-   virtual PickMorselResult pickMorsel() { throw std::runtime_error("Operator does not support picking morsels"); }
+   /// Thread safe - different threads can pick morsels in parallel.
+   virtual PickMorselResult pickMorsel(size_t thread_id) {
+      throw std::runtime_error("Operator does not support picking morsels");
+   }
 
    /// Build a unique identifier for this suboperator (unique given the parameter set).
    /// This is neded to effectively use the fragment cache during vectorized interpretation.
@@ -130,24 +133,30 @@ struct Suboperator {
 struct EmptyState {};
 
 /// Templated suboperator providing functionality required across multiple operators.
-/// @tparam GlobalState execution state of the operator hooked up into the inkfuse runtime.
-template <class GlobalState>
+/// @tparam LocalState thread-local execution state of the operator hooked up into the inkfuse runtime.
+template <class LocalState>
 struct TemplatedSuboperator : public Suboperator {
+   using LocalStates = std::vector<LocalState>;
+
    void setUpState(const ExecutionContext& context) override {
-      if (state) {
+      if (states) {
          return;
       }
-      state = std::make_unique<GlobalState>();
+      states = std::make_unique<LocalStates>(context.getNumThreads());
       setUpStateImpl(context);
    };
 
    void tearDownState() override {
       tearDownStateImpl();
-      state.reset();
+      states.reset();
    };
 
-   void* accessState() const override {
-      return state.get();
+   void* accessState(size_t thread_id) const override {
+      if (!states) {
+         return nullptr;
+      }
+      assert(thread_id < states->size());
+      return &(*states)[thread_id];
    };
 
    protected:
@@ -161,8 +170,8 @@ struct TemplatedSuboperator : public Suboperator {
    /// Tear down the state - allows to run custom cleanup logic when a query is done.
    virtual void tearDownStateImpl(){};
 
-   /// Global state of the respective operator.
-   std::unique_ptr<GlobalState> state;
+   /// Thread local states for the threads working on this suboperator.
+   std::unique_ptr<LocalStates> states;
 };
 
 using SuboperatorArc = std::shared_ptr<Suboperator>;

@@ -17,8 +17,7 @@ std::unique_ptr<FuseChunkSink> FuseChunkSink::build(const RelAlgOp* source, cons
    return std::unique_ptr<FuseChunkSink>(new FuseChunkSink(source, iu_to_write));
 }
 
-FuseChunkSink::FuseChunkSink(const RelAlgOp* source, const IU& iu_to_write): Suboperator(source, {}, {&iu_to_write})
-{
+FuseChunkSink::FuseChunkSink(const RelAlgOp* source, const IU& iu_to_write) : TemplatedSuboperator(source, {}, {&iu_to_write}) {
 }
 
 void FuseChunkSink::consume(const IU& iu, CompilationContext& context) {
@@ -90,19 +89,13 @@ void FuseChunkSink::consume(const IU& iu, CompilationContext& context) {
    builder.appendStmt(std::move(update_counter));
 }
 
-void FuseChunkSink::setUpState(const ExecutionContext& context) {
-   state = std::make_unique<FuseChunkSinkState>();
-   auto& col = context.getColumn(**source_ius.begin());
-   state->raw_data = col.raw_data;
-   state->size = reinterpret_cast<uint64_t*>(&col.size);
-}
-
-void FuseChunkSink::tearDownState() {
-   state.reset();
-}
-
-void* FuseChunkSink::accessState() const {
-   return state.get();
+void FuseChunkSink::setUpStateImpl(const ExecutionContext& context) {
+   for (size_t thread_id = 0; thread_id < context.getNumThreads(); ++thread_id) {
+      auto& state = (*states)[thread_id];
+      auto& col = context.getColumn(**source_ius.begin(), thread_id);
+      state.raw_data = col.raw_data;
+      state.size = reinterpret_cast<uint64_t*>(&col.size);
+   }
 }
 
 std::string FuseChunkSink::id() const {

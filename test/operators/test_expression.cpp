@@ -92,12 +92,12 @@ TEST_P(ExpressionTParametrized, exec) {
 
    // Get ready for compiled execution.
    auto mode = GetParam();
-   PipelineExecutor exec(*repiped, mode, "ExpressionT_exec");
+   PipelineExecutor exec(*repiped, 1, mode, "ExpressionT_exec");
 
    // Prepare input chunk.
    auto& ctx = exec.getExecutionContext();
-   auto& c_in1 = ctx.getColumn(in1);
-   auto& c_in2 = ctx.getColumn(in2);
+   auto& c_in1 = ctx.getColumn(in1, 0);
+   auto& c_in2 = ctx.getColumn(in2, 0);
 
    c_in1.size = 10;
    c_in2.size = 10;
@@ -107,17 +107,17 @@ TEST_P(ExpressionTParametrized, exec) {
    }
 
    // And run a single morsel.
-   EXPECT_NO_THROW(exec.runMorsel());
+   EXPECT_NO_THROW(exec.runMorsel(0));
 
    // Check results.
    auto iu_c_3 = *pipe.getSubops()[0]->getIUs().begin();
    auto iu_c_4 = *pipe.getSubops()[1]->getIUs().begin();
    auto iu_c_5 = *pipe.getSubops()[2]->getIUs().begin();
    auto iu_c_6 = *pipe.getSubops()[3]->getIUs().begin();
-   auto& c_iu_c_3 = ctx.getColumn(*iu_c_3);
-   auto& c_iu_c_4 = ctx.getColumn(*iu_c_4);
-   auto& c_iu_c_5 = ctx.getColumn(*iu_c_5);
-   auto& c_iu_c_6 = ctx.getColumn(*iu_c_6);
+   auto& c_iu_c_3 = ctx.getColumn(*iu_c_3, 0);
+   auto& c_iu_c_4 = ctx.getColumn(*iu_c_4, 0);
+   auto& c_iu_c_5 = ctx.getColumn(*iu_c_5, 0);
+   auto& c_iu_c_6 = ctx.getColumn(*iu_c_6, 0);
    for (uint16_t k = 0; k < 10; ++k) {
       uint16_t c_3_expected = k + k + 1;
       uint16_t c_4_expected = k + 1;
@@ -161,11 +161,11 @@ TEST_P(ExpressionTParametrized, hash) {
 
    // Get ready for compiled execution.
    auto mode = GetParam();
-   PipelineExecutor exec(*repiped, mode, "ExpressionT_hash");
+   PipelineExecutor exec(*repiped, 1, mode, "ExpressionT_hash");
 
    // Prepare input chunk.
    auto& ctx = exec.getExecutionContext();
-   auto& c_in1 = ctx.getColumn(source);
+   auto& c_in1 = ctx.getColumn(source, 0);
 
    c_in1.size = 1000;
    for (uint16_t k = 0; k < 1000; ++k) {
@@ -173,13 +173,13 @@ TEST_P(ExpressionTParametrized, hash) {
    }
 
    // And run a single morsel.
-   EXPECT_NO_THROW(exec.runMorsel());
+   EXPECT_NO_THROW(exec.runMorsel(0));
 
    // Check results.
    const IU& hash_iu = **ops[2]->getIUs().begin();
    std::unordered_set<uint64_t> seen;
    // This set should have no hash collisions.
-   auto& hash_col = ctx.getColumn(hash_iu);
+   auto& hash_col = ctx.getColumn(hash_iu, 0);
    for (uint16_t k = 0; k < 1000; ++k) {
       auto elem = reinterpret_cast<uint64_t*>(hash_col.raw_data)[k];
       EXPECT_EQ(seen.count(elem), 0);

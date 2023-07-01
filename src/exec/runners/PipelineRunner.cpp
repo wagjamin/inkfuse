@@ -18,6 +18,7 @@ void PipelineRunner::setUpState() {
    if (set_up) {
       return;
    }
+
    for (auto& elem : pipe->getSubops()) {
       auto provider = dynamic_cast<FuseChunkSourceIUProvider*>(elem.get());
       if (provider) {
@@ -29,18 +30,22 @@ void PipelineRunner::setUpState() {
          provider->attachRuntimeParams(std::move(param));
       }
    }
-   states.reserve(pipe->getSubops().size());
+   states.resize(context.getNumThreads());
    for (const auto& op : pipe->getSubops()) {
-      // Don't re-initialize already initialized suboperators that are shared between backends.
-      if (!op->accessState()) {
+      // Set up the state for every suboperator.
+      if (!op->accessState(0)) {
+         // Don't re-initialize already initialized suboperators that are shared between backends.
          op->setUpState(context);
       }
-      states.push_back(op->accessState());
+      for (size_t thread_id = 0; thread_id < context.getNumThreads(); ++thread_id) {
+         // Every suboperator has local state for every thread.
+         states[thread_id].push_back(op->accessState(thread_id));
+      }
    }
    set_up = true;
 }
 
-Suboperator::PickMorselResult PipelineRunner::runMorsel(bool force_pick) {
+Suboperator::PickMorselResult PipelineRunner::runMorsel(size_t thread_id, bool force_pick) {
    assert(prepared && fct);
 
    // By default we assume a morsel was picked successfully by the source of the pipeline.
@@ -51,7 +56,7 @@ Suboperator::PickMorselResult PipelineRunner::runMorsel(bool force_pick) {
    if (fuseChunkSource || force_pick) {
       // If we are driven by a fuse chunk source or are forced to pick, we have to
       // pick a morsel.
-      morsel = pipe->suboperators[0]->pickMorsel();
+      morsel = pipe->suboperators[0]->pickMorsel(thread_id);
 
       if (auto picked = std::get_if<Suboperator::PickedMorsel>(&morsel)) {
          // FIXME - HACKFIX - Tread With Caution
@@ -62,29 +67,28 @@ Suboperator::PickMorselResult PipelineRunner::runMorsel(bool force_pick) {
             if (dynamic_cast<KeyPackerSubop*>(subop.get())) {
                assert(subop->getSourceIUs().size() == 2);
                const IU* scratch_pad_iu = subop->getSourceIUs()[1];
-               context.getColumn(*scratch_pad_iu).size = picked->morsel_size;
+               context.getColumn(*scratch_pad_iu, thread_id).size = picked->morsel_size;
             }
          }
       }
    }
    if (std::holds_alternative<Suboperator::PickedMorsel>(morsel)) {
-      fct(states.data());
+      fct(states[thread_id].data());
    }
    return morsel;
 }
 
-void PipelineRunner::prepareForRerun() {
+void PipelineRunner::prepareForRerun(size_t thread_id) {
    // When re-running a morsel, we need to clear the sinks from any intermediate "bad" state.
    // The previous (failed) run of the morsel could have written partial data into the output
    // column that now needs to get purged.
    for (const auto& subop : pipe->getSubops()) {
       if (subop->isSink()) {
          for (const IU* sinked_iu : subop->getSourceIUs()) {
-            auto& col = context.getColumn(*sinked_iu);
+            auto& col = context.getColumn(*sinked_iu, thread_id);
             col.size = 0;
          }
       }
    }
 }
-
 }

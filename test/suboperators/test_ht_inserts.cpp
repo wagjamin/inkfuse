@@ -28,8 +28,8 @@ struct HtInsertTest : public ::testing::TestWithParam<PipelineExecutor::Executio
    }
 
    void prepareMorsel(const ExecutionContext& ctx, size_t morsel_size, size_t offset) {
-      auto& col_keys = ctx.getColumn(keys);
-      auto& col_to_pack = ctx.getColumn(to_pack);
+      auto& col_keys = ctx.getColumn(keys, 0);
+      auto& col_to_pack = ctx.getColumn(to_pack, 0);
       for (uint32_t k = 0; k < morsel_size; ++k) {
         reinterpret_cast<uint32_t*>(col_keys.raw_data)[k] = k + offset;
         reinterpret_cast<uint32_t*>(col_to_pack.raw_data)[k] = 2 * (k + offset) + 12;
@@ -53,14 +53,14 @@ TEST_P(HtInsertTest, insert_trigger_resize) {
     auto& pipe = dag.getCurrentPipeline();
     auto repiped = pipe.repipeRequired(0, 2);
     // Run the pipeline.
-    PipelineExecutor exec(*repiped, GetParam(), "HtInsert_exec");
+    PipelineExecutor exec(*repiped, 1, GetParam(), "HtInsert_exec");
     const auto& ctx = exec.getExecutionContext();
     // Morsel with 32 keys should trigger a first resize to 64 elements.
     prepareMorsel(ctx, 32, 0);
-    exec.runMorsel();
+    exec.runMorsel(0);
     // Morsel with 1024 keys should trigger multiple additional resizes.
     prepareMorsel(ctx, 1024, 32);
-    exec.runMorsel();
+    exec.runMorsel(0);
     // Now we need to check that we have everything we need.
     EXPECT_EQ(ht.size(), 1024 + 32);
     for (uint32_t key = 0; key < 1024 + 32; ++key) {

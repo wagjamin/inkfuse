@@ -12,7 +12,7 @@ struct FuseChunkSourceDriver final : public LoopDriver {
    static std::unique_ptr<FuseChunkSourceDriver> build();
 
    /// Pick then next set of tuples from the table scan up to the maximum chunk size.
-   PickMorselResult pickMorsel() override;
+   PickMorselResult pickMorsel(size_t thread_id) override;
 
    std::string id() const override;
 
@@ -23,7 +23,8 @@ struct FuseChunkSourceDriver final : public LoopDriver {
    private:
    /// Set up the table scan driver in the respective base pipeline.
    FuseChunkSourceDriver();
-   Column* col = nullptr;
+   /// The column that is being accessed by the different threads.
+   std::vector<Column*> cols;
 };
 
 struct FuseChunkSourceIUProvider final : public IndexedIUProvider {

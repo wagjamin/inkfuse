@@ -14,8 +14,7 @@ void RuntimeFunctionSubop::registerRuntime() {
       .addMember("this_object", IR::Pointer::build(IR::Void::build()));
 }
 
-std::unique_ptr<RuntimeFunctionSubop> RuntimeFunctionSubop::htInsert(const inkfuse::RelAlgOp* source, const inkfuse::IU* pointers_, const inkfuse::IU& key_, std::vector<const IU*> pseudo_ius_, void* hash_table_)
-{
+std::unique_ptr<RuntimeFunctionSubop> RuntimeFunctionSubop::htInsert(const inkfuse::RelAlgOp* source, const inkfuse::IU* pointers_, const inkfuse::IU& key_, std::vector<const IU*> pseudo_ius_, void* hash_table_) {
    std::string fct_name = "ht_sk_insert";
    std::vector<const IU*> in_ius{&key_};
    for (auto pseudo : pseudo_ius_) {
@@ -40,8 +39,7 @@ std::unique_ptr<RuntimeFunctionSubop> RuntimeFunctionSubop::htInsert(const inkfu
          hash_table_));
 }
 
-std::unique_ptr<RuntimeFunctionSubop> RuntimeFunctionSubop::htLookupDisable(const RelAlgOp* source, const IU& pointers_, const IU& keys_, std::vector<const IU*> pseudo_ius_, void* hash_table_)
-{
+std::unique_ptr<RuntimeFunctionSubop> RuntimeFunctionSubop::htLookupDisable(const RelAlgOp* source, const IU& pointers_, const IU& keys_, std::vector<const IU*> pseudo_ius_, void* hash_table_) {
    std::string fct_name = "ht_sk_lookup_disable";
    std::vector<const IU*> in_ius{&keys_};
    for (auto pseudo : pseudo_ius_) {
@@ -64,8 +62,7 @@ std::unique_ptr<RuntimeFunctionSubop> RuntimeFunctionSubop::htLookupDisable(cons
          hash_table_));
 }
 
-std::unique_ptr<RuntimeFunctionSubop> RuntimeFunctionSubop::htNoKeyLookup(const RelAlgOp* source, const IU& pointers_, const IU& input_dependency, void* hash_table_)
-{
+std::unique_ptr<RuntimeFunctionSubop> RuntimeFunctionSubop::htNoKeyLookup(const RelAlgOp* source, const IU& pointers_, const IU& input_dependency, void* hash_table_) {
    std::string fct_name = "ht_nk_lookup";
    std::vector<const IU*> in_ius{&input_dependency};
    std::vector<const IU*> out_ius_{&pointers_};
@@ -168,7 +165,9 @@ void RuntimeFunctionSubop::consumeAllChildren(CompilationContext& context) {
 }
 
 void RuntimeFunctionSubop::setUpStateImpl(const ExecutionContext& context) {
-   state->this_object = static_cast<void*>(this_object);
+   for (auto& state : *states) {
+      state.this_object = static_cast<void*>(this_object);
+   }
 }
 
 std::string RuntimeFunctionSubop::id() const {

@@ -15,7 +15,8 @@ void StepwiseExecutor::prepareQuery()
    for (size_t idx = 0; idx < pipes.size(); ++idx) {
       // Step 2: Set up the executors for the pipelines.
       const auto& pipe = pipes[idx];
-      auto& executor = executors.emplace_back(*pipe, mode, qname + "_pipe_" + std::to_string(idx), control_block);
+      // TODO(benjamin) - run with multiple threads
+      auto& executor = executors.emplace_back(*pipe, 1, mode, qname + "_pipe_" + std::to_string(idx), control_block);
       if (mode != PipelineExecutor::ExecutionMode::Interpreted) {
          // If we have to generate code, already kick off asynchronous compilation.
          // This hides compilation latency much better than kicking it off at the beginning of each pipeline.
@@ -41,7 +42,7 @@ PipelineExecutor::PipelineStats runQuery(PipelineExecutor::QueryControlBlockArc 
    StepwiseExecutor executor(std::move(control_block_), mode, qname);
    // Kick off preparation.
    executor.prepareQuery();
-   // And instantly start execution - backend will wait if compilation is not done yet.
+   // And instantly start execution - the backend will wait if compilation is not done yet.
    return executor.runQuery();
 }
 

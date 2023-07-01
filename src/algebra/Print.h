@@ -2,6 +2,7 @@
 #define INKFUSE_PRINT_H
 
 #include "algebra/RelAlgOp.h"
+#include <mutex>
 #include <optional>
 #include <ostream>
 
@@ -13,10 +14,10 @@ struct ExecutionContext;
 struct PrettyPrinter {
    PrettyPrinter(std::vector<const IU*> ius, std::vector<std::string> colnames, std::optional<size_t> limit);
 
-   /// Tell the pretty printer that a morsel is materialized in the sinks
-   /// and can be written out.
+   /// Tell the pretty printer that a morsel is materialized in the sink of a specific
+   /// thread and can be written out.
    /// @return true if the output is closed.
-   bool markMorselDone(ExecutionContext& ctx);
+   bool markMorselDone(ExecutionContext& ctx, size_t thread_id);
 
    /// Set the output stream for this PrettyPrinter.
    void setOstream(std::ostream& ostream);
@@ -27,6 +28,9 @@ struct PrettyPrinter {
    private:
    friend class Print;
 
+   /// Mutex protecting multiple thread from writing at the same time.
+   /// Given that query results are usually pretty small this is okay.
+   std::mutex write_mut;
    /// The IUs we produce - in the given order.
    std::vector<const IU*> ius;
    /// The column names.

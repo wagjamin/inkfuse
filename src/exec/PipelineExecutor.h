@@ -18,7 +18,7 @@ struct InterruptableJob;
 /// It uses the PipelineRunners in the background to execute a fraction of the overall pipeline.
 struct PipelineExecutor {
    /// Control block keeping a relational algebra tree alive until all pipelines and
-   /// their spawned background tasks are ond executing.
+   /// their spawned background tasks are done executing.
    struct QueryControlBlock {
       explicit QueryControlBlock(RelAlgOpPtr root_) : root(std::move(root_)) {
          root->decay(dag);
@@ -45,7 +45,7 @@ struct PipelineExecutor {
    /// @param pipe_ the backing pipe to be executed
    /// @param mode_ the execution mode to execute the pipeline in
    /// @param full_name_ the name of the full compiled binary
-   PipelineExecutor(Pipeline& pipe_, ExecutionMode mode_ = ExecutionMode::Hybrid, std::string full_name_ = "", QueryControlBlockArc control_block_ = nullptr);
+   PipelineExecutor(Pipeline& pipe_, size_t num_threads_, ExecutionMode mode_ = ExecutionMode::Hybrid, std::string full_name_ = "", QueryControlBlockArc control_block_ = nullptr);
 
    ~PipelineExecutor() noexcept;
 
@@ -67,13 +67,13 @@ struct PipelineExecutor {
 
    /// Run only a single morsel.
    /// @return true if there are more morsels.
-   Suboperator::PickMorselResult runMorsel();
+   Suboperator::PickMorselResult runMorsel(size_t thread_id);
 
    private:
    /// Run a full morsel through the compiled path.
-   Suboperator::PickMorselResult runFusedMorsel();
+   Suboperator::PickMorselResult runFusedMorsel(size_t thread_id);
    /// Run a full morsel through the interpreted path.
-   Suboperator::PickMorselResult runInterpretedMorsel();
+   Suboperator::PickMorselResult runInterpretedMorsel(size_t thread_id);
 
    /// Set up interpreted state in a synchronous way.
    void setUpInterpreted();
@@ -81,12 +81,12 @@ struct PipelineExecutor {
    /// Returns a handle to a thread performing asynchronous compilation.
    std::thread setUpFusedAsync();
    /// Clean up the fuse chunks for a new morsel.
-   void cleanUp();
+   void cleanUp(size_t thread_id);
 
    /// Asynchronous state used for background compilation that may outlive this PipelineExecutor.
    struct AsyncCompileState {
-      AsyncCompileState(QueryControlBlockArc control_block_, Pipeline& pipe)
-         : context(pipe), control_block(std::move(control_block_)){};
+      AsyncCompileState(QueryControlBlockArc control_block_, Pipeline& pipe, size_t num_threads_)
+         : context(pipe, num_threads_), control_block(std::move(control_block_)){};
 
       /// Lock protecting shared state with the background thread doing async compilation.
       std::mutex compiled_lock;

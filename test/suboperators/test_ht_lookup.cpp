@@ -24,7 +24,7 @@ struct HtLookupSubopTest : public ::testing::TestWithParam<PipelineExecutor::Exe
       auto& ops = pipe_simple.getSubops();
       pipe = pipe_simple.repipeAll(0, pipe_simple.getSubops().size());
       PipelineExecutor::ExecutionMode mode = GetParam();
-      exec.emplace(*pipe, mode, "HtLookupSubop_exec");
+      exec.emplace(*pipe, 1, mode, "HtLookupSubop_exec");
    };
 
    void addValuesToHashTable() {
@@ -46,16 +46,16 @@ struct HtLookupSubopTest : public ::testing::TestWithParam<PipelineExecutor::Exe
 TEST_P(HtLookupSubopTest, lookup_existing) {
    // Prepare input chunk.
    auto& ctx = exec->getExecutionContext();
-   auto& keys = ctx.getColumn(key_iu);
+   auto& keys = ctx.getColumn(key_iu, 0);
    for (uint64_t k = 0; k < 1000; ++k) {
       reinterpret_cast<uint64_t*>(keys.raw_data)[k] = k;
    }
    keys.size = 1000;
 
    // Run the morsel doing the has table lookups.
-   exec->runMorsel();
+   exec->runMorsel(0);
 
-   auto& pointers = ctx.getColumn(ptr_iu);
+   auto& pointers = ctx.getColumn(ptr_iu, 0);
    for (uint64_t k = 0; k < 1000; ++k) {
       // Check that the output pointers are valid.
       char* ptr = table.lookup(reinterpret_cast<char*>(&k));
@@ -68,7 +68,7 @@ TEST_P(HtLookupSubopTest, lookup_existing) {
 TEST_P(HtLookupSubopTest, lookup_nonexisting) {
    // Prepare input chunk.
    auto& ctx = exec->getExecutionContext();
-   auto& keys = ctx.getColumn(key_iu);
+   auto& keys = ctx.getColumn(key_iu, 0);
    for (uint64_t k = 0; k < 1000; ++k) {
       uint64_t nonexitant = 20000 + k;
       reinterpret_cast<uint64_t*>(keys.raw_data)[k] = nonexitant;
@@ -76,9 +76,9 @@ TEST_P(HtLookupSubopTest, lookup_nonexisting) {
    keys.size = 1000;
 
    // Run the morsel doing the has table lookups.
-   exec->runMorsel();
+   exec->runMorsel(0);
 
-   auto& pointers = ctx.getColumn(ptr_iu);
+   auto& pointers = ctx.getColumn(ptr_iu, 0);
    for (uint64_t k = 0; k < 1000; ++k) {
       // All the outputs should be nullptrs.
       EXPECT_EQ(nullptr, reinterpret_cast<char**>(pointers.raw_data)[k]);

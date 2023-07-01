@@ -32,23 +32,24 @@ SuboperatorArc HashTableSource<HashTable>::build(const RelAlgOp* source, const I
 }
 
 template <class HashTable>
-Suboperator::PickMorselResult HashTableSource<HashTable>::pickMorsel() {
-   if (state->it_ptr_end == nullptr) {
+Suboperator::PickMorselResult HashTableSource<HashTable>::pickMorsel(size_t thread_id) {
+   HashTableSourceState& state = (*states)[thread_id];
+   if (state.it_ptr_end == nullptr) {
       // The last morsel went until the hash table end. We are done.
       return Suboperator::NoMoreMorsels{};
    }
    // The current end becomes the new start.
-   state->it_ptr_start = state->it_ptr_end;
-   state->it_idx_start = state->it_idx_end;
+   state.it_ptr_start = state.it_ptr_end;
+   state.it_idx_start = state.it_idx_end;
    // Advance the end iterator by one morsel.
    size_t entries_found = 0;
-   while (entries_found < DEFAULT_CHUNK_SIZE && (state->it_ptr_end != nullptr)) {
-      hash_table->iteratorAdvance(&state->it_ptr_end, &state->it_idx_end);
+   while (entries_found < DEFAULT_CHUNK_SIZE && (state.it_ptr_end != nullptr)) {
+      hash_table->iteratorAdvance(&state.it_ptr_end, &state.it_idx_end);
       entries_found++;
    }
-   return PickedMorsel {
+   return PickedMorsel{
       .morsel_size = entries_found,
-      .pipeline_progress = static_cast<double>(state->it_idx_end) / hash_table->capacity(),
+      .pipeline_progress = static_cast<double>(state.it_idx_end) / hash_table->capacity(),
    };
 }
 
@@ -128,12 +129,14 @@ void HashTableSource<HashTable>::close(CompilationContext& context) {
 template <class HashTable>
 void HashTableSource<HashTable>::setUpStateImpl(const ExecutionContext& context) {
    assert(hash_table);
-   state->hash_table = hash_table;
+   auto& state = (*states)[0];
+
+   state.hash_table = hash_table;
    // Initialize start to point to the first slot of the hash table.
-   hash_table->iteratorStart(&(state->it_ptr_start), &(state->it_idx_start));
+   hash_table->iteratorStart(&(state.it_ptr_start), &(state.it_idx_start));
    // Set the end iterator to the same value. This way the first pickMorsel will work.
-   state->it_ptr_end = state->it_ptr_start;
-   state->it_idx_end = state->it_idx_start;
+   state.it_ptr_end = state.it_ptr_start;
+   state.it_idx_end = state.it_idx_start;
 }
 
 // Explicitly instantiate templates.

@@ -3,9 +3,9 @@
 
 #include "algebra/Pipeline.h"
 #include "exec/ExecutionContext.h"
+#include <memory>
 #include <string>
 #include <vector>
-#include <memory>
 
 namespace inkfuse {
 
@@ -16,7 +16,6 @@ namespace inkfuse {
 /// runner is not the full pipeline the relalg operators decayed into. Rather, we can repipe
 /// arbitrary intervals of the original pipeline into a new pipeline and pass them into a new runner.
 struct PipelineRunner {
-
    /// Constructor, also sets up the necessary execution state.
    /// @param pipe_ the pipeline to run
    /// @param old_context the execution context of the original pipeline that created this runner
@@ -27,12 +26,12 @@ struct PipelineRunner {
    /// Run a single morsel of the backing pipeline.
    /// @param force_pick should we always pick, even if we are not a fuse chunk source?
    /// @return result of picking a morsel.
-   Suboperator::PickMorselResult runMorsel(bool force_pick);
+   Suboperator::PickMorselResult runMorsel(size_t thread_id, bool force_pick);
 
    /// Clean up the intermediate morsel state from a previous failure.
    /// Purges the morsel size of the sinks to make sure we get a fresh
    /// column to write into.
-   void prepareForRerun();
+   void prepareForRerun(size_t thread_id);
 
    /// Set up the state for the given pipeline.
    /// @param compiled_hybrid are we setting up state as the compiled backend in hybird mode?
@@ -42,8 +41,10 @@ struct PipelineRunner {
    /// The compiled function. Either a fragment received from the backing cache,
    /// or a new function.
    std::function<uint8_t(void**)> fct;
+   /// Every thread has one state object for every suboperator in the pipeline.
+   using ThreadLocalState = std::vector<void*>;
    /// Operator states for this specific pipeline.
-   std::vector<void*> states;
+   std::vector<ThreadLocalState> states;
    /// The backing pipeline.
    PipelinePtr pipe;
    /// The recontextualized execution context.
@@ -57,8 +58,6 @@ struct PipelineRunner {
 };
 
 using PipelineRunnerPtr = std::unique_ptr<PipelineRunner>;
-
-
 }
 
 #endif //INKFUSE_PIPELINERUNNER_H
