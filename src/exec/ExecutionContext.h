@@ -37,7 +37,7 @@ struct ExecutionContext {
    /// Needs to be installed when running morsels to e.g. enable proper memory allocation from
    /// within the generated code.
    struct RuntimeGuard {
-      RuntimeGuard(ExecutionContext& ctx);
+      RuntimeGuard(ExecutionContext& ctx, size_t thread_id);
       ~RuntimeGuard();
    };
 
@@ -54,16 +54,11 @@ struct ExecutionContext {
    std::vector<FuseChunkArc> chunks;
    /// The pipeline.
    const Pipeline& pipe;
-   /// The memory context of this pipeline.
-   MemoryRuntime::MemoryRegion memory_context;
+   /// The memory contexts of this pipeline, effectively thread-local state needed for
+   /// execution. One per thread.
+   std::vector<MemoryRuntime::MemoryRegion> memory_contexts;
    /// How many threads should execute the query?
    size_t num_threads;
-   /// The restart flag indicates whether the last vectorized primitive needs to be restarted
-   /// during interpretation. Primitives that can set this flag need to be idempotent.
-   /// This flag is used by hash tables when they grow in the middle of a morsel. As this invalidates
-   /// previously accessed pointers, we need to restart the previous lookups in order to ensure that
-   /// we don't access deallocated memory of the older (smaller) hash table.
-   bool restart_flag = false;
 };
 
 }

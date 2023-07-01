@@ -46,12 +46,16 @@ void PipelineExecutor::preparePipeline(ExecutionMode prep_mode) {
 
 void PipelineExecutor::threadSwimlane(size_t thread_id, OnceBarrier& compile_prep_barrier) {
    // Scope guard for memory compile_state->context and flags.
-   ExecutionContext::RuntimeGuard guard{compile_state->context};
+   ExecutionContext::RuntimeGuard guard{compile_state->context, thread_id};
    if (mode == ExecutionMode::Fused) {
+      // Run compiled morsels till exhaustion.
       while (std::holds_alternative<Suboperator::PickedMorsel>(runFusedMorsel(thread_id))) {}
    } else if (mode == ExecutionMode::Interpreted) {
+      // Run interpreted morsels till exhaustion.
       while (std::holds_alternative<Suboperator::PickedMorsel>(runInterpretedMorsel(thread_id))) {}
    } else {
+      // Dynamically switch between vectorization and compilation depending on the performance.
+
       // Last measured pipeline throughput.
       // TODO(benjamin): More robust as exponential decaying average.
       double compiled_throughput = 0.0;
@@ -191,7 +195,7 @@ Suboperator::PickMorselResult PipelineExecutor::runMorsel(size_t thread_id) {
       compilation_job.join();
    }
    // Scope guard for memory compile_state->context and flags.
-   ExecutionContext::RuntimeGuard guard{compile_state->context};
+   ExecutionContext::RuntimeGuard guard{compile_state->context, thread_id};
    if (mode == ExecutionMode::Fused || (mode == ExecutionMode::Hybrid)) {
       preparePipeline(ExecutionMode::Fused);
       if (compilation_job.joinable()) {

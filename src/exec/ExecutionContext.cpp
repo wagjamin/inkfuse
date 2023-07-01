@@ -4,11 +4,11 @@
 namespace inkfuse {
 
 namespace {
-thread_local ExecutionContext* installed_context = nullptr;
+thread_local MemoryRuntime::MemoryRegion* installed_thread_state = nullptr;
 }
 
 ExecutionContext::ExecutionContext(const Pipeline& pipe_, size_t num_threads_)
-   : pipe(pipe_), num_threads(num_threads_) {
+   : pipe(pipe_), num_threads(num_threads_), memory_contexts(num_threads_) {
    chunks.reserve(num_threads);
    for (size_t k = 0; k < num_threads; ++k) {
       // Set up a fuse chunk for every thread.
@@ -46,29 +46,29 @@ size_t ExecutionContext::getNumThreads() const {
 }
 
 ExecutionContext::ExecutionContext(std::vector<FuseChunkArc> chunks_, const Pipeline& pipe_, size_t num_threads_)
-   : chunks(std::move(chunks_)), pipe(pipe_), num_threads(num_threads_) {
+   : chunks(std::move(chunks_)), pipe(pipe_), num_threads(num_threads_), memory_contexts(num_threads_) {
 }
 
-ExecutionContext::RuntimeGuard::RuntimeGuard(ExecutionContext& ctx) {
-   installed_context = &ctx;
+ExecutionContext::RuntimeGuard::RuntimeGuard(ExecutionContext& ctx, size_t thread_id) {
+   installed_thread_state = &ctx.memory_contexts[thread_id];
 }
 
 ExecutionContext::RuntimeGuard::~RuntimeGuard() {
-   installed_context = nullptr;
+   installed_thread_state = nullptr;
 }
 
 MemoryRuntime::MemoryRegion& ExecutionContext::getInstalledMemoryContext() {
-   assert(installed_context);
-   return installed_context->memory_context;
+   assert(installed_thread_state);
+   return *installed_thread_state;
 }
 
 bool& ExecutionContext::getInstalledRestartFlag() {
-   assert(installed_context);
-   return installed_context->restart_flag;
+   assert(installed_thread_state);
+   return installed_thread_state->restart_flag;
 }
 
 bool* ExecutionContext::tryGetInstalledRestartFlag() {
-   return installed_context ? &installed_context->restart_flag : nullptr;
+   return installed_thread_state ? &installed_thread_state->restart_flag : nullptr;
 }
 
 }
