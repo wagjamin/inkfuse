@@ -1,9 +1,10 @@
 #ifndef INKFUSE_TABLESCANSOURCE_H
 #define INKFUSE_TABLESCANSOURCE_H
 
-#include "algebra/suboperators/Suboperator.h"
 #include "algebra/suboperators/IndexedIUProvider.h"
 #include "algebra/suboperators/LoopDriver.h"
+#include "algebra/suboperators/Suboperator.h"
+#include <atomic>
 
 /// This file contains the necessary sub-operators for reading from a base table.
 namespace inkfuse {
@@ -21,10 +22,13 @@ struct TScanDriver final : public LoopDriver {
    /// Set up the table scan driver in the respective base pipeline.
    TScanDriver(const RelAlgOp* source, size_t rel_size_);
 
-   /// Was the first morsel picked already?
-   bool first_picked = false;
    /// What is the size of the backing relation?
    size_t rel_size;
+   /// What is the index the next morsel should start at? Atomic since
+   /// multiple morsels may pick work at the same time.
+   std::atomic<size_t> start_idx = 0;
+   /// Was the first morsel picked already?
+   bool first_picked = false;
 };
 
 /// IU provider when reading from a table scan.

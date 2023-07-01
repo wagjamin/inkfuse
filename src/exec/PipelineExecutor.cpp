@@ -44,41 +44,25 @@ void PipelineExecutor::preparePipeline(ExecutionMode prep_mode) {
    }
 }
 
-PipelineExecutor::PipelineStats PipelineExecutor::runPipeline() {
-   PipelineStats result;
-   const auto start_execution_ts = std::chrono::steady_clock::now();
+void PipelineExecutor::threadSwimlane(size_t thread_id, OnceBarrier& compile_prep_barrier) {
    // Scope guard for memory compile_state->context and flags.
    ExecutionContext::RuntimeGuard guard{compile_state->context};
    if (mode == ExecutionMode::Fused) {
-      preparePipeline(ExecutionMode::Fused);
-      if (compilation_job.joinable()) {
-         // For compiled execution we need to wait for the compiled code
-         // to be ready.
-         compilation_job.join();
-      }
-      const auto compilation_done_ts = std::chrono::steady_clock::now();
-      // Store how long we were stalled waiting for compilation to finish.
-      result.codegen_microseconds = std::chrono::duration_cast<std::chrono::microseconds>(compilation_done_ts - start_execution_ts).count();
-      compile_state->compiled->setUpState();
-      while (std::holds_alternative<Suboperator::PickedMorsel>(runFusedMorsel(0))) {}
+      while (std::holds_alternative<Suboperator::PickedMorsel>(runFusedMorsel(thread_id))) {}
    } else if (mode == ExecutionMode::Interpreted) {
-      preparePipeline(ExecutionMode::Interpreted);
-      for (auto& interpreter : interpreters) {
-         interpreter->setUpState();
-      }
-      while (std::holds_alternative<Suboperator::PickedMorsel>(runInterpretedMorsel(0))) {}
+      while (std::holds_alternative<Suboperator::PickedMorsel>(runInterpretedMorsel(thread_id))) {}
    } else {
-      preparePipeline(ExecutionMode::Interpreted);
-      preparePipeline(ExecutionMode::Fused);
-
       // Last measured pipeline throughput.
       // TODO(benjamin): More robust as exponential decaying average.
       double compiled_throughput = 0.0;
       double interpreted_throughput = 0.0;
 
+      bool fused_ready = false;
+      bool terminate = false;
+
       auto timeAndRunInterpreted = [&] {
          const auto start = std::chrono::steady_clock::now();
-         const auto morsel = runInterpretedMorsel(0);
+         const auto morsel = runInterpretedMorsel(thread_id);
          const auto stop = std::chrono::steady_clock::now();
          const auto nanos = std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start).count();
          if (auto picked = std::get_if<Suboperator::PickedMorsel>(&morsel)) {
@@ -89,7 +73,7 @@ PipelineExecutor::PipelineStats PipelineExecutor::runPipeline() {
 
       auto timeAndRunCompiled = [&] {
          const auto start = std::chrono::steady_clock::now();
-         const auto morsel = runFusedMorsel(0);
+         const auto morsel = runFusedMorsel(thread_id);
          const auto stop = std::chrono::steady_clock::now();
          const auto nanos = std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start).count();
          if (auto picked = std::get_if<Suboperator::PickedMorsel>(&morsel)) {
@@ -97,20 +81,15 @@ PipelineExecutor::PipelineStats PipelineExecutor::runPipeline() {
          }
          return std::holds_alternative<Suboperator::NoMoreMorsels>(morsel);
       };
-
-      for (auto& interpreter : interpreters) {
-         interpreter->setUpState();
-      }
-      bool fused_ready = false;
-      bool terminate = false;
       while (!fused_ready && !terminate) {
          terminate = timeAndRunInterpreted();
          std::unique_lock lock(compile_state->compiled_lock);
          fused_ready = compile_state->fused_set_up;
       }
-      // Code is ready - set up for compiled execution.
       if (!terminate && fused_ready) {
-         compile_state->compiled->setUpState();
+         // Code is ready - set up for compiled execution. All threads synchronize around
+         // this point, as otherwise we risk subtle data races during Runner setup.
+         compile_prep_barrier.arriveAndWait();
       }
       size_t it_counter = 0;
       while (!terminate) {
@@ -124,6 +103,78 @@ PipelineExecutor::PipelineStats PipelineExecutor::runPipeline() {
          }
          it_counter++;
       }
+   }
+}
+
+void PipelineExecutor::runSwimlanes() {
+   const size_t num_threads = compile_state->context.getNumThreads();
+
+   // If we are in hybrid mode all threads need to synchronize around the compiled
+   // code becoming ready.
+   OnceBarrier compile_prep_barrier{
+      num_threads,
+      // Called by the last worker registering with the OnceBarrier.
+      [&]() {
+         compile_state->compiled->setUpState();
+      }};
+
+   std::vector<std::thread> worker_pool;
+   worker_pool.reserve(num_threads - 1);
+   for (size_t thread_id = 1; thread_id < num_threads; ++thread_id) {
+      // Spawn #num_threads - 1 background threads and tie them to different swimlanes.
+      worker_pool.emplace_back([&]() {
+         threadSwimlane(thread_id, compile_prep_barrier);
+      });
+   }
+   // This thread runs swimlane 0. This way we don't have the thread sitting idle.
+   threadSwimlane(0, compile_prep_barrier);
+   for (auto& thread : worker_pool) {
+      // Wait for all swimlanes to be finished.
+      thread.join();
+   }
+}
+
+PipelineExecutor::PipelineStats PipelineExecutor::runPipeline() {
+   PipelineStats result;
+   const auto start_execution_ts = std::chrono::steady_clock::now();
+
+   if (mode == ExecutionMode::Fused) {
+      // Generate code and wait for it to become ready.
+      preparePipeline(ExecutionMode::Fused);
+      if (compilation_job.joinable()) {
+         // For compiled execution we need to wait for the compiled code
+         // to be ready.
+         compilation_job.join();
+      }
+      const auto compilation_done_ts = std::chrono::steady_clock::now();
+      // Store how long we were stalled waiting for compilation to finish.
+      result.codegen_microseconds = std::chrono::duration_cast<std::chrono::microseconds>(compilation_done_ts - start_execution_ts).count();
+      compile_state->compiled->setUpState();
+
+      // Execute.
+      runSwimlanes();
+   } else if (mode == ExecutionMode::Interpreted) {
+      // Prepare interpreter.
+      preparePipeline(ExecutionMode::Interpreted);
+      for (auto& interpreter : interpreters) {
+         interpreter->setUpState();
+      }
+
+      // Execute.
+      runSwimlanes();
+   } else {
+      assert(mode == ExecutionMode::Hybrid);
+      // Prepare interpreter and kick off background compilation.
+      preparePipeline(ExecutionMode::Interpreted);
+      preparePipeline(ExecutionMode::Fused);
+
+      for (auto& interpreter : interpreters) {
+         interpreter->setUpState();
+      }
+
+      // Execute. Worker threads will switch to compiled code once it's ready (and fast!).
+      runSwimlanes();
+
       // Async interrupt trigger - saves us some wall clock time.
       std::thread([compilation_job = std::move(compilation_job), compile_state = compile_state]() mutable {
          // Stop the backing compilation job (if not finished) and clean up.

@@ -106,6 +106,7 @@ set(INCLUDE_H
         "${CMAKE_SOURCE_DIR}/src/codegen/IR.h"
         "${CMAKE_SOURCE_DIR}/src/codegen/IRBuilder.h"
         "${CMAKE_SOURCE_DIR}/src/codegen/Type.h"
+        "${CMAKE_SOURCE_DIR}/src/common/Barrier.h"
         "${CMAKE_SOURCE_DIR}/src/common/Helpers.h"
         "${CMAKE_SOURCE_DIR}/src/common/TPCH.h"
         "${CMAKE_SOURCE_DIR}/src/exec/FuseChunk.h"
@@ -193,6 +194,7 @@ set(SRC_CC
         "${CMAKE_SOURCE_DIR}/src/runtime/Runtime.cpp"
         "${CMAKE_SOURCE_DIR}/src/exec/ExecutionContext.cpp"
         "${CMAKE_SOURCE_DIR}/src/exec/FuseChunk.cpp"
+        "${CMAKE_SOURCE_DIR}/src/common/Barrier.cpp"
         "${CMAKE_SOURCE_DIR}/src/common/Helpers.cpp"
         "${CMAKE_SOURCE_DIR}/src/common/TPCH.cpp"
         "${CMAKE_SOURCE_DIR}/src/interpreter/AggregationFragmentizer.cpp"
@@ -216,6 +218,7 @@ set(SRC_CC
 
 set(TEST_CC
         "${CMAKE_SOURCE_DIR}/test/test_ir.cpp"
+        "${CMAKE_SOURCE_DIR}/test/test_barrier.cpp"
         "${CMAKE_SOURCE_DIR}/test/test_c_backend.cpp"
         "${CMAKE_SOURCE_DIR}/test/test_runtime.cpp"
         "${CMAKE_SOURCE_DIR}/test/algebra/test_repipe.cpp"
