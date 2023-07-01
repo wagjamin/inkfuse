@@ -126,7 +126,7 @@ void PipelineExecutor::runSwimlanes() {
    worker_pool.reserve(num_threads - 1);
    for (size_t thread_id = 1; thread_id < num_threads; ++thread_id) {
       // Spawn #num_threads - 1 background threads and tie them to different swimlanes.
-      worker_pool.emplace_back([&]() {
+      worker_pool.emplace_back([&, thread_id]() {
          threadSwimlane(thread_id, compile_prep_barrier);
       });
    }

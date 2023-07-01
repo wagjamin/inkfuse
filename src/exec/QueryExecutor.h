@@ -12,7 +12,7 @@ namespace QueryExecutor {
 /// Executor that allows pre-compiling the query (crudely). Needed to get clean perf counters
 /// for the evaluation.
 struct StepwiseExecutor {
-   StepwiseExecutor(PipelineExecutor::QueryControlBlockArc control_block_, PipelineExecutor::ExecutionMode mode, const std::string& qname);
+   StepwiseExecutor(PipelineExecutor::QueryControlBlockArc control_block_, PipelineExecutor::ExecutionMode mode, const std::string& qname, size_t num_threads_ = 1);
 
    /// Prepare the query, kicking off compilation.
    void prepareQuery();
@@ -24,11 +24,11 @@ struct StepwiseExecutor {
    PipelineExecutor::ExecutionMode mode;
    const std::string& qname;
    std::list<PipelineExecutor> executors;
+   size_t num_threads;
 };
 
 /// Run a complete query to completion. Returns aggregated (summed) pipeline statistics.
-PipelineExecutor::PipelineStats runQuery(PipelineExecutor::QueryControlBlockArc control_block_, PipelineExecutor::ExecutionMode mode, const std::string& qname = "query");
-
+PipelineExecutor::PipelineStats runQuery(PipelineExecutor::QueryControlBlockArc control_block_, PipelineExecutor::ExecutionMode mode, const std::string& qname = "query", size_t num_threads = 1);
 };
 
 }

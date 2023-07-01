@@ -4,9 +4,8 @@
 
 namespace inkfuse::QueryExecutor {
 
-StepwiseExecutor::StepwiseExecutor(PipelineExecutor::QueryControlBlockArc control_block_, PipelineExecutor::ExecutionMode mode, const std::string& qname)
-: control_block(std::move(control_block_)), mode(mode), qname(qname)
-{
+StepwiseExecutor::StepwiseExecutor(PipelineExecutor::QueryControlBlockArc control_block_, PipelineExecutor::ExecutionMode mode, const std::string& qname, size_t num_threads_)
+   : control_block(std::move(control_block_)), mode(mode), qname(qname), num_threads(num_threads_) {
 }
 
 void StepwiseExecutor::prepareQuery()
@@ -16,7 +15,7 @@ void StepwiseExecutor::prepareQuery()
       // Step 2: Set up the executors for the pipelines.
       const auto& pipe = pipes[idx];
       // TODO(benjamin) - run with multiple threads
-      auto& executor = executors.emplace_back(*pipe, 1, mode, qname + "_pipe_" + std::to_string(idx), control_block);
+      auto& executor = executors.emplace_back(*pipe, num_threads, mode, qname + "_pipe_" + std::to_string(idx), control_block);
       if (mode != PipelineExecutor::ExecutionMode::Interpreted) {
          // If we have to generate code, already kick off asynchronous compilation.
          // This hides compilation latency much better than kicking it off at the beginning of each pipeline.
@@ -36,10 +35,8 @@ PipelineExecutor::PipelineStats StepwiseExecutor::runQuery()
    return total_stats;
 }
 
-
-
-PipelineExecutor::PipelineStats runQuery(PipelineExecutor::QueryControlBlockArc control_block_, PipelineExecutor::ExecutionMode mode, const std::string& qname) {
-   StepwiseExecutor executor(std::move(control_block_), mode, qname);
+PipelineExecutor::PipelineStats runQuery(PipelineExecutor::QueryControlBlockArc control_block_, PipelineExecutor::ExecutionMode mode, const std::string& qname, size_t num_threads) {
+   StepwiseExecutor executor(std::move(control_block_), mode, qname, num_threads);
    // Kick off preparation.
    executor.prepareQuery();
    // And instantly start execution - the backend will wait if compilation is not done yet.
