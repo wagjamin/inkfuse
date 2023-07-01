@@ -16,26 +16,28 @@ TScanDriver::TScanDriver(const RelAlgOp* source, size_t rel_size_)
    : LoopDriver(source), rel_size(rel_size_) {
 }
 
-Suboperator::PickMorselResult TScanDriver::pickMorsel() {
-   assert(state);
+Suboperator::PickMorselResult TScanDriver::pickMorsel(size_t thread_id) {
+   assert(states);
+   assert(thread_id == 0);
+   LoopDriverState& state = (*states)[0];
 
    if (!first_picked) {
-      state->start = 0;
+      state.start = 0;
       first_picked = true;
    } else {
-      state->start = state->end;
+      state.start = state.end;
    }
 
    // Go up to the maximum chunk size of the intermediate results or the total relation size.
-   state->end = std::min(state->start + DEFAULT_CHUNK_SIZE, static_cast<uint64_t>(rel_size));
+   state.end = std::min(state.start + DEFAULT_CHUNK_SIZE, static_cast<uint64_t>(rel_size));
 
    // If the starting point advanced to the end, then we know there are no more morsels to pick.
-   if (state->end == state->start) {
+   if (state.end == state.start) {
       return NoMoreMorsels{};
    }
-   return PickedMorsel {
-      .morsel_size = state->end - state->start,
-      .pipeline_progress = static_cast<double>(state->end) / rel_size,
+   return PickedMorsel{
+      .morsel_size = state.end - state.start,
+      .pipeline_progress = static_cast<double>(state.end) / rel_size,
    };
 }
 
@@ -44,7 +46,8 @@ std::string TScanDriver::id() const {
 }
 
 void TScanIUProvider::setUpStateImpl(const ExecutionContext& context) {
-   state->start = raw_data;
+   IndexedIUProviderState& state = (*states)[0];
+   state.start = raw_data;
 }
 
 std::string TScanIUProvider::providerName() const {

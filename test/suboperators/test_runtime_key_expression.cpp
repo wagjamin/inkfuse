@@ -26,14 +26,14 @@ struct RuntimeKeyExpressionTest : public ::testing::TestWithParam<std::tuple<siz
       pipe = pipe_simple.repipeAll(0, pipe_simple.getSubops().size());
       PipelineExecutor::ExecutionMode mode = std::get<1>(GetParam());
       // We need a unique program name per offset param as we otherwise risk getting mashed up symbols with dlopen.
-      exec.emplace(*pipe, mode, "RuntimeKeyExpressionSubop_exec_" + std::to_string(std::get<0>(GetParam())));
+      exec.emplace(*pipe, 1, mode, "RuntimeKeyExpressionSubop_exec_" + std::to_string(std::get<0>(GetParam())));
    };
 
    /// Prepare input chunk so that every second row matches.
    void prepareInputChunk() {
       auto& ctx = exec->getExecutionContext();
-      auto& pointers = ctx.getColumn(ptr_iu);
-      auto& input_data = ctx.getColumn(src_iu);
+      auto& pointers = ctx.getColumn(ptr_iu, 0);
+      auto& input_data = ctx.getColumn(src_iu, 0);
       raw_data = std::make_unique<char[]>(12 * 1000);
       uint32_t key = 1;
       for (uint64_t k = 0; k < 1000; ++k) {
@@ -69,10 +69,10 @@ TEST_P(RuntimeKeyExpressionTest, test_on_offset) {
    // Set up the input chunk.
    prepareInputChunk();
    // Run a morsel.
-   exec->runMorsel();
+   exec->runMorsel(0);
    // Make sure every second row is true.
    auto& ctx = exec->getExecutionContext();
-   auto& out = ctx.getColumn(provided_iu);
+   auto& out = ctx.getColumn(provided_iu, 0);
    for (uint64_t k = 0; k < 1000; ++k) {
       EXPECT_EQ(reinterpret_cast<bool*>(out.raw_data)[k], k % 2 == 0);
    }

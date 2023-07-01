@@ -23,9 +23,11 @@ void RuntimeKeyExpressionSubop::setUpStateImpl(const ExecutionContext& context) 
    if (!runtime_params.offset || runtime_params.offset->getType()->id() != "UI2") {
       throw std::runtime_error("RuntimeParam of RuntimeKeyExpressionsubop must be set up and of type u16 during execution.");
    }
-   // Fetch the underlying raw data from the associated runtime parameters.
-   // If the value was hard-coded in the generated code already it will simply never be accessed.
-   state->offset = *reinterpret_cast<uint16_t*>(runtime_params.offset->rawData());
+   for (auto& state : *states) {
+      // Fetch the underlying raw data from the associated runtime parameters.
+      // If the value was hard-coded in the generated code already it will simply never be accessed.
+      state.offset = *reinterpret_cast<uint16_t*>(runtime_params.offset->rawData());
+   }
 }
 
 void RuntimeKeyExpressionSubop::consumeAllChildren(CompilationContext& context) {

@@ -30,9 +30,11 @@ void RuntimeExpressionSubop::setUpStateImpl(const ExecutionContext& context) {
    if (!runtime_params.data || runtime_param_type->id() != runtime_params.data->getType()->id()) {
       throw std::runtime_error("RuntimeParam of RuntimeExpressionSubop must be set up and of the right type during execution.");
    }
-   // Fetch the underlying raw data from the associated runtime parameters.
-   // If the value was hard-coded in the generated code already it will simply never be accessed.
-   state->data_erased = runtime_params.data->rawData();
+   for (auto& state : *states) {
+      // Fetch the underlying raw data from the associated runtime parameters.
+      // If the value was hard-coded in the generated code already it will simply never be accessed.
+      state.data_erased = runtime_params.data->rawData();
+   }
 }
 
 void RuntimeExpressionSubop::consumeAllChildren(CompilationContext& context) {

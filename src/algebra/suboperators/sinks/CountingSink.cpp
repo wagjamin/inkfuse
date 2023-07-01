@@ -7,18 +7,15 @@ namespace inkfuse {
 const char* CountingState::name = "CountingState";
 
 // static
-SuboperatorArc CountingSink::build(const IU& iu, std::function<void(size_t)> callback_)
-{
+SuboperatorArc CountingSink::build(const IU& iu, std::function<void(size_t)> callback_) {
    return std::make_shared<CountingSink>(iu, std::move(callback_));
 }
 
 CountingSink::CountingSink(const IU& input_iu, std::function<void(size_t)> callback_)
-: TemplatedSuboperator<CountingState>(nullptr, {}, {&input_iu}), callback(std::move(callback_))
-{
+   : TemplatedSuboperator<CountingState>(nullptr, {}, {&input_iu}), callback(std::move(callback_)) {
 }
 
-void CountingSink::consume(const IU& iu, CompilationContext& context)
-{
+void CountingSink::consume(const IU& iu, CompilationContext& context) {
    assert(&iu == *this->source_ius.begin());
    auto& builder = context.getFctBuilder();
    const auto& program = context.getProgram();
@@ -36,36 +33,37 @@ void CountingSink::consume(const IU& iu, CompilationContext& context)
       IR::ArithmeticExpr::build(
          IR::StructAccessExpr::build(std::move(cast_expr_2), "count"),
          IR::ConstExpr::build(IR::UI<8>::build(1)),
-         IR::ArithmeticExpr::Opcode::Add
-      )
-   );
+         IR::ArithmeticExpr::Opcode::Add));
 
    builder.appendStmt(std::move(increment_start));
 }
 
-void CountingSink::setUpStateImpl(const ExecutionContext& context)
-{
-   state->count = 0;
+void CountingSink::setUpStateImpl(const ExecutionContext& context) {
+   for (CountingState& state : *states) {
+      state.count = 0;
+   }
 }
 
-std::string CountingSink::id() const
-{
+std::string CountingSink::id() const {
    return "CountingSink";
 }
 
 size_t CountingSink::getCount() const {
-   return state->count;
+   size_t sum = 0;
+   for (CountingState& state : *states) {
+      sum += state.count;
+   }
+   return sum;
 }
 
-void CountingSink::registerRuntime()
-{
+void CountingSink::registerRuntime() {
    RuntimeStructBuilder{CountingState::name}
       .addMember("count", IR::UnsignedInt::build(8));
 }
 
 void CountingSink::tearDownStateImpl() {
    if (callback) {
-      callback(state->count);
+      callback(getCount());
    }
 }
 

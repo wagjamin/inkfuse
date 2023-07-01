@@ -54,11 +54,11 @@ TEST_P(ScratchPadIUTestT, readAndMaterialize) {
    // materialization for the out_ptrs (the packed key does not get materialized as it has a strong link).
    auto& ops = repiped->getSubops();
    EXPECT_EQ(ops.size(), 8);
-   PipelineExecutor exec(*repiped, GetParam(), "ScratchPadIURead_exec");
+   PipelineExecutor exec(*repiped, 1, GetParam(), "ScratchPadIURead_exec");
    // Prepare the block - 500 values, first one increasing, second decreasing.
-   auto& col_in1 = exec.getExecutionContext().getColumn(in1);
-   auto& col_in2 = exec.getExecutionContext().getColumn(in2);
-   auto& col_packed = exec.getExecutionContext().getColumn(packed);
+   auto& col_in1 = exec.getExecutionContext().getColumn(in1, 0);
+   auto& col_in2 = exec.getExecutionContext().getColumn(in2, 0);
+   auto& col_packed = exec.getExecutionContext().getColumn(packed, 0);
    for (size_t k = 0; k < 500; ++k) {
       reinterpret_cast<uint32_t*>(col_in1.raw_data)[k] = k;
       reinterpret_cast<uint32_t*>(col_in2.raw_data)[k] = 500 - k;
@@ -68,7 +68,7 @@ TEST_P(ScratchPadIUTestT, readAndMaterialize) {
    col_packed.size = 500;
 
    // Run the block.
-   ASSERT_NO_THROW(exec.runMorsel());
+   ASSERT_NO_THROW(exec.runMorsel(0));
    // Check that the hash table entries were created as expected.
    EXPECT_EQ(ht.size(), 500);
    for (size_t k = 0; k < 500; ++k) {

@@ -36,9 +36,9 @@ TEST(test_table_scan, scan_1) {
    // Add fuse chunk sink.
    auto& sink = reinterpret_cast<FuseChunkSink&>(pipe.attachSuboperator(FuseChunkSink::build(nullptr, tscan_iu)));
 
-   PipelineExecutor exec(pipe, PipelineExecutor::ExecutionMode::Fused, "test_table_scan_test_1");
+   PipelineExecutor exec(pipe, 1, PipelineExecutor::ExecutionMode::Fused, "test_table_scan_test_1");
    EXPECT_NO_THROW(exec.runPipeline());
-   auto& col = exec.getExecutionContext().getColumn(tscan_iu);
+   auto& col = exec.getExecutionContext().getColumn(tscan_iu, 0);
 
    for (uint64_t k = 0; k < 1000; ++k)
    {

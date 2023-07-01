@@ -11,8 +11,8 @@
 
 namespace inkfuse {
 
-PipelineExecutor::PipelineExecutor(Pipeline& pipe_, ExecutionMode mode, std::string full_name_, PipelineExecutor::QueryControlBlockArc control_block_)
-   : compile_state(std::make_shared<AsyncCompileState>(std::move(control_block_), pipe_)), pipe(pipe_), mode(mode), full_name(std::move(full_name_)) {
+PipelineExecutor::PipelineExecutor(Pipeline& pipe_, size_t num_threads, ExecutionMode mode, std::string full_name_, PipelineExecutor::QueryControlBlockArc control_block_)
+   : compile_state(std::make_shared<AsyncCompileState>(std::move(control_block_), pipe_, num_threads)), pipe(pipe_), mode(mode), full_name(std::move(full_name_)) {
    assert(pipe.getSubops()[0]->isSource());
    assert(pipe.getSubops().back()->isSink());
 }
@@ -60,13 +60,13 @@ PipelineExecutor::PipelineStats PipelineExecutor::runPipeline() {
       // Store how long we were stalled waiting for compilation to finish.
       result.codegen_microseconds = std::chrono::duration_cast<std::chrono::microseconds>(compilation_done_ts - start_execution_ts).count();
       compile_state->compiled->setUpState();
-      while (std::holds_alternative<Suboperator::PickedMorsel>(runFusedMorsel())) {}
+      while (std::holds_alternative<Suboperator::PickedMorsel>(runFusedMorsel(0))) {}
    } else if (mode == ExecutionMode::Interpreted) {
       preparePipeline(ExecutionMode::Interpreted);
       for (auto& interpreter : interpreters) {
          interpreter->setUpState();
       }
-      while (std::holds_alternative<Suboperator::PickedMorsel>(runInterpretedMorsel())) {}
+      while (std::holds_alternative<Suboperator::PickedMorsel>(runInterpretedMorsel(0))) {}
    } else {
       preparePipeline(ExecutionMode::Interpreted);
       preparePipeline(ExecutionMode::Fused);
@@ -78,7 +78,7 @@ PipelineExecutor::PipelineStats PipelineExecutor::runPipeline() {
 
       auto timeAndRunInterpreted = [&] {
          const auto start = std::chrono::steady_clock::now();
-         const auto morsel = runInterpretedMorsel();
+         const auto morsel = runInterpretedMorsel(0);
          const auto stop = std::chrono::steady_clock::now();
          const auto nanos = std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start).count();
          if (auto picked = std::get_if<Suboperator::PickedMorsel>(&morsel)) {
@@ -89,7 +89,7 @@ PipelineExecutor::PipelineStats PipelineExecutor::runPipeline() {
 
       auto timeAndRunCompiled = [&] {
          const auto start = std::chrono::steady_clock::now();
-         const auto morsel = runFusedMorsel();
+         const auto morsel = runFusedMorsel(0);
          const auto stop = std::chrono::steady_clock::now();
          const auto nanos = std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start).count();
          if (auto picked = std::get_if<Suboperator::PickedMorsel>(&morsel)) {
@@ -135,7 +135,7 @@ PipelineExecutor::PipelineStats PipelineExecutor::runPipeline() {
    return result;
 }
 
-Suboperator::PickMorselResult PipelineExecutor::runMorsel() {
+Suboperator::PickMorselResult PipelineExecutor::runMorsel(size_t thread_id) {
    if (compilation_job.joinable()) {
       compilation_job.join();
    }
@@ -147,13 +147,13 @@ Suboperator::PickMorselResult PipelineExecutor::runMorsel() {
          compilation_job.join();
       }
       compile_state->compiled->setUpState();
-      return runFusedMorsel();
+      return runFusedMorsel(thread_id);
    } else {
       preparePipeline(ExecutionMode::Interpreted);
       for (auto& interpreter : interpreters) {
          interpreter->setUpState();
       }
-      return runInterpretedMorsel();
+      return runInterpretedMorsel(thread_id);
    }
 }
 
@@ -201,30 +201,30 @@ std::thread PipelineExecutor::setUpFusedAsync() {
    return ret;
 }
 
-void PipelineExecutor::cleanUp() {
-   compile_state->context.clear();
+void PipelineExecutor::cleanUp(size_t thread_id) {
+   compile_state->context.clear(thread_id);
    // Reset the restart flag to have a clean slate for the next morsel.
    ExecutionContext::getInstalledRestartFlag() = false;
 }
 
-Suboperator::PickMorselResult PipelineExecutor::runFusedMorsel() {
+Suboperator::PickMorselResult PipelineExecutor::runFusedMorsel(size_t thread_id) {
    assert(compile_state->fused_set_up);
    // Run the whole compiled executor.
-   auto morsel = compile_state->compiled->runMorsel(true);
+   auto morsel = compile_state->compiled->runMorsel(thread_id, true);
    if (std::holds_alternative<Suboperator::PickedMorsel>(morsel)) {
       if (auto printer = pipe.getPrettyPrinter()) {
          // Tell the printer that a morsel is done.
-         if (printer->markMorselDone(compile_state->context)) {
+         if (printer->markMorselDone(compile_state->context, thread_id)) {
             // Output is closed - no more work to be done.
             return Suboperator::NoMoreMorsels{};
          }
       }
-      cleanUp();
+      cleanUp(thread_id);
    }
    return morsel;
 }
 
-Suboperator::PickMorselResult PipelineExecutor::runInterpretedMorsel() {
+Suboperator::PickMorselResult PipelineExecutor::runInterpretedMorsel(size_t thread_id) {
    // Run a morsel and retry it if the `restart_flag` gets set to true.
    // This is needed to defend against e.g. hash table resizes without
    // massively complicating the generated code.
@@ -235,11 +235,11 @@ Suboperator::PickMorselResult PipelineExecutor::runInterpretedMorsel() {
 
       // Run the morsel until the flag is not set. The flag can be set multiple times if e.g.
       // multiple hash table resizes happen for the same chunk.
-      auto pick_result = runner.runMorsel(force_pick);
+      auto pick_result = runner.runMorsel(thread_id, force_pick);
       while (restart_flag) {
          restart_flag = false;
-         runner.prepareForRerun();
-         runner.runMorsel(false);
+         runner.prepareForRerun(thread_id);
+         runner.runMorsel(thread_id, false);
       }
 
       return pick_result;
@@ -254,14 +254,13 @@ Suboperator::PickMorselResult PipelineExecutor::runInterpretedMorsel() {
       }
       if (auto printer = pipe.getPrettyPrinter()) {
          // Tell the printer that a morsel is done.
-         if (printer->markMorselDone(compile_state->context)) {
+         if (printer->markMorselDone(compile_state->context, thread_id)) {
             // Output is closed - no more work to be done.
             return Suboperator::NoMoreMorsels{};
          }
       }
-      cleanUp();
+      cleanUp(thread_id);
    }
    return morsel;
 }
-
 }

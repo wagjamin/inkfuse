@@ -13,7 +13,7 @@ struct TScanDriver final : public LoopDriver {
    static std::unique_ptr<TScanDriver> build(const RelAlgOp* source, size_t rel_size_ = 0);
 
    /// Pick then next set of tuples from the table scan up to the maximum chunk size.
-   PickMorselResult pickMorsel() override;
+   PickMorselResult pickMorsel(size_t thread_id) override;
 
    std::string id() const override;
 

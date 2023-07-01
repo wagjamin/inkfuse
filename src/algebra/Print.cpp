@@ -16,10 +16,10 @@ PrettyPrinter::PrettyPrinter(std::vector<const IU*> ius_, std::vector<std::strin
    }
 }
 
-bool PrettyPrinter::markMorselDone(inkfuse::ExecutionContext& ctx)
-{
+bool PrettyPrinter::markMorselDone(inkfuse::ExecutionContext& ctx, size_t thread_id) {
+   std::unique_lock lock(write_mut);
    // How many rows are we allowed to write until we hit the limit?
-   auto chunk_size = ctx.getColumn(*ius[0]).size;
+   auto chunk_size = ctx.getColumn(*ius[0], thread_id).size;
    size_t write = chunk_size;
    if (limit) {
       write = std::min(write, *limit);
@@ -45,7 +45,7 @@ bool PrettyPrinter::markMorselDone(inkfuse::ExecutionContext& ctx)
    std::vector<char*> data;
    data.reserve(ius.size());
    for (const IU* iu: ius) {
-      auto& col = ctx.getColumn(*iu);
+      auto& col = ctx.getColumn(*iu, thread_id);
       assert(col.size == chunk_size);
       data.push_back(col.raw_data);
    }

@@ -141,7 +141,7 @@ struct HashTableComplexKey {
 
 /// A hash table using direct lookup on the key index. No hashing, no nothing.
 /// Should be used for 2 byte keys. Okay - this is a bit micro-optimized for TPC-H Q1,
-/// we should also have a one byte variation. But we don't need it a the moment.
+/// we should also have a one byte variation. But we don't need it at the moment.
 /// This is not an architectural limitation.
 struct HashTableDirectLookup {
    /// Unique Hash Table ID.

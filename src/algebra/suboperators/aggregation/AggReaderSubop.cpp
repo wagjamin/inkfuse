@@ -19,11 +19,13 @@ void AggReaderSubop::setUpStateImpl(const ExecutionContext& context) {
    if (agg_compute.requiredGranules() > 1 && (!runtime_params.offset_2 || runtime_params.offset_2->getType()->id() != "UI2")) {
       throw std::runtime_error("RuntimeParam offset_2 of AggregatorSubop must be set up and of type u16 during execution.");
    }
-   // Fetch the underlying raw data from the associated runtime parameters.
-   // If the value was hard-coded in the generated code already it will simply never be accessed.
-   state->offset_1 = *reinterpret_cast<uint16_t*>(runtime_params.offset_1->rawData());
-   if (agg_compute.requiredGranules() > 1) {
-      state->offset_2 = *reinterpret_cast<uint16_t*>(runtime_params.offset_2->rawData());
+   for (auto& state : *states) {
+      // Fetch the underlying raw data from the associated runtime parameters.
+      // If the value was hard-coded in the generated code already it will simply never be accessed.
+      state.offset_1 = *reinterpret_cast<uint16_t*>(runtime_params.offset_1->rawData());
+      if (agg_compute.requiredGranules() > 1) {
+         state.offset_2 = *reinterpret_cast<uint16_t*>(runtime_params.offset_2->rawData());
+      }
    }
 }
 

@@ -55,23 +55,23 @@ TEST_P(HashTableSourceTestT, hash_table_source) {
     auto repiped = pipe.repipeAll(0, pipe.getSubops().size());
     // We should have added three FuseChunkSinks for all produced IUs in this pipeline.
     EXPECT_EQ(repiped->getSubops().size(), 6);
-    PipelineExecutor exec(*repiped, std::get<1>(GetParam()), "HashTableSource" + std::to_string(std::get<0>(GetParam())));
+    PipelineExecutor exec(*repiped, 1, std::get<1>(GetParam()), "HashTableSource" + std::to_string(std::get<0>(GetParam())));
     size_t morsel_counter = 0;
-    auto& col_key = exec.getExecutionContext().getColumn(read_key);
-    auto& col_val = exec.getExecutionContext().getColumn(read_val);
+    auto& col_key = exec.getExecutionContext().getColumn(read_key, 0);
+    auto& col_val = exec.getExecutionContext().getColumn(read_val, 0);
     std::unordered_set<uint64_t> found_keys;
-    while (std::holds_alternative<Suboperator::PickedMorsel>(exec.runMorsel())) {
-        // We have to manually reconstruct the morsel size here, as cleanUp() within runMorsel
-        // discards them.
-        size_t morsel_size = (morsel_counter + 1) * DEFAULT_CHUNK_SIZE <= num_tuples ? DEFAULT_CHUNK_SIZE : num_tuples - (morsel_counter * DEFAULT_CHUNK_SIZE);
-        for (size_t k = 0; k < morsel_size; ++k) {
-            uint64_t key = reinterpret_cast<uint64_t*>(col_key.raw_data)[k];
-            uint64_t val = reinterpret_cast<uint32_t*>(col_val.raw_data)[k];
-            EXPECT_LE(key, num_tuples);
-            EXPECT_EQ(5 * key + 12, val);
-            found_keys.emplace(key);
-        }
-        morsel_counter++;
+    while (std::holds_alternative<Suboperator::PickedMorsel>(exec.runMorsel(0))) {
+       // We have to manually reconstruct the morsel size here, as cleanUp() within runMorsel
+       // discards them.
+       size_t morsel_size = (morsel_counter + 1) * DEFAULT_CHUNK_SIZE <= num_tuples ? DEFAULT_CHUNK_SIZE : num_tuples - (morsel_counter * DEFAULT_CHUNK_SIZE);
+       for (size_t k = 0; k < morsel_size; ++k) {
+          uint64_t key = reinterpret_cast<uint64_t*>(col_key.raw_data)[k];
+          uint64_t val = reinterpret_cast<uint32_t*>(col_val.raw_data)[k];
+          EXPECT_LE(key, num_tuples);
+          EXPECT_EQ(5 * key + 12, val);
+          found_keys.emplace(key);
+       }
+       morsel_counter++;
     }
     // Each (full) morsel should have had DEFAULT_CHUNK_SIZE tuples inside of it.
     EXPECT_EQ(morsel_counter, (num_tuples + DEFAULT_CHUNK_SIZE - 1) / DEFAULT_CHUNK_SIZE);
