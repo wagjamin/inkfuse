@@ -3,6 +3,7 @@
 
 #include "algebra/Pipeline.h"
 #include "algebra/RelAlgOp.h"
+#include "common/Barrier.h"
 #include "exec/InterruptableJob.h"
 #include "exec/runners/CompiledRunner.h"
 #include "exec/runners/PipelineRunner.h"
@@ -74,6 +75,14 @@ struct PipelineExecutor {
    Suboperator::PickMorselResult runFusedMorsel(size_t thread_id);
    /// Run a full morsel through the interpreted path.
    Suboperator::PickMorselResult runInterpretedMorsel(size_t thread_id);
+
+   /// After preparation in `runPipeline`, schedules the worker threads performing
+   /// query prcoessing. Waits for all worker threads to be done.
+   void runSwimlanes();
+   /// Execution loop for a thread. Called after preparation in `runPipeline`.
+   /// @param compile_prep_barrier If we are in hybrid mode, a OnceBarrier is used
+   ///            to synchronize all threads around preparation of the compiled runner.
+   void threadSwimlane(size_t thread_id, OnceBarrier& compile_prep_barrier);
 
    /// Set up interpreted state in a synchronous way.
    void setUpInterpreted();

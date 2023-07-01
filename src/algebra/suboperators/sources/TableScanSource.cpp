@@ -18,23 +18,19 @@ TScanDriver::TScanDriver(const RelAlgOp* source, size_t rel_size_)
 
 Suboperator::PickMorselResult TScanDriver::pickMorsel(size_t thread_id) {
    assert(states);
-   assert(thread_id == 0);
-   LoopDriverState& state = (*states)[0];
+   LoopDriverState& state = (*states).at(thread_id);
 
-   if (!first_picked) {
-      state.start = 0;
-      first_picked = true;
-   } else {
-      state.start = state.end;
+   size_t morsel_start = start_idx.fetch_add(DEFAULT_CHUNK_SIZE);
+
+   if (morsel_start >= rel_size) {
+      // If the starting point advanced beyond the end, then we know there are no more morsels to pick.
+      return NoMoreMorsels{};
    }
 
    // Go up to the maximum chunk size of the intermediate results or the total relation size.
-   state.end = std::min(state.start + DEFAULT_CHUNK_SIZE, static_cast<uint64_t>(rel_size));
+   state.start = morsel_start;
+   state.end = std::min(state.start + DEFAULT_CHUNK_SIZE, rel_size);
 
-   // If the starting point advanced to the end, then we know there are no more morsels to pick.
-   if (state.end == state.start) {
-      return NoMoreMorsels{};
-   }
    return PickedMorsel{
       .morsel_size = state.end - state.start,
       .pipeline_progress = static_cast<double>(state.end) / rel_size,
