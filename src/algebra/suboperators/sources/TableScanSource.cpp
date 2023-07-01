@@ -42,8 +42,9 @@ std::string TScanDriver::id() const {
 }
 
 void TScanIUProvider::setUpStateImpl(const ExecutionContext& context) {
-   IndexedIUProviderState& state = (*states)[0];
-   state.start = raw_data;
+   for (auto& state : *states) {
+      state.start = raw_data;
+   }
 }
 
 std::string TScanIUProvider::providerName() const {
