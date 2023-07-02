@@ -14,7 +14,7 @@ void RuntimeFunctionSubop::registerRuntime() {
       .addMember("this_object", IR::Pointer::build(IR::Void::build()));
 }
 
-std::unique_ptr<RuntimeFunctionSubop> RuntimeFunctionSubop::htInsert(const inkfuse::RelAlgOp* source, const inkfuse::IU* pointers_, const inkfuse::IU& key_, std::vector<const IU*> pseudo_ius_, void* hash_table_) {
+std::unique_ptr<RuntimeFunctionSubop> RuntimeFunctionSubop::htInsert(const inkfuse::RelAlgOp* source, const inkfuse::IU* pointers_, const inkfuse::IU& key_, std::vector<const IU*> pseudo_ius_, DefferredStateInitializer* state_init_) {
    std::string fct_name = "ht_sk_insert";
    std::vector<const IU*> in_ius{&key_};
    for (auto pseudo : pseudo_ius_) {
@@ -30,16 +30,16 @@ std::unique_ptr<RuntimeFunctionSubop> RuntimeFunctionSubop::htInsert(const inkfu
    return std::unique_ptr<RuntimeFunctionSubop>(
       new RuntimeFunctionSubop(
          source,
+         state_init_,
          std::move(fct_name),
          std::move(in_ius),
          std::move(out_ius_),
          std::move(args),
          std::move(ref),
-         pointers_,
-         hash_table_));
+         pointers_));
 }
 
-std::unique_ptr<RuntimeFunctionSubop> RuntimeFunctionSubop::htLookupDisable(const RelAlgOp* source, const IU& pointers_, const IU& keys_, std::vector<const IU*> pseudo_ius_, void* hash_table_) {
+std::unique_ptr<RuntimeFunctionSubop> RuntimeFunctionSubop::htLookupDisable(const RelAlgOp* source, const IU& pointers_, const IU& keys_, std::vector<const IU*> pseudo_ius_, DefferredStateInitializer* state_init_) {
    std::string fct_name = "ht_sk_lookup_disable";
    std::vector<const IU*> in_ius{&keys_};
    for (auto pseudo : pseudo_ius_) {
@@ -53,16 +53,16 @@ std::unique_ptr<RuntimeFunctionSubop> RuntimeFunctionSubop::htLookupDisable(cons
    return std::unique_ptr<RuntimeFunctionSubop>(
       new RuntimeFunctionSubop(
          source,
+         state_init_,
          std::move(fct_name),
          std::move(in_ius),
          std::move(out_ius_),
          std::move(args),
          std::move(ref),
-         out,
-         hash_table_));
+         out));
 }
 
-std::unique_ptr<RuntimeFunctionSubop> RuntimeFunctionSubop::htNoKeyLookup(const RelAlgOp* source, const IU& pointers_, const IU& input_dependency, void* hash_table_) {
+std::unique_ptr<RuntimeFunctionSubop> RuntimeFunctionSubop::htNoKeyLookup(const RelAlgOp* source, const IU& pointers_, const IU& input_dependency, DefferredStateInitializer* state_init_) {
    std::string fct_name = "ht_nk_lookup";
    std::vector<const IU*> in_ius{&input_dependency};
    std::vector<const IU*> out_ius_{&pointers_};
@@ -72,17 +72,18 @@ std::unique_ptr<RuntimeFunctionSubop> RuntimeFunctionSubop::htNoKeyLookup(const 
    return std::unique_ptr<RuntimeFunctionSubop>(
       new RuntimeFunctionSubop(
          source,
+         state_init_,
          std::move(fct_name),
          std::move(in_ius),
          std::move(out_ius_),
          std::move(args),
          std::move(ref),
-         out,
-         hash_table_));
+         out));
 }
 
 RuntimeFunctionSubop::RuntimeFunctionSubop(
    const RelAlgOp* source,
+   DefferredStateInitializer* state_init_,
    std::string fct_name_,
    std::vector<const IU*>
       in_ius_,
@@ -92,9 +93,8 @@ RuntimeFunctionSubop::RuntimeFunctionSubop(
       args_,
    std::vector<bool>
       ref_,
-   const IU* out_,
-   void* this_object_)
-   : TemplatedSuboperator<RuntimeFunctionSubopState>(source, std::move(out_ius_), std::move(in_ius_)), fct_name(std::move(fct_name_)), args(std::move(args_)), ref(std::move(ref_)), out(out_), this_object(this_object_) {
+   const IU* out_)
+   : TemplatedSuboperator<RuntimeFunctionSubopState>(source, std::move(out_ius_), std::move(in_ius_)), state_init(state_init_), fct_name(std::move(fct_name_)), args(std::move(args_)), ref(std::move(ref_)), out(out_) {
 }
 
 void RuntimeFunctionSubop::consumeAllChildren(CompilationContext& context) {
@@ -165,8 +165,11 @@ void RuntimeFunctionSubop::consumeAllChildren(CompilationContext& context) {
 }
 
 void RuntimeFunctionSubop::setUpStateImpl(const ExecutionContext& context) {
-   for (auto& state : *states) {
-      state.this_object = static_cast<void*>(this_object);
+   assert(state_init);
+   state_init->prepare(context.getNumThreads());
+   for (size_t thread_id = 0; thread_id < context.getNumThreads(); ++thread_id) {
+      auto& state = (*states)[thread_id];
+      state.this_object = state_init->access(thread_id);
    }
 }
 
