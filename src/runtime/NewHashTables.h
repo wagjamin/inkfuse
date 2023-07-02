@@ -49,6 +49,9 @@ struct AtomicHashTable {
    /// If it finds a slot, disables it. Needed for e.g. left semi joins.
    char* lookupDisable(const char* key);
    /// Insert a new key - must only be called when we know the group does not exist yet.
+   /// @tparam copy_only_key only materialize the key in the hash table. If false copies
+   ///                       the payload as well.
+   template <bool copy_only_key = true>
    char* insert(const char* key);
 
    private:

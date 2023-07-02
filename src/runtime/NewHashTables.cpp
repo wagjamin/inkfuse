@@ -16,13 +16,13 @@ const uint8_t tag_hash_mask = tag_fill_mask - 1;
 }
 
 template <>
-const std::string AtomicHashTable<SimpleKeyComparator>::ID = "atomic_sk";
+const std::string AtomicHashTable<SimpleKeyComparator>::ID = "at_sk";
 template <>
-const std::string AtomicHashTable<ComplexKeyComparator>::ID = "atomic_ck";
+const std::string AtomicHashTable<ComplexKeyComparator>::ID = "at_ck";
 template <>
-const std::string ExclusiveHashTable<SimpleKeyComparator>::ID = "exclusive_sk";
+const std::string ExclusiveHashTable<SimpleKeyComparator>::ID = "ex_sk";
 template <>
-const std::string ExclusiveHashTable<ComplexKeyComparator>::ID = "exclusive_ck";
+const std::string ExclusiveHashTable<ComplexKeyComparator>::ID = "ex_ck";
 
 SimpleKeyComparator::SimpleKeyComparator(uint16_t key_size_) : key_size(key_size_) {
 }
@@ -149,6 +149,7 @@ char* AtomicHashTable<Comparator>::lookupDisable(const char* key) {
 }
 
 template <class Comparator>
+template <bool copy_only_key>
 char* AtomicHashTable<Comparator>::insert(const char* key) {
    // Look up the initial slot in the linear probing chain .
    const uint64_t hash = comp.hash(key);
@@ -164,8 +165,12 @@ char* AtomicHashTable<Comparator>::insert(const char* key) {
       uint8_t curr_tag = it.tag_ptr->load();
       const uint8_t tag_fill = curr_tag & tag_fill_mask;
       if (!tag_fill && it.tag_ptr->compare_exchange_strong(curr_tag, target_tag)) {
-         // We managed to claim the slot. Copy over the key.
-         std::memcpy(it.data_ptr, key, comp.keySize());
+         // We managed to claim the slot. Populate it.
+         if constexpr (copy_only_key) {
+            std::memcpy(it.data_ptr, key, comp.keySize());
+         } else {
+            std::memcpy(it.data_ptr, key, total_slot_size);
+         }
          return it.data_ptr;
       }
       // Either the slot was already tagged, or got tagged by another thread at the same time.
@@ -225,7 +230,13 @@ void AtomicHashTable<Comparator>::itAdvanceNoWrap(IteratorState& it) const {
 
 // Declare all permitted template instantiations.
 template class AtomicHashTable<SimpleKeyComparator>;
+template char* AtomicHashTable<SimpleKeyComparator>::insert<true>(const char* key);
+template char* AtomicHashTable<SimpleKeyComparator>::insert<false>(const char* key);
+
 template class AtomicHashTable<ComplexKeyComparator>;
+template char* AtomicHashTable<ComplexKeyComparator>::insert<true>(const char* key);
+template char* AtomicHashTable<ComplexKeyComparator>::insert<false>(const char* key);
+
 template class ExclusiveHashTable<SimpleKeyComparator>;
 template class ExclusiveHashTable<ComplexKeyComparator>;
 

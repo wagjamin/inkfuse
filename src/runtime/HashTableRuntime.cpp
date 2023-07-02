@@ -1,5 +1,6 @@
 #include "runtime/HashTableRuntime.h"
 #include "runtime/HashTables.h"
+#include "runtime/NewHashTables.h"
 #include "runtime/Runtime.h"
 
 namespace inkfuse {
@@ -54,6 +55,15 @@ extern "C" char* HashTableRuntime::ht_dl_lookup_or_insert(void* table, char* key
 
 extern "C" void HashTableRuntime::ht_dl_it_advance(void* table, char** it_data, uint64_t* it_idx) {
    reinterpret_cast<HashTableDirectLookup*>(table)->iteratorAdvance(it_data, it_idx);
+}
+
+// Atomic hash table.
+extern "C" char* HashTableRuntime::ht_at_sk_lookup(void* table, char* key) {
+   return reinterpret_cast<AtomicHashTable<SimpleKeyComparator>*>(table)->lookup(key);
+}
+
+extern "C" char* HashTableRuntime::ht_at_ck_lookup(void* table, char* key) {
+   return reinterpret_cast<AtomicHashTable<ComplexKeyComparator>*>(table)->lookup(key);
 }
 
 void HashTableRuntime::registerRuntime() {
@@ -112,6 +122,15 @@ void HashTableRuntime::registerRuntime() {
       .addArg("table", IR::Pointer::build(IR::Void::build()), true)
       .addArg("it_data", IR::Pointer::build(IR::Pointer::build(IR::Char::build())))
       .addArg("it_idx", IR::Pointer::build(IR::UnsignedInt::build(8)));
+
+   // Atomic hash table.
+   RuntimeFunctionBuilder("ht_at_sk_lookup", IR::Pointer::build(IR::Char::build()))
+      .addArg("table", IR::Pointer::build(IR::Void::build()))
+      .addArg("key", IR::Pointer::build(IR::Char::build()), true);
+
+   RuntimeFunctionBuilder("ht_at_ck_lookup", IR::Pointer::build(IR::Char::build()))
+      .addArg("table", IR::Pointer::build(IR::Void::build()))
+      .addArg("key", IR::Pointer::build(IR::Char::build()), true);
 }
 
 }
