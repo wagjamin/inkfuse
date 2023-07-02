@@ -10,6 +10,7 @@
 #include "runtime/HashRuntime.h"
 #include "runtime/HashTableRuntime.h"
 #include "runtime/MemoryRuntime.h"
+#include "runtime/TupleMaterializer.h"
 
 namespace inkfuse {
 
@@ -30,6 +31,7 @@ GlobalRuntime::GlobalRuntime() : program(std::make_unique<IR::Program>("global_r
    HashTableRuntime::registerRuntime();
    MemoryRuntime::registerRuntime();
    HashTableSourceState::registerRuntime();
+   TupleMaterializerRuntime::registerRuntime();
 }
 
 RuntimeStructBuilder::~RuntimeStructBuilder() {

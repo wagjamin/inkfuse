@@ -24,6 +24,10 @@ extern "C" char* ht_dl_lookup(void* table, char* key);
 extern "C" char* ht_dl_lookup_or_insert(void* table, char* key);
 extern "C" void ht_dl_it_advance(void* table, char** it_data, uint64_t* it_idx);
 
+/// Atomic hash-table lookup. No insert needed as that's done by the runtime system.
+extern "C" char* ht_at_sk_lookup(void* table, char* key);
+extern "C" char* ht_at_ck_lookup(void* table, char* key);
+
 /// Special lookup function if we know we have a 0-byte key.
 extern "C" char* ht_nk_lookup(void* table);
 
