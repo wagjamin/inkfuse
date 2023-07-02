@@ -14,7 +14,7 @@ enum class JoinType {
 
 /// A join in InkFuse. Joins produce very different suboperator DAGs depending on whether
 /// they are primary key joins or not. This is because a PK join can be highly optimized:
-/// - No need to keep lists of matching rows fo a key within the hash table.
+/// - No need to keep lists of matching rows for a key within the hash table.
 /// - No growing chunks - the output chunk will always be either the same size or smaller.
 /// This means that we can create an optimzied suboperator layout for this type of join.
 /// For non-PK joins we need to pack a much more complex join state and take care of potentially

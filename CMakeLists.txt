@@ -135,6 +135,7 @@ set(INCLUDE_H
         "${CMAKE_SOURCE_DIR}/src/runtime/HashTableRuntime.h"
         "${CMAKE_SOURCE_DIR}/src/runtime/HashTables.h"
         "${CMAKE_SOURCE_DIR}/src/runtime/MemoryRuntime.h"
+        "${CMAKE_SOURCE_DIR}/src/runtime/NewHashTables.h"
         "${CMAKE_SOURCE_DIR}/src/storage/Relation.h"
         )
 
@@ -214,6 +215,7 @@ set(SRC_CC
         "${CMAKE_SOURCE_DIR}/src/runtime/HashTableRuntime.cpp"
         "${CMAKE_SOURCE_DIR}/src/runtime/HashTables.cpp"
         "${CMAKE_SOURCE_DIR}/src/runtime/MemoryRuntime.cpp"
+        "${CMAKE_SOURCE_DIR}/src/runtime/NewHashTables.cpp"
         )
 
 set(TEST_CC
@@ -230,6 +232,8 @@ set(TEST_CC
         "${CMAKE_SOURCE_DIR}/test/operators/test_filter.cpp"
         "${CMAKE_SOURCE_DIR}/test/operators/test_join.cpp"
         "${CMAKE_SOURCE_DIR}/test/runtime/test_hash_table.cpp"
+        "${CMAKE_SOURCE_DIR}/test/runtime/test_atomic_hash_table.cpp"
+        "${CMAKE_SOURCE_DIR}/test/runtime/test_atomic_hash_table_complex_key.cpp"
         "${CMAKE_SOURCE_DIR}/test/runtime/test_hash_table_complex_key.cpp"
         "${CMAKE_SOURCE_DIR}/test/suboperators/test_hash_table_source.cpp"
         "${CMAKE_SOURCE_DIR}/test/suboperators/aggregation/test_agg_reader_subop.cpp"
