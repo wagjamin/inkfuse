@@ -10,9 +10,9 @@ namespace inkfuse {
 namespace {
 
 struct HtLookupSubopTest : public ::testing::TestWithParam<PipelineExecutor::ExecutionMode> {
-   HtLookupSubopTest() : key_iu(IR::ByteArray::build(8)), ptr_iu(IR::Pointer::build(IR::Char::build())), table(8, 12) {
+   HtLookupSubopTest() : key_iu(IR::ByteArray::build(8)), ptr_iu(IR::Pointer::build(IR::Char::build())), table_defer(8, 12), table(table_defer.obj()) {
       // Set up the hash table operator. No pseudo-ius as we directly provide the source and don't pack manually.
-      auto op = RuntimeFunctionSubop::htLookup<HashTableSimpleKey>(nullptr, ptr_iu, key_iu, {}, &table);
+      auto op = RuntimeFunctionSubop::htLookup<HashTableSimpleKey>(nullptr, ptr_iu, key_iu, {}, &table_defer);
       // And insert keys into the backing table.
       addValuesToHashTable();
 
@@ -38,7 +38,8 @@ struct HtLookupSubopTest : public ::testing::TestWithParam<PipelineExecutor::Exe
 
    IU key_iu;
    IU ptr_iu;
-   HashTableSimpleKey table;
+   FakeDefer<HashTableSimpleKey> table_defer;
+   HashTableSimpleKey& table;
    std::unique_ptr<Pipeline> pipe;
    std::optional<PipelineExecutor> exec;
 };

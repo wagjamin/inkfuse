@@ -2,8 +2,9 @@
 #define INKFUSE_PIPELINE_H
 
 #include "algebra/suboperators/Suboperator.h"
+#include "exec/DeferredState.h"
 #include "exec/FuseChunk.h"
-#include "runtime/HashTables.h"
+#include "runtime/TupleMaterializer.h"
 #include <deque>
 #include <map>
 #include <memory>
@@ -80,8 +81,6 @@ struct Pipeline {
 using PipelinePtr = std::unique_ptr<Pipeline>;
 
 /// The PipelineDAG represents a query which is ready for execution.
-/// It also contains the runtime state of a query. This is not a very clean abstraction at the moment.
-/// It would be much cleaner to have this in the ExecutionContext.
 struct PipelineDAG {
    public:
    /// Get the current pipeline.
@@ -94,22 +93,21 @@ struct PipelineDAG {
    /// Mark a pipeline as done. Allows for the release of runtime state.
    void markPipelineDone(size_t idx);
 
+   /// Attach tuple materializers to the runtime state of the PipelineDAG.
+   TupleMaterializerState& attachTupleMaterializers(size_t discard_after, size_t tuple_size);
    /// Attach a simple hash table to the runtime state of the PipelineDAG.
-   HashTableSimpleKey& attachHashTableSimpleKey(size_t discard_after, size_t key_size, size_t payload_size);
+   HashTableSimpleKeyState& attachHashTableSimpleKey(size_t discard_after, size_t key_size, size_t payload_size);
    /// Attach a complex hash table to the runtime state of the PipelineDAG.
-   HashTableComplexKey& attachHashTableComplexKey(size_t discard_after, uint16_t slots, size_t payload_size);
+   HashTableComplexKeyState& attachHashTableComplexKey(size_t discard_after, uint16_t slots, size_t payload_size);
    /// Attach a direct lookup hash table to the runtime state of the PipelineDAG.
-   HashTableDirectLookup& attachHashTableDirectLookup(size_t discard_after, size_t payload_size);
+   HashTableDirectLookupState& attachHashTableDirectLookup(size_t discard_after, size_t payload_size);
 
    private:
    /// Internally the PipelineDAG is represented as a vector of pipelines within a topological order.
    std::vector<PipelinePtr> pipelines;
-   /// Hash tables, ordered by pipeline after which they can be discarded.
-   std::deque<std::pair<size_t, std::unique_ptr<HashTableSimpleKey>>> hash_tables_simple;
-   /// Hash tables, ordered by pipeline after which they can be discarded.
-   std::deque<std::pair<size_t, std::unique_ptr<HashTableComplexKey>>> hash_tables_complex;
-   /// Hash tables, ordered by pipeline after which they can be discarded.
-   std::deque<std::pair<size_t, std::unique_ptr<HashTableDirectLookup>>> hash_tables_dl;
+
+   /// Deferred state initializers for runtime state.
+   std::deque<std::pair<size_t, std::unique_ptr<DefferredStateInitializer>>> runtime_state;
 };
 
 using PipelineDAGPtr = std::unique_ptr<PipelineDAG>;

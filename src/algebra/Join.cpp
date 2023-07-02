@@ -101,7 +101,7 @@ void Join::decayPkJoin(inkfuse::PipelineDAG& dag) const {
    // 4. Unpack all the rows again into individual IUs
 
    // TODO fix discard
-   HashTableSimpleKey& ht = dag.attachHashTableSimpleKey(0, key_size_left, payload_size_left);
+   HashTableSimpleKeyState& ht = dag.attachHashTableSimpleKey(0, key_size_left, payload_size_left);
    {
       // Step 1: Construct the build pipeline.
 

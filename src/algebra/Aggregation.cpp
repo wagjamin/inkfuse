@@ -132,7 +132,7 @@ void Aggregation::decay(PipelineDAG& dag) const {
 
    // Set up the backing aggregation hash table. We can drop it after the
    // pipeline which reads from the aggregation is done.
-   void* hash_table;
+   DefferredStateInitializer* hash_table;
    if (requires_complex_ht) {
       hash_table = &dag.attachHashTableComplexKey(dag.getPipelines().size(), 1, payload_size);
    } else if (key_size == 2) {
@@ -206,11 +206,11 @@ void Aggregation::decay(PipelineDAG& dag) const {
    // First, build a reader on the aggregate hash table returning pointers to the elements.
    // Dispatch the correct reader depending on the layout.
    if (requires_complex_ht) {
-      read_pipe.attachSuboperator(ComplexHashTableSource::build(this, ht_scan_result, static_cast<HashTableComplexKey*>(hash_table)));
+      read_pipe.attachSuboperator(ComplexHashTableSource::build(this, ht_scan_result, static_cast<HashTableComplexKey*>(hash_table->access(0))));
    } else if (key_size == 2) {
-      read_pipe.attachSuboperator(DirectLookupHashTableSource::build(this, ht_scan_result, static_cast<HashTableDirectLookup*>(hash_table)));
+      read_pipe.attachSuboperator(DirectLookupHashTableSource::build(this, ht_scan_result, static_cast<HashTableDirectLookup*>(hash_table->access(0))));
    } else {
-      read_pipe.attachSuboperator(SimpleHashTableSource::build(this, ht_scan_result, static_cast<HashTableSimpleKey*>(hash_table)));
+      read_pipe.attachSuboperator(SimpleHashTableSource::build(this, ht_scan_result, static_cast<HashTableSimpleKey*>(hash_table->access(0))));
    }
 
    // Produce the readers for the materialized keys.

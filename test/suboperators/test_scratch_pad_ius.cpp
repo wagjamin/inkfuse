@@ -16,7 +16,7 @@ struct ScratchPadIUTestT : public ::testing::TestWithParam<PipelineExecutor::Exe
                          pseudo_2(IR::Void::build()),
                          packed(IR::ByteArray::build(8)),
                          out_ptrs(IR::Pointer::build(IR::Char::build())),
-                         ht(8, 0) {
+                         ht_defer(8, 0), ht(ht_defer.obj()) {
       dag.buildNewPipeline();
       auto& pipe = dag.getCurrentPipeline();
       // The scratch provider is the target for the packed keys.
@@ -33,7 +33,7 @@ struct ScratchPadIUTestT : public ::testing::TestWithParam<PipelineExecutor::Exe
       reinterpret_cast<KeyPackerSubop&>(packer_2).attachRuntimeParams(std::move(params_2));
       // Do a hash table insert on the packed key.
       // We require the two packing pseudo IUs as input IUs to make sure the ht code is generated after the packing code.
-      auto& ht_insert = pipe.attachSuboperator(RuntimeFunctionSubop::htLookupOrInsert<HashTableSimpleKey>(nullptr, &out_ptrs, packed, {&pseudo_1, &pseudo_2}, &ht));
+      auto& ht_insert = pipe.attachSuboperator(RuntimeFunctionSubop::htLookupOrInsert<HashTableSimpleKey>(nullptr, &out_ptrs, packed, {&pseudo_1, &pseudo_2}, &ht_defer));
    }
 
    PipelineDAG dag;
@@ -44,7 +44,8 @@ struct ScratchPadIUTestT : public ::testing::TestWithParam<PipelineExecutor::Exe
    IU pseudo_2;
    IU packed;
    IU out_ptrs;
-   HashTableSimpleKey ht;
+   FakeDefer<HashTableSimpleKey> ht_defer;
+   HashTableSimpleKey& ht;
 };
 
 TEST_P(ScratchPadIUTestT, readAndMaterialize) {

@@ -207,32 +207,35 @@ const std::vector<SuboperatorArc>& Pipeline::getSubops() const {
    return suboperators;
 }
 
-void Pipeline::setPrettyPrinter(PrettyPrinter& printer_)
-{
+void Pipeline::setPrettyPrinter(PrettyPrinter& printer_) {
    assert(!printer);
    printer = &printer_;
 }
 
-PrettyPrinter* Pipeline::getPrettyPrinter()
-{
+PrettyPrinter* Pipeline::getPrettyPrinter() {
    return printer;
 }
 
-HashTableSimpleKey& PipelineDAG::attachHashTableSimpleKey(size_t discard_after, size_t key_size, size_t payload_size) {
-   auto& inserted = hash_tables_simple.emplace_back(discard_after, std::make_unique<HashTableSimpleKey>(key_size, payload_size, 8));
-   return *inserted.second;
+TupleMaterializerState& PipelineDAG::attachTupleMaterializers(size_t discard_after, size_t tuple_size) {
+   auto& inserted = runtime_state.emplace_back(
+      discard_after,
+      std::make_unique<TupleMaterializerState>(tuple_size));
+   return static_cast<TupleMaterializerState&>(*inserted.second);
 }
 
-HashTableComplexKey& PipelineDAG::attachHashTableComplexKey(size_t discard_after, uint16_t slots, size_t payload_size)
-{
-   auto& inserted = hash_tables_complex.emplace_back(discard_after, std::make_unique<HashTableComplexKey>(0, slots, payload_size, 8));
-   return *inserted.second;
+HashTableSimpleKeyState& PipelineDAG::attachHashTableSimpleKey(size_t discard_after, size_t key_size, size_t payload_size) {
+   auto& inserted = runtime_state.emplace_back(discard_after, std::make_unique<HashTableSimpleKeyState>(key_size, payload_size));
+   return static_cast<HashTableSimpleKeyState&>(*inserted.second);
 }
 
-HashTableDirectLookup& PipelineDAG::attachHashTableDirectLookup(size_t discard_after, size_t payload_size)
-{
-   auto& inserted = hash_tables_dl.emplace_back(discard_after, std::make_unique<HashTableDirectLookup>(payload_size));
-   return *inserted.second;
+HashTableComplexKeyState& PipelineDAG::attachHashTableComplexKey(size_t discard_after, uint16_t slots, size_t payload_size) {
+   auto& inserted = runtime_state.emplace_back(discard_after, std::make_unique<HashTableComplexKeyState>(slots, payload_size));
+   return static_cast<HashTableComplexKeyState&>(*inserted.second);
+}
+
+HashTableDirectLookupState& PipelineDAG::attachHashTableDirectLookup(size_t discard_after, size_t payload_size) {
+   auto& inserted = runtime_state.emplace_back(discard_after, std::make_unique<HashTableDirectLookupState>(payload_size));
+   return static_cast<HashTableDirectLookupState&>(*inserted.second);
 }
 
 Pipeline& PipelineDAG::getCurrentPipeline() const {

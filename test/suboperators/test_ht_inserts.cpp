@@ -16,10 +16,10 @@ namespace {
 /// when a hash table resize occurs.
 /// Otherwise we run risk of retaining old pointers of the hash table before the resize.
 struct HtInsertTest : public ::testing::TestWithParam<PipelineExecutor::ExecutionMode> {
-   HtInsertTest() : ht(4, 4, 16), pointers(IR::Pointer::build(IR::Char::build())), keys(IR::UnsignedInt::build(4)), to_pack(IR::UnsignedInt::build(4)) {
+   HtInsertTest() : ht_defer(4, 4, 16), ht(ht_defer.obj()), pointers(IR::Pointer::build(IR::Char::build())), keys(IR::UnsignedInt::build(4)), to_pack(IR::UnsignedInt::build(4)) {
       auto& pipe = dag.buildNewPipeline();
       // lookupOrInsert creating new groups within the backing hash table.
-      pipe.attachSuboperator(RuntimeFunctionSubop::htLookupOrInsert<HashTableSimpleKey>(nullptr, &pointers, keys, {}, &ht));
+      pipe.attachSuboperator(RuntimeFunctionSubop::htLookupOrInsert<HashTableSimpleKey>(nullptr, &pointers, keys, {}, &ht_defer));
       // key packing on top of this.
       auto& packer = pipe.attachSuboperator(KeyPackerSubop::build(nullptr, to_pack, pointers, {}));
       KeyPackingRuntimeParams params;
@@ -31,16 +31,16 @@ struct HtInsertTest : public ::testing::TestWithParam<PipelineExecutor::Executio
       auto& col_keys = ctx.getColumn(keys, 0);
       auto& col_to_pack = ctx.getColumn(to_pack, 0);
       for (uint32_t k = 0; k < morsel_size; ++k) {
-        reinterpret_cast<uint32_t*>(col_keys.raw_data)[k] = k + offset;
-        reinterpret_cast<uint32_t*>(col_to_pack.raw_data)[k] = 2 * (k + offset) + 12;
+         reinterpret_cast<uint32_t*>(col_keys.raw_data)[k] = k + offset;
+         reinterpret_cast<uint32_t*>(col_to_pack.raw_data)[k] = 2 * (k + offset) + 12;
       }
       col_keys.size = morsel_size;
       col_to_pack.size = morsel_size;
    }
 
-
    PipelineDAG dag;
-   HashTableSimpleKey ht;
+   FakeDefer<HashTableSimpleKey> ht_defer;
+   HashTableSimpleKey& ht;
    /// Char* returned by htLookupOrInsert.
    IU pointers;
    /// UI4 keys that get inserted into the hash table.
@@ -50,25 +50,25 @@ struct HtInsertTest : public ::testing::TestWithParam<PipelineExecutor::Executio
 };
 
 TEST_P(HtInsertTest, insert_trigger_resize) {
-    auto& pipe = dag.getCurrentPipeline();
-    auto repiped = pipe.repipeRequired(0, 2);
-    // Run the pipeline.
-    PipelineExecutor exec(*repiped, 1, GetParam(), "HtInsert_exec");
-    const auto& ctx = exec.getExecutionContext();
-    // Morsel with 32 keys should trigger a first resize to 64 elements.
-    prepareMorsel(ctx, 32, 0);
-    exec.runMorsel(0);
-    // Morsel with 1024 keys should trigger multiple additional resizes.
-    prepareMorsel(ctx, 1024, 32);
-    exec.runMorsel(0);
-    // Now we need to check that we have everything we need.
-    EXPECT_EQ(ht.size(), 1024 + 32);
-    for (uint32_t key = 0; key < 1024 + 32; ++key) {
-        auto res = reinterpret_cast<uint32_t*>(ht.lookup(reinterpret_cast<char*>(&key)));
-        ASSERT_NE(res, nullptr);
-        EXPECT_EQ(*res, key);
-        EXPECT_EQ(*(res + 1), 2 * key + 12);
-    }
+   auto& pipe = dag.getCurrentPipeline();
+   auto repiped = pipe.repipeRequired(0, 2);
+   // Run the pipeline.
+   PipelineExecutor exec(*repiped, 1, GetParam(), "HtInsert_exec");
+   const auto& ctx = exec.getExecutionContext();
+   // Morsel with 32 keys should trigger a first resize to 64 elements.
+   prepareMorsel(ctx, 32, 0);
+   exec.runMorsel(0);
+   // Morsel with 1024 keys should trigger multiple additional resizes.
+   prepareMorsel(ctx, 1024, 32);
+   exec.runMorsel(0);
+   // Now we need to check that we have everything we need.
+   EXPECT_EQ(ht.size(), 1024 + 32);
+   for (uint32_t key = 0; key < 1024 + 32; ++key) {
+      auto res = reinterpret_cast<uint32_t*>(ht.lookup(reinterpret_cast<char*>(&key)));
+      ASSERT_NE(res, nullptr);
+      EXPECT_EQ(*res, key);
+      EXPECT_EQ(*(res + 1), 2 * key + 12);
+   }
 }
 
 INSTANTIATE_TEST_CASE_P(

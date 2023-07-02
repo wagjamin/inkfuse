@@ -2,6 +2,7 @@
 #define INKFUSE_RUNTIMEFUNCTIONSUBOP_H
 
 #include "algebra/suboperators/Suboperator.h"
+#include "exec/DeferredState.h"
 
 namespace inkfuse {
 
@@ -24,14 +25,14 @@ struct RuntimeFunctionSubop : public TemplatedSuboperator<RuntimeFunctionSubopSt
    static const bool hasConsumeAll = true;
 
    /// Build an insert function for a hash table.
-   static std::unique_ptr<RuntimeFunctionSubop> htInsert(const RelAlgOp* source, const IU* pointers_, const IU& key_, std::vector<const IU*> pseudo_ius_, void* hash_table_ = nullptr);
+   static std::unique_ptr<RuntimeFunctionSubop> htInsert(const RelAlgOp* source, const IU* pointers_, const IU& key_, std::vector<const IU*> pseudo_ius_, DefferredStateInitializer* state_init_ = nullptr);
 
    /// Build a hash table lookup function that disables every found slot.
-   static std::unique_ptr<RuntimeFunctionSubop> htLookupDisable(const RelAlgOp* source, const IU& pointers_, const IU& key_, std::vector<const IU*> pseudo_ius_, void* hash_table_ = nullptr);
+   static std::unique_ptr<RuntimeFunctionSubop> htLookupDisable(const RelAlgOp* source, const IU& pointers_, const IU& key_, std::vector<const IU*> pseudo_ius_, DefferredStateInitializer* state_init_ = nullptr);
 
    /// Build a hash table lookup function.
    template <class HashTable>
-   static std::unique_ptr<RuntimeFunctionSubop> htLookup(const RelAlgOp* source, const IU& pointers_, const IU& key_, std::vector<const IU*> pseudo_ius_, void* hash_table_ = nullptr) {
+   static std::unique_ptr<RuntimeFunctionSubop> htLookup(const RelAlgOp* source, const IU& pointers_, const IU& key_, std::vector<const IU*> pseudo_ius_, DefferredStateInitializer* state_init_ = nullptr) {
       std::string fct_name = "ht_" + HashTable::ID + "_lookup";
       std::vector<const IU*> in_ius{&key_};
       for (auto pseudo : pseudo_ius_) {
@@ -45,18 +46,18 @@ struct RuntimeFunctionSubop : public TemplatedSuboperator<RuntimeFunctionSubopSt
       return std::unique_ptr<RuntimeFunctionSubop>(
          new RuntimeFunctionSubop(
             source,
+            state_init_,
             std::move(fct_name),
             std::move(in_ius),
             std::move(out_ius_),
             std::move(args),
             std::move(ref),
-            out,
-            hash_table_));
+            out));
    }
 
    /// Build a hash table lookup or insert function.
    template <class HashTable>
-   static std::unique_ptr<RuntimeFunctionSubop> htLookupOrInsert(const RelAlgOp* source, const IU* pointers_, const IU& key_, std::vector<const IU*> pseudo_ius_, void* hash_table_ = nullptr) {
+   static std::unique_ptr<RuntimeFunctionSubop> htLookupOrInsert(const RelAlgOp* source, const IU* pointers_, const IU& key_, std::vector<const IU*> pseudo_ius_, DefferredStateInitializer* state_init_ = nullptr) {
       std::string fct_name = "ht_" + HashTable::ID + "_lookup_or_insert";
       std::vector<const IU*> in_ius{&key_};
       for (auto pseudo : pseudo_ius_) {
@@ -73,17 +74,17 @@ struct RuntimeFunctionSubop : public TemplatedSuboperator<RuntimeFunctionSubopSt
       return std::unique_ptr<RuntimeFunctionSubop>(
          new RuntimeFunctionSubop(
             source,
+            state_init_,
             std::move(fct_name),
             std::move(in_ius),
             std::move(out_ius_),
             std::move(args),
             std::move(ref),
-            pointers_,
-            hash_table_));
+            pointers_));
    }
 
    /// Build a lookup function for a hash table with a 0-byte key.
-   static std::unique_ptr<RuntimeFunctionSubop> htNoKeyLookup(const RelAlgOp* source, const IU& pointers_, const IU& input_dependency, void* hash_table_ = nullptr);
+   static std::unique_ptr<RuntimeFunctionSubop> htNoKeyLookup(const RelAlgOp* source, const IU& pointers_, const IU& input_dependency, DefferredStateInitializer* state_init_ = nullptr);
 
    static void registerRuntime();
 
@@ -96,18 +97,22 @@ struct RuntimeFunctionSubop : public TemplatedSuboperator<RuntimeFunctionSubopSt
    protected:
    RuntimeFunctionSubop(
       const RelAlgOp* source,
+      DefferredStateInitializer* state_init_,
       std::string fct_name_,
-      std::vector<const IU*> in_ius_,
-      std::vector<const IU*> out_ius_,
-      std::vector<const IU*> args_,
-      std::vector<bool> ref_,
-      const IU* out_,
-      void* this_object_);
+      std::vector<const IU*>
+         in_ius_,
+      std::vector<const IU*>
+         out_ius_,
+      std::vector<const IU*>
+         args_,
+      std::vector<bool>
+         ref_,
+      const IU* out_);
 
+   /// The deferred state initializer used to set up runtime state.
+   DefferredStateInitializer* state_init;
    /// The function name.
    std::string fct_name;
-   /// The object passed as first argument to the runtime function.
-   void* this_object;
    /// The IUs used as arguments.
    std::vector<const IU*> args;
    /// Reference annotations - which of the arguments need to be referenced before being passed to the function.
@@ -115,8 +120,6 @@ struct RuntimeFunctionSubop : public TemplatedSuboperator<RuntimeFunctionSubopSt
    /// Optional output IU.
    const IU* out;
 };
-
-
 }
 
 #endif //INKFUSE_RUNTIMEFUNCTIONSUBOP_H
