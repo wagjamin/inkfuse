@@ -68,9 +68,6 @@ struct Join : public RelAlgOp {
    std::optional<IU> lookup_right;
 
    /// Void-typed pseudo-IUs that connect the key packing operators on
-   /// the build side with the hash table insert.
-   std::list<IU> left_pseudo_ius;
-   /// Void-typed pseudo-IUs that connect the key packing operators on
    /// the probe side with the hash table lookup.
    std::list<IU> right_pseudo_ius;
    /// Void-types pseudo-IU for the filter on rows that have no match.
@@ -81,9 +78,12 @@ struct Join : public RelAlgOp {
    /// Filtered probe side in the probe phase. Byte[] typed.
    std::optional<IU> filtered_probe;
 
-   /// The input IUs.
+   /// The left input IUs.
    std::vector<const IU*> keys_left;
    std::vector<const IU*> payload_left;
+   /// The left key/payload input IUs together.
+   std::vector<const IU*> full_row_left;
+   /// The right input IUs.
    std::vector<const IU*> keys_right;
    std::vector<const IU*> payload_right;
 

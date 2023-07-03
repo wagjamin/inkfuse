@@ -2,6 +2,7 @@
 #define INKFUSE_DEFERREDSTATE_H
 
 #include "runtime/HashTables.h"
+#include "runtime/NewHashTables.h"
 #include "runtime/TupleMaterializer.h"
 #include <deque>
 
@@ -28,8 +29,26 @@ struct TupleMaterializerState : public DefferredStateInitializer {
 
    /// The materializers.
    std::deque<TupleMaterializer> materializers;
+   /// Read handles for the runtime task that will read from them.
+   std::deque<std::unique_ptr<TupleMaterializer::ReadHandle>> handles;
    /// The tuple size.
    size_t tuple_size;
+};
+
+/// State needed for an atomic hash table. Supports deferred building.
+template <class Comparator>
+struct AtomicHashTableState : public DefferredStateInitializer {
+   AtomicHashTableState(TupleMaterializerState& materialize_) : materialize(materialize_){};
+   void prepare(size_t num_threads) override{};
+   void* access(size_t thread_id) override {
+      // Called by the actual hash table readers down the line.
+      return hash_table.get();
+   };
+
+   /// The materializer state from which builder threads read tuples to insert.
+   TupleMaterializerState& materialize;
+   /// The perfectly sized hash table used by the probe pipeline.
+   std::unique_ptr<AtomicHashTable<Comparator>> hash_table;
 };
 
 /// Fake object which doesn't defer anything.

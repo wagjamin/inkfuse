@@ -62,6 +62,10 @@ extern "C" char* HashTableRuntime::ht_at_sk_lookup(void* table, char* key) {
    return reinterpret_cast<AtomicHashTable<SimpleKeyComparator>*>(table)->lookup(key);
 }
 
+extern "C" char* HashTableRuntime::ht_at_sk_lookup_disable(void* table, char* key) {
+   return reinterpret_cast<AtomicHashTable<SimpleKeyComparator>*>(table)->lookupDisable(key);
+}
+
 extern "C" char* HashTableRuntime::ht_at_ck_lookup(void* table, char* key) {
    return reinterpret_cast<AtomicHashTable<ComplexKeyComparator>*>(table)->lookup(key);
 }
@@ -125,6 +129,10 @@ void HashTableRuntime::registerRuntime() {
 
    // Atomic hash table.
    RuntimeFunctionBuilder("ht_at_sk_lookup", IR::Pointer::build(IR::Char::build()))
+      .addArg("table", IR::Pointer::build(IR::Void::build()))
+      .addArg("key", IR::Pointer::build(IR::Char::build()), true);
+
+   RuntimeFunctionBuilder("ht_at_sk_lookup_disable", IR::Pointer::build(IR::Char::build()))
       .addArg("table", IR::Pointer::build(IR::Void::build()))
       .addArg("key", IR::Pointer::build(IR::Char::build()), true);
 

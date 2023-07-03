@@ -7,7 +7,6 @@ namespace inkfuse {
 
 struct RuntimeFunctionSubopFragmentizer : public Fragmentizer {
    RuntimeFunctionSubopFragmentizer();
-
 };
 
 }

@@ -24,6 +24,9 @@ struct RuntimeFunctionSubop : public TemplatedSuboperator<RuntimeFunctionSubopSt
    static const bool hasConsume = false;
    static const bool hasConsumeAll = true;
 
+   /// Materialize a tuple in a dense tuplebuffer.
+   static std::unique_ptr<RuntimeFunctionSubop> materializeTuple(const RelAlgOp* source, const IU& ptr_out_, std::vector<const IU*> inputs, DefferredStateInitializer* state_init_ = nullptr);
+
    /// Build an insert function for a hash table.
    static std::unique_ptr<RuntimeFunctionSubop> htInsert(const RelAlgOp* source, const IU* pointers_, const IU& key_, std::vector<const IU*> pseudo_ius_, DefferredStateInitializer* state_init_ = nullptr);
 

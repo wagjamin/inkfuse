@@ -15,8 +15,8 @@ struct TupleMaterializer {
    public:
    TupleMaterializer(size_t tuple_size_);
 
-   /// Materialize a fully packed tuple into the buffers of the TupleMaterializer.
-   void materialize(const char* tuple_);
+   /// Get a slot for materializing a fully packed tuple into the buffers of the TupleMaterializer.
+   char* materialize();
 
    /// A chunk being materialized.
    struct MatChunk {
@@ -44,6 +44,9 @@ struct TupleMaterializer {
    /// Extract a ReadHandle to read the materialized data again.
    std::unique_ptr<ReadHandle> getReadHandle() const;
 
+   /// How many tuples were materialized into the buffers?
+   size_t getNumTuples() const;
+
    private:
    /// Create a new chunk and set it as the current one.
    void allocNewChunk();
@@ -62,7 +65,7 @@ struct TupleMaterializer {
 };
 
 namespace TupleMaterializerRuntime {
-extern "C" void materialize_tuple(void* materializer, char* key);
+extern "C" char* materialize_tuple(void* materializer);
 
 void registerRuntime();
 }

@@ -248,6 +248,14 @@ Pipeline& PipelineDAG::buildNewPipeline() {
    return *pipelines.back();
 }
 
+void PipelineDAG::addRuntimeTask(PipelineDAG::RuntimeTask task) {
+   runtime_tasks.push_back(std::move(task));
+}
+
+const std::vector<PipelineDAG::RuntimeTask>& PipelineDAG::getRuntimeTasks() const {
+   return runtime_tasks;
+}
+
 const std::vector<PipelinePtr>& PipelineDAG::getPipelines() const {
    return pipelines;
 }
