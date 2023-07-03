@@ -8,6 +8,7 @@ TupleMaterializerState::TupleMaterializerState(size_t tuple_size_) : tuple_size(
 void TupleMaterializerState::prepare(size_t num_threads) {
    for (size_t k = 0; k < num_threads; ++k) {
       materializers.push_back(tuple_size);
+      handles.push_back(materializers.back().getReadHandle());
    }
 }
 

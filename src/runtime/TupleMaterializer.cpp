@@ -16,17 +16,28 @@ TupleMaterializer::TupleMaterializer(size_t tuple_size_) : tuple_size(tuple_size
    allocNewChunk();
 }
 
-void TupleMaterializer::materialize(const char* tuple_) {
+char* TupleMaterializer::materialize() {
    if (*curr_chunk_end_ptr_ptr + tuple_size >= curr_chunk_end) {
       // Tuple doesn't fit anymore - make space for a new one.
       allocNewChunk();
    }
-   std::memcpy(*curr_chunk_end_ptr_ptr, tuple_, tuple_size);
+   char* ret = *curr_chunk_end_ptr_ptr;
    *curr_chunk_end_ptr_ptr += tuple_size;
+   return ret;
 }
 
 std::unique_ptr<TupleMaterializer::ReadHandle> TupleMaterializer::getReadHandle() const {
    return std::unique_ptr<TupleMaterializer::ReadHandle>(new ReadHandle(*this));
+}
+
+size_t TupleMaterializer::getNumTuples() const {
+   size_t num_found = 0;
+   for (const auto& chunk : chunks) {
+      const size_t occupied = chunk.end_ptr - reinterpret_cast<const char*>(chunk.data.get());
+      assert(occupied % tuple_size == 0);
+      num_found += (occupied / tuple_size);
+   }
+   return num_found;
 }
 
 const TupleMaterializer::MatChunk* TupleMaterializer::ReadHandle::pullChunk() {
@@ -51,14 +62,13 @@ void TupleMaterializer::allocNewChunk() {
 
 namespace TupleMaterializerRuntime {
 
-extern "C" void materialize_tuple(void* materializer, char* key) {
-   reinterpret_cast<TupleMaterializer*>(materializer)->materialize(key);
+extern "C" char* materialize_tuple(void* materializer) {
+   return reinterpret_cast<TupleMaterializer*>(materializer)->materialize();
 }
 
 void registerRuntime() {
-   RuntimeFunctionBuilder("materialize_tuple", IR::Void::build())
-      .addArg("table", IR::Pointer::build(IR::Void::build()))
-      .addArg("key", IR::Pointer::build(IR::Char::build()), true);
+   RuntimeFunctionBuilder("materialize_tuple", IR::Pointer::build(IR::Char::build()))
+      .addArg("table", IR::Pointer::build(IR::Void::build()));
 }
 
 } // namespace TupleMaterializerRuntime

@@ -88,6 +88,18 @@ struct PipelineDAG {
 
    Pipeline& buildNewPipeline();
 
+   struct RuntimeTask {
+      /// After what pipeline should this task be run?
+      size_t after_pipe;
+      /// Single threaded prepare (e.g. allocate hash table).
+      std::function<void(size_t)> prepare_function;
+      /// Multi-threaded worker (e.g. populate hash table).
+      std::function<void(size_t)> worker_function;
+   };
+   /// Add a runtime task that should be run on all worker threads after a given pipeline id.
+   void addRuntimeTask(RuntimeTask task);
+   const std::vector<RuntimeTask>& getRuntimeTasks() const;
+
    const std::vector<PipelinePtr>& getPipelines() const;
 
    /// Mark a pipeline as done. Allows for the release of runtime state.
@@ -95,6 +107,13 @@ struct PipelineDAG {
 
    /// Attach tuple materializers to the runtime state of the PipelineDAG.
    TupleMaterializerState& attachTupleMaterializers(size_t discard_after, size_t tuple_size);
+   /// Attach an atomic hash table that supports parallel inserts & lookups in two phases.
+   template <class Comparator>
+   AtomicHashTableState<Comparator>& attachAtomicHashTable(size_t discard_after, TupleMaterializerState& materialize_) {
+      auto& inserted = runtime_state.emplace_back(discard_after, std::make_unique<AtomicHashTableState<Comparator>>(materialize_));
+      return static_cast<AtomicHashTableState<Comparator>&>(*inserted.second);
+   };
+
    /// Attach a simple hash table to the runtime state of the PipelineDAG.
    HashTableSimpleKeyState& attachHashTableSimpleKey(size_t discard_after, size_t key_size, size_t payload_size);
    /// Attach a complex hash table to the runtime state of the PipelineDAG.
@@ -105,6 +124,8 @@ struct PipelineDAG {
    private:
    /// Internally the PipelineDAG is represented as a vector of pipelines within a topological order.
    std::vector<PipelinePtr> pipelines;
+   /// Runtime tasks to schedule once certain pipelines are fully executed.
+   std::vector<RuntimeTask> runtime_tasks;
 
    /// Deferred state initializers for runtime state.
    std::deque<std::pair<size_t, std::unique_ptr<DefferredStateInitializer>>> runtime_state;

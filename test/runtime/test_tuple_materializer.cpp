@@ -13,8 +13,12 @@ TEST(test_tuple_materializer, materialize_and_read) {
    TupleMaterializer mat(8);
    // Materialize 200k values.
    for (size_t k = 0; k < 200'000; ++k) {
-      mat.materialize(reinterpret_cast<const char*>(&k));
+      // Get the slot.
+      char* slot = mat.materialize();
+      // Materialize the actual value.
+      *reinterpret_cast<size_t*>(slot) = k;
    }
+   EXPECT_EQ(mat.getNumTuples(), 200'000);
 
    // Get a read handle for the buffer.
    auto handle = mat.getReadHandle();

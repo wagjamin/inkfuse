@@ -1,5 +1,6 @@
 #include "interpreter/RuntimeFunctionSubopFragmentizer.h"
 #include "algebra/suboperators/RuntimeFunctionSubop.h"
+#include "runtime/NewHashTables.h"
 
 namespace inkfuse {
 
@@ -28,6 +29,14 @@ RuntimeFunctionSubopFragmentizer::RuntimeFunctionSubopFragmentizer() {
          const auto& op = pipe.attachSuboperator(RuntimeFunctionSubop::htLookup<HashTableDirectLookup>(nullptr, result_ptr, key, {}));
          name = op.id();
       }
+      {
+         auto& [name, pipe] = pipes.emplace_back();
+         const auto& key = generated_ius.emplace_back(in_type);
+         const auto& result_ptr = generated_ius.emplace_back(IR::Pointer::build(IR::Char::build()));
+         // No pseudo-IU inputs, these only matter for more complex DAGs.
+         const auto& op = pipe.attachSuboperator(RuntimeFunctionSubop::htLookup<AtomicHashTable<SimpleKeyComparator>>(nullptr, result_ptr, key, {}));
+         name = op.id();
+      }
 
       // Fragmentize hash table lookup that disables the slot (for left semi joins).
       {
@@ -39,7 +48,7 @@ RuntimeFunctionSubopFragmentizer::RuntimeFunctionSubopFragmentizer() {
          name = op.id();
       }
 
-      for (const auto& out_type: out_types) {
+      for (const auto& out_type : out_types) {
          // Fragmentize hash table insert.
          {
             auto& [name, pipe] = pipes.emplace_back();
@@ -78,6 +87,16 @@ RuntimeFunctionSubopFragmentizer::RuntimeFunctionSubopFragmentizer() {
          }
       }
    }
+
+   // Fragmentize tuple materialization.
+   {
+      auto& [name, pipe] = pipes.emplace_back();
+      const auto& input = generated_ius.emplace_back(IR::Char::build());
+      const auto& result_ptr = generated_ius.emplace_back(IR::Pointer::build(IR::Char::build()));
+      const auto& op = pipe.attachSuboperator(RuntimeFunctionSubop::materializeTuple(nullptr, result_ptr, {&input}, nullptr));
+      name = op.id();
+   }
+
    // Fragmentize no-key hash table lookup/insert. Does not care about
    // input types at all. The input IU just makes connecting the DAG easier.
    // We still create a 1-byte input type as that's the only thing that really lets
