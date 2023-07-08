@@ -14,7 +14,7 @@
 namespace inkfuse {
 namespace {
 
-// One million rows.
+// Five million rows.
 const size_t rowcount = 5'000'000;
 
 /// Test fixture setting up an operator tree for a very basic multithreaded:
