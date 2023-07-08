@@ -229,6 +229,7 @@ set(TEST_CC
         "${CMAKE_SOURCE_DIR}/test/test_runtime.cpp"
         "${CMAKE_SOURCE_DIR}/test/algebra/test_repipe.cpp"
         "${CMAKE_SOURCE_DIR}/test/exec/test_interruptable_job.cpp"
+        "${CMAKE_SOURCE_DIR}/test/multithreading/test_join.cpp"
         "${CMAKE_SOURCE_DIR}/test/multithreading/test_scan_expr_filter.cpp"
         "${CMAKE_SOURCE_DIR}/test/operators/test_aggregation.cpp"
         "${CMAKE_SOURCE_DIR}/test/operators/test_table_scan.cpp"
