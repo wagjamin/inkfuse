@@ -21,6 +21,9 @@ PipelineExecutor::~PipelineExecutor() noexcept {
    for (auto& op : pipe.getSubops()) {
       op->tearDownState();
    }
+   if (compilation_job.joinable()) {
+      compilation_job.join();
+   }
 }
 
 const ExecutionContext& PipelineExecutor::getExecutionContext() const {

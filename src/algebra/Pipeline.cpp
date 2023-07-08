@@ -1,4 +1,5 @@
 #include "algebra/Pipeline.h"
+#include "algebra/suboperators/RuntimeFunctionSubop.h"
 #include "algebra/suboperators/Suboperator.h"
 #include "algebra/suboperators/sinks/FuseChunkSink.h"
 #include "algebra/suboperators/sources/FuseChunkSource.h"
@@ -123,6 +124,21 @@ std::unique_ptr<Pipeline> Pipeline::repipe(size_t start, size_t end, const std::
             }
          }
       });
+
+   if (const auto as_rtf = dynamic_cast<const RuntimeFunctionSubop*>(first.get());
+       as_rtf && as_rtf->fname() == "materialize_tuple") {
+      // HACKFIX - This is really terrible and breaks all the pretty abstractions we have built.
+      // The TupleMaterializer at the moment has an arbitrary number of inputs. We would need
+      // to properly separate inputs and codegen dependencies to make this clean :-( at the
+      // moment it breaks the enumeration invariant. But that's an implementation detail, not
+      // a conceptual limitation.
+
+      assert(first->getSourceIUs().size() >= 1);
+      in_required.clear();
+      in_required_ordered.clear();
+      in_required.insert(first->getSourceIUs()[0]);
+      in_required_ordered.push_back(first->getSourceIUs()[0]);
+   }
 
    if (!in_required.empty()) {
       // Build a FuseChunkSource for those that are not driven by an existing provider.

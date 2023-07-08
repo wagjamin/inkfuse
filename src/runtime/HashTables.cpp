@@ -22,7 +22,7 @@ const std::string HashTableDirectLookup::ID = "dl";
 SharedHashTableState::SharedHashTableState(uint16_t total_slot_size_, size_t start_slots_)
    : mod_mask(start_slots_ - 1), total_slot_size(total_slot_size_), max_fill(start_slots_ / 2) {
    if (start_slots_ < 2 || ((start_slots_ & (start_slots_ - 1)) != 0)) {
-      throw std::runtime_error("Hash table start size has to power of 2 of at size 2.");
+      throw std::runtime_error("Hash table start size has to power of 2 of at least size 2.");
    }
 
    // Set up initial hash table based on the provided start size.

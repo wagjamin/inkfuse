@@ -4,6 +4,7 @@
 #include "algebra/suboperators/row_layout/KeyPackerSubop.h"
 #include "algebra/suboperators/row_layout/KeyUnpackerSubop.h"
 #include "algebra/suboperators/sources/ScratchPadIUProvider.h"
+#include <algorithm>
 
 namespace inkfuse {
 
@@ -21,10 +22,10 @@ void allocHashTable(
    for (const auto& buffer : mat.materializers) {
       total_rows += buffer.getNumTuples();
    }
-   // We want at least 2x capacity to keep linear probing chains short.
-   const size_t min_capacity = 2 * total_rows;
+   // We want at least 2x capacity and two slots to keep linear probing chains short.
+   const size_t min_capacity = std::max(static_cast<size_t>(2), 2 * total_rows);
    // Total slots needed are next power of 2.
-   const size_t total_slots = 1ull << (64 - __builtin_clzl(min_capacity - 1));
+   size_t total_slots = 1ull << (64 - __builtin_clzl(min_capacity - 1));
    // Allocate the hash table we will populate.
    ht_state.hash_table = std::make_unique<AtomicHashTable<SimpleKeyComparator>>(
       SimpleKeyComparator(key_size),

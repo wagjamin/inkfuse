@@ -97,6 +97,8 @@ struct RuntimeFunctionSubop : public TemplatedSuboperator<RuntimeFunctionSubopSt
 
    std::string id() const override;
 
+   std::string fname() const { return fct_name; }
+
    protected:
    RuntimeFunctionSubop(
       const RelAlgOp* source,
