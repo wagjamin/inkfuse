@@ -206,11 +206,11 @@ void Aggregation::decay(PipelineDAG& dag) const {
    // First, build a reader on the aggregate hash table returning pointers to the elements.
    // Dispatch the correct reader depending on the layout.
    if (requires_complex_ht) {
-      read_pipe.attachSuboperator(ComplexHashTableSource::build(this, ht_scan_result, static_cast<HashTableComplexKey*>(hash_table->access(0))));
+      read_pipe.attachSuboperator(ComplexHashTableSource::build(this, ht_scan_result, hash_table));
    } else if (key_size == 2) {
-      read_pipe.attachSuboperator(DirectLookupHashTableSource::build(this, ht_scan_result, static_cast<HashTableDirectLookup*>(hash_table->access(0))));
+      read_pipe.attachSuboperator(DirectLookupHashTableSource::build(this, ht_scan_result, hash_table));
    } else {
-      read_pipe.attachSuboperator(SimpleHashTableSource::build(this, ht_scan_result, static_cast<HashTableSimpleKey*>(hash_table->access(0))));
+      read_pipe.attachSuboperator(SimpleHashTableSource::build(this, ht_scan_result, hash_table));
    }
 
    // Produce the readers for the materialized keys.
