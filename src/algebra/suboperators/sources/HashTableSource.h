@@ -33,7 +33,7 @@ struct HashTableSourceState {
 /// DEFAULT_CHUNK_SIZE elements.
 template <class HashTable>
 struct HashTableSource : public TemplatedSuboperator<HashTableSourceState> {
-   static SuboperatorArc build(const RelAlgOp* source, const IU& produced_iu, HashTable* hash_table_);
+   static SuboperatorArc build(const RelAlgOp* source, const IU& produced_iu, DefferredStateInitializer* deferred_state_);
 
    /// Keep running as long as we have cells to read from in the backing hash table.
    PickMorselResult pickMorsel(size_t thread_id) override;
@@ -45,7 +45,7 @@ struct HashTableSource : public TemplatedSuboperator<HashTableSourceState> {
    std::string id() const override;
 
    protected:
-   HashTableSource(const RelAlgOp* source, const IU& produced_iu, HashTable* hash_table_);
+   HashTableSource(const RelAlgOp* source, const IU& produced_iu, DefferredStateInitializer* deferred_state_);
 
    void setUpStateImpl(const ExecutionContext& context) override;
 
@@ -56,8 +56,7 @@ struct HashTableSource : public TemplatedSuboperator<HashTableSourceState> {
    IR::Stmt* decl_ht;
    IR::Stmt* decl_it_idx;
    /// The hash table we are reading from.
-   // TODO(benjamin) it's not clean to have the actual object as a suboperator member.
-   HashTable* hash_table;
+   DefferredStateInitializer* deferred_state;
 };
 
 using SimpleHashTableSource = HashTableSource<HashTableSimpleKey>;

@@ -16,8 +16,8 @@ void HashTableSourceState::registerRuntime() {
 }
 
 template <class HashTable>
-HashTableSource<HashTable>::HashTableSource(const RelAlgOp* source, const IU& produced_iu, HashTable* hash_table_)
-   : TemplatedSuboperator<HashTableSourceState>(source, {&produced_iu}, {}), hash_table(hash_table_) {
+HashTableSource<HashTable>::HashTableSource(const RelAlgOp* source, const IU& produced_iu, DefferredStateInitializer* deferred_state_)
+   : TemplatedSuboperator<HashTableSourceState>(source, {&produced_iu}, {}), deferred_state(deferred_state_) {
 }
 
 template <class HashTable>
@@ -27,12 +27,14 @@ std::string HashTableSource<HashTable>::id() const {
 }
 
 template <class HashTable>
-SuboperatorArc HashTableSource<HashTable>::build(const RelAlgOp* source, const IU& produced_iu, HashTable* hash_table_) {
-   return std::unique_ptr<HashTableSource>{new HashTableSource(source, produced_iu, hash_table_)};
+SuboperatorArc HashTableSource<HashTable>::build(const RelAlgOp* source, const IU& produced_iu, DefferredStateInitializer* deferred_state_) {
+   return std::unique_ptr<HashTableSource>{new HashTableSource(source, produced_iu, deferred_state_)};
 }
 
 template <class HashTable>
 Suboperator::PickMorselResult HashTableSource<HashTable>::pickMorsel(size_t thread_id) {
+   void* ht_ptr = deferred_state->access(thread_id);
+   HashTable* hash_table = reinterpret_cast<HashTable*>(ht_ptr);
    HashTableSourceState& state = (*states)[thread_id];
    if (state.it_ptr_end == nullptr) {
       // The last morsel went until the hash table end. We are done.
@@ -128,15 +130,20 @@ void HashTableSource<HashTable>::close(CompilationContext& context) {
 
 template <class HashTable>
 void HashTableSource<HashTable>::setUpStateImpl(const ExecutionContext& context) {
-   assert(hash_table);
-   auto& state = (*states)[0];
+   assert(deferred_state);
 
-   state.hash_table = hash_table;
-   // Initialize start to point to the first slot of the hash table.
-   hash_table->iteratorStart(&(state.it_ptr_start), &(state.it_idx_start));
-   // Set the end iterator to the same value. This way the first pickMorsel will work.
-   state.it_ptr_end = state.it_ptr_start;
-   state.it_idx_end = state.it_idx_start;
+   for (size_t k = 0; k < context.getNumThreads(); ++k) {
+      auto& state = (*states)[k];
+      void* ht_ptr = deferred_state->access(k);
+      state.hash_table = ht_ptr;
+      assert(ht_ptr);
+      HashTable* hash_table = reinterpret_cast<HashTable*>(ht_ptr);
+      // Initialize start to point to the first slot of the hash table.
+      hash_table->iteratorStart(&(state.it_ptr_start), &(state.it_idx_start));
+      // Set the end iterator to the same value. This way the first pickMorsel will work.
+      state.it_ptr_end = state.it_ptr_start;
+      state.it_idx_end = state.it_idx_start;
+   }
 }
 
 // Explicitly instantiate templates.

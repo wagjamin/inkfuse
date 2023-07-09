@@ -4,8 +4,11 @@
 #include <cstdint>
 #include <memory>
 
-/// This file contains the main hash tables used within InkFuse.
+/// This file contains the single-threaded hash tables used for aggregating data in InkFuse.
 namespace inkfuse {
+
+// TODO(benjamin) - lots of code duplication here for our single-threaded hash tables/
+//                  Should be cleaned up in a similar way to the AtomicHashTables.
 
 /// Shared state between the different hash table implementations.
 struct SharedHashTableState {
