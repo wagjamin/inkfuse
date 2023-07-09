@@ -18,7 +18,7 @@ if [[ ! -f inkfuse_bench ]]; then
   mkdir tmp_build
   cd tmp_build
   cmake .. -DCMAKE_CXX_COMPILER=clang++-14 -DCMAKE_C_COMPILER=clang-14 -DCMAKE_BUILD_TYPE=Release
-  make inkfuse_bench
+  make -j 16 inkfuse_bench
   cd ..
   cp tmp_build/inkfuse_bench reproduce
   rm -rf tmp_build
