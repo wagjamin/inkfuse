@@ -1,6 +1,7 @@
 #include "runtime/HashTables.h"
 #include "exec/ExecutionContext.h"
 #include "xxhash.h"
+#include <algorithm>
 #include <cassert>
 #include <cstring>
 
@@ -68,6 +69,34 @@ HashTableSimpleKey::HashTableSimpleKey(uint16_t key_size_, uint16_t payload_size
       // one will be filled.
       state = SharedHashTableState(key_size_ + payload_size_, 2);
    }
+}
+
+std::deque<std::unique_ptr<HashTableSimpleKey>> HashTableSimpleKey::buildMergeTables(std::deque<std::unique_ptr<HashTableSimpleKey>>& preagg, size_t thread_count) {
+   assert(!preagg.empty());
+   assert(thread_count);
+   std::deque<std::unique_ptr<HashTableSimpleKey>> merge_tables;
+   // Figure out a smart start slot estimate.
+   size_t total_keys = 0;
+   for (const auto& ht : preagg) {
+      total_keys += ht->size();
+   }
+   // 2x slack to make sure that we only have half capacity.
+   const size_t per_thread = 2 * std::max(static_cast<size_t>(128), total_keys / thread_count);
+   const size_t slots_per_merge_table = 1ull << (64 - __builtin_clzl(per_thread - 1));
+
+   auto& original_table = preagg[0];
+   const size_t key_size = original_table->simple_key_size;
+   const size_t payload_size = original_table->state.total_slot_size - key_size;
+
+   for (size_t k = 0; k < thread_count; ++k) {
+      merge_tables.push_back(std::make_unique<HashTableSimpleKey>(key_size, payload_size, slots_per_merge_table));
+   }
+
+   return merge_tables;
+}
+
+uint64_t HashTableSimpleKey::computeHash(const char* key) const {
+   return XXH3_64bits(key, simple_key_size);
 }
 
 char* HashTableSimpleKey::lookup(const char* key) {
@@ -264,6 +293,40 @@ HashTableComplexKey::HashTableComplexKey(uint16_t simple_key_size, uint16_t comp
    }
 }
 
+std::deque<std::unique_ptr<HashTableComplexKey>> HashTableComplexKey::buildMergeTables(
+   std::deque<std::unique_ptr<HashTableComplexKey>>& preagg, size_t thread_count) {
+   assert(!preagg.empty());
+   assert(thread_count);
+   std::deque<std::unique_ptr<HashTableComplexKey>> merge_tables;
+   // Figure out a smart start slot estimate.
+   size_t total_keys = 0;
+   for (auto& ht : preagg) {
+      total_keys += ht->size();
+   }
+   // 2x slack to make sure that we only have half capacity.
+   const size_t per_thread = 2 * std::max(static_cast<size_t>(128), total_keys / thread_count);
+   const size_t slots_per_merge_table = 1ull << (64 - __builtin_clzl(per_thread - 1));
+
+   auto& original_table = preagg[0];
+   const size_t simple_key_size = original_table->simple_key_size;
+   const size_t complex_key_slots = original_table->complex_key_slots;
+   const size_t payload_size = original_table->payload_size;
+
+   for (size_t k = 0; k < thread_count; ++k) {
+      merge_tables.push_back(std::make_unique<HashTableComplexKey>(simple_key_size, complex_key_slots, payload_size, slots_per_merge_table));
+   }
+
+   return merge_tables;
+}
+
+uint64_t HashTableComplexKey::computeHash(const char* key) const {
+   // The char* of the key represents the packed key. The first slot contains an 8 byte char pointer.
+   const auto indirection = reinterpret_cast<char* const*>(key);
+   const size_t len = std::strlen(*indirection);
+   // Compute the hash.
+   return XXH3_64bits(*indirection, len);
+};
+
 char* HashTableComplexKey::lookup(const char* key) {
    // The char* of the key represents the packed key. The first slot contains an 8 byte char pointer.
    const auto indirection = reinterpret_cast<char* const*>(key);
@@ -411,6 +474,22 @@ HashTableDirectLookup::HashTableDirectLookup(uint16_t payload_size_)
    // Allocate array for direct lookup.
    data = std::make_unique<char[]>((1 << 16) * slot_size);
    tags = std::make_unique<bool[]>(1 << 16);
+}
+
+std::deque<std::unique_ptr<HashTableDirectLookup>> HashTableDirectLookup::buildMergeTables(
+   std::deque<std::unique_ptr<HashTableDirectLookup>>& preagg, size_t thread_count) {
+   assert(!preagg.empty());
+   assert(thread_count);
+   std::deque<std::unique_ptr<HashTableDirectLookup>> result;
+   for (size_t k = 0; k < thread_count; k++) {
+      result.push_back(std::make_unique<HashTableDirectLookup>(preagg[0]->slot_size - 2));
+   }
+   return result;
+}
+
+uint64_t HashTableDirectLookup::computeHash(const char* key) const {
+   const uint16_t idx = *reinterpret_cast<const uint16_t*>(key);
+   return idx;
 }
 
 char* HashTableDirectLookup::lookup(const char* key) {

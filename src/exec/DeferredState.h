@@ -1,6 +1,7 @@
 #ifndef INKFUSE_DEFERREDSTATE_H
 #define INKFUSE_DEFERREDSTATE_H
 
+#include "algebra/AggregationMerger.h"
 #include "runtime/HashTables.h"
 #include "runtime/NewHashTables.h"
 #include "runtime/TupleMaterializer.h"
@@ -66,9 +67,13 @@ struct FakeDefer : public DefferredStateInitializer {
    State object;
 };
 
+template <class T>
+struct ExclusiveHashTableState {};
+
 /// Simple key hash table.
-struct HashTableSimpleKeyState : public DefferredStateInitializer {
-   HashTableSimpleKeyState(size_t key_size_, size_t payload_size_) : key_size(key_size_), payload_size(payload_size_){};
+template <>
+struct ExclusiveHashTableState<HashTableSimpleKey> : public DefferredStateInitializer {
+   ExclusiveHashTableState(size_t key_size_, size_t payload_size_) : key_size(key_size_), payload_size(payload_size_){};
 
    void prepare(size_t num_threads) override {
       for (size_t k = 0; k < num_threads; ++k) {
@@ -83,12 +88,17 @@ struct HashTableSimpleKeyState : public DefferredStateInitializer {
 
    size_t key_size;
    size_t payload_size;
+   /// The hash tables - first the thread local ones with duplicates, then the
+   /// fully merged ones assigned to different threads.
    std::deque<std::unique_ptr<HashTableSimpleKey>> hash_tables;
+   /// The merger that transforms `hash_tables`.
+   std::unique_ptr<AggregationMerger<HashTableSimpleKey>> state_merger;
 };
 
 /// Complex key hash table.
-struct HashTableComplexKeyState : public DefferredStateInitializer {
-   HashTableComplexKeyState(uint16_t slots_, size_t payload_size_) : slots(slots_), payload_size(payload_size_){};
+template <>
+struct ExclusiveHashTableState<HashTableComplexKey> : public DefferredStateInitializer {
+   ExclusiveHashTableState(uint16_t slots_, size_t payload_size_) : slots(slots_), payload_size(payload_size_){};
 
    void prepare(size_t num_threads) override {
       for (size_t k = 0; k < num_threads; ++k) {
@@ -103,12 +113,17 @@ struct HashTableComplexKeyState : public DefferredStateInitializer {
 
    size_t slots;
    size_t payload_size;
+   /// The hash tables - first the thread local ones with duplicates, then the
+   /// fully merged ones assigned to different threads.
    std::deque<std::unique_ptr<HashTableComplexKey>> hash_tables;
+   /// The merger that transforms `hash_tables`.
+   std::unique_ptr<AggregationMerger<HashTableComplexKey>> state_merger;
 };
 
 /// Direct lookup hash table.
-struct HashTableDirectLookupState : public DefferredStateInitializer {
-   HashTableDirectLookupState(uint16_t payload_size_) : payload_size(payload_size_){};
+template <>
+struct ExclusiveHashTableState<HashTableDirectLookup> : public DefferredStateInitializer {
+   ExclusiveHashTableState(uint16_t payload_size_) : payload_size(payload_size_){};
 
    void prepare(size_t num_threads) override {
       for (size_t k = 0; k < num_threads; ++k) {
@@ -122,8 +137,16 @@ struct HashTableDirectLookupState : public DefferredStateInitializer {
    };
 
    uint16_t payload_size;
+   /// The hash tables - first the thread local ones with duplicates, then the
+   /// fully merged ones assigned to different threads.
    std::deque<std::unique_ptr<HashTableDirectLookup>> hash_tables;
+   /// The merger that transforms `hash_tables`.
+   std::unique_ptr<AggregationMerger<HashTableDirectLookup>> state_merger;
 };
+
+using HashTableSimpleKeyState = ExclusiveHashTableState<HashTableSimpleKey>;
+using HashTableComplexKeyState = ExclusiveHashTableState<HashTableComplexKey>;
+using HashTableDirectLookupState = ExclusiveHashTableState<HashTableDirectLookup>;
 
 } // namespace inkfuse
 

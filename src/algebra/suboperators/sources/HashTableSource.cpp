@@ -34,6 +34,7 @@ SuboperatorArc HashTableSource<HashTable>::build(const RelAlgOp* source, const I
 template <class HashTable>
 Suboperator::PickMorselResult HashTableSource<HashTable>::pickMorsel(size_t thread_id) {
    void* ht_ptr = deferred_state->access(thread_id);
+   assert(ht_ptr);
    HashTable* hash_table = reinterpret_cast<HashTable*>(ht_ptr);
    HashTableSourceState& state = (*states)[thread_id];
    if (state.it_ptr_end == nullptr) {

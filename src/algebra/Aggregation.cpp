@@ -132,14 +132,21 @@ void Aggregation::decay(PipelineDAG& dag) const {
 
    // Set up the backing aggregation hash table. We can drop it after the
    // pipeline which reads from the aggregation is done.
-   DefferredStateInitializer* hash_table;
+   DefferredStateInitializer* hash_table = nullptr;
    if (requires_complex_ht) {
-      hash_table = &dag.attachHashTableComplexKey(dag.getPipelines().size(), 1, payload_size);
+      auto& deferred = dag.attachHashTableComplexKey(dag.getPipelines().size(), 1, payload_size);
+      deferred.state_merger.reset(new AggregationMerger<HashTableComplexKey>(*this, deferred));
+      hash_table = &deferred;
    } else if (key_size == 2) {
-      hash_table = &dag.attachHashTableDirectLookup(dag.getPipelines().size(), payload_size);
+      auto& deferred = dag.attachHashTableDirectLookup(dag.getPipelines().size(), payload_size);
+      deferred.state_merger.reset(new AggregationMerger<HashTableDirectLookup>(*this, deferred));
+      hash_table = &deferred;
    } else {
-      hash_table = &dag.attachHashTableSimpleKey(dag.getPipelines().size(), key_size, payload_size);
+      auto& deferred = dag.attachHashTableSimpleKey(dag.getPipelines().size(), key_size, payload_size);
+      deferred.state_merger.reset(new AggregationMerger<HashTableSimpleKey>(*this, deferred));
+      hash_table = &deferred;
    }
+   assert(hash_table);
 
    auto& curr_pipe = dag.getCurrentPipeline();
    // Step 1: Pack the aggregation key (if it needs to be packed)
@@ -200,6 +207,32 @@ void Aggregation::decay(PipelineDAG& dag) const {
       // Update the offset - the next aggregation state granule lives next to this one.
       curr_offset += agg_state->getStateSize();
    }
+
+   dag.addRuntimeTask(PipelineDAG::RuntimeTask{
+      .after_pipe = dag.getPipelines().size() - 1,
+      // Dispatch table prepare to the right hash table merger.
+      .prepare_function = [=](ExecutionContext& ctx, size_t total_threads) {
+      if (auto casted = dynamic_cast<HashTableSimpleKeyState*>(hash_table)) {
+         casted->state_merger->prepareState(ctx, total_threads);
+      } else if (auto casted = dynamic_cast<HashTableComplexKeyState*>(hash_table)) {
+         casted->state_merger->prepareState(ctx, total_threads);
+      } else if (auto casted = dynamic_cast<HashTableDirectLookupState*>(hash_table)) {
+         casted->state_merger->prepareState(ctx, total_threads);
+      } else {
+          throw std::runtime_error("Dispatch to invalid hash table state in aggregate rt prepare.");
+      } },
+      // Dispatch table merge to the right hash table merger.
+      .worker_function = [=](ExecutionContext& ctx, size_t thread_id) {
+      if (auto casted = dynamic_cast<HashTableSimpleKeyState*>(hash_table)) {
+         casted->state_merger->mergeTables(ctx, thread_id);
+      } else if (auto casted = dynamic_cast<HashTableComplexKeyState*>(hash_table)) {
+         casted->state_merger->mergeTables(ctx, thread_id);
+      } else if (auto casted = dynamic_cast<HashTableDirectLookupState*>(hash_table)) {
+         casted->state_merger->mergeTables(ctx, thread_id);
+      } else {
+          throw std::runtime_error("Dispatch to invalid hash table state in aggregate rt worker.");
+      } },
+   });
 
    // Step 4: Attach readers on a new pipeline.
    auto& read_pipe = dag.buildNewPipeline();

@@ -80,7 +80,6 @@ TEST_P(MultithreadedScanExprFilterTestT, query) {
    printer->setOstream(results);
 
    auto control_block = std::make_shared<PipelineExecutor::QueryControlBlock>(std::move(root));
-   // Run the query with 8 threads.
    QueryExecutor::runQuery(control_block, std::get<0>(GetParam()), "multithreaded_s_e_f", std::get<1>(GetParam()));
 
    std::stringstream expected;

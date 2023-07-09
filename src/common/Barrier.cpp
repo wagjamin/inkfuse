@@ -15,6 +15,7 @@ void OnceBarrier::arriveAndWait() {
       // threads need to wait anyhow.
       once();
       cv.notify_all();
+      return;
    }
    // Wait until all workers are done.
    cv.wait(lock, [&]() { return pending_arrivals == 0; });
