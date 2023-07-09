@@ -36,7 +36,7 @@ struct SharedHashTableState {
 };
 
 /// A hash table where key equality checks can be performed as a simple memcmp.
-struct HashTableSimpleKey {
+struct alignas(64) HashTableSimpleKey {
    /// Unique Hash Table ID.
    static const std::string ID;
 
@@ -96,7 +96,7 @@ struct HashTableSimpleKey {
 /// a simple part which can just be memcmpared, as well as a set of
 /// successive key slots for more complex data types (such as strings).
 /// Currently we only support using a single string as key.
-struct HashTableComplexKey {
+struct alignas(64) HashTableComplexKey {
    /// Unique Hash Table ID.
    static const std::string ID;
 
@@ -155,7 +155,7 @@ struct HashTableComplexKey {
 /// Should be used for 2 byte keys. Okay - this is a bit micro-optimized for TPC-H Q1,
 /// we should also have a one byte variation. But we don't need it at the moment.
 /// This is not an architectural limitation.
-struct HashTableDirectLookup {
+struct alignas(64) HashTableDirectLookup {
    /// Unique Hash Table ID.
    static const std::string ID;
 
@@ -185,10 +185,11 @@ struct HashTableDirectLookup {
    std::unique_ptr<char[]> data;
    /// Tags indicating which slot contains data.
    std::unique_ptr<bool[]> tags;
+   /// How many rows were inserted?
+   size_t num_inserted = 0;
    /// Total slot size.
    uint16_t slot_size;
 };
-
 }
 
 #endif //INKFUSE_HASHTABLES_H

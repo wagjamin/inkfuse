@@ -54,10 +54,13 @@ void runQuery(const std::string& q_name, std::unique_ptr<Print> root, PipelineEx
    printer->setOstream(std::cout);
    auto control_block = std::make_shared<PipelineExecutor::QueryControlBlock>(std::move(root));
    auto start = std::chrono::steady_clock::now();
-   QueryExecutor::runQuery(control_block, mode, q_name + "_" + std::to_string(q_id++), num_threads);
+   auto stats = QueryExecutor::runQuery(control_block, mode, q_name + "_" + std::to_string(q_id++), num_threads);
    auto stop = std::chrono::steady_clock::now();
    std::cout << "Produced " << printer->num_rows << " rows after ";
-   std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms\n";
+   std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count() << "ms";
+   std::cout << " (" << stats.codegen_microseconds << " codegen micros; ";
+   std::cout << stats.runtime_microseconds_st << " runtime micros st; ";
+   std::cout << stats.runtime_microseconds_mt << " runtime micros mt)\n";
 }
 
 } // namespace

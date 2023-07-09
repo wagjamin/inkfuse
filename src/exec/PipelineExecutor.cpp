@@ -93,11 +93,13 @@ void PipelineExecutor::threadSwimlane(size_t thread_id, OnceBarrier& compile_pre
          std::unique_lock lock(compile_state->compiled_lock);
          fused_ready = compile_state->fused_set_up;
       }
-      if (!terminate && fused_ready) {
-         // Code is ready - set up for compiled execution. All threads synchronize around
-         // this point, as otherwise we risk subtle data races during Runner setup.
-         compile_prep_barrier.arriveAndWait();
-      }
+
+      // Code is ready - set up for compiled execution. All threads synchronize around
+      // this point, as otherwise we risk subtle data races during Runner setup.
+      // Note we can't just synchronize when codegen is finished, since different threads
+      // might see codegen finishing and running out of morsels at the same time.
+      compile_prep_barrier.arriveAndWait();
+
       size_t it_counter = 0;
       while (!terminate) {
          // We run 2 out of 25 morsels with the interpreter just to repeatedly check on performance.
@@ -122,7 +124,13 @@ void PipelineExecutor::runSwimlanes() {
       num_threads,
       // Called by the last worker registering with the OnceBarrier.
       [&]() {
-         compile_state->compiled->setUpState();
+         std::unique_lock lock(compile_state->compiled_lock);
+         if (compile_state->compiled) {
+            // If `compile_state->complied` is not set up yet, then all threads picked all of
+            // their morsels before compilation was done. In that case all of them are set
+            // to terminate and not continue executing compiled code.
+            compile_state->compiled->setUpState();
+         }
       }};
 
    std::vector<std::thread> worker_pool;

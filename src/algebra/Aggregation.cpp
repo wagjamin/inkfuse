@@ -137,10 +137,6 @@ void Aggregation::decay(PipelineDAG& dag) const {
       auto& deferred = dag.attachHashTableComplexKey(dag.getPipelines().size(), 1, payload_size);
       deferred.state_merger.reset(new AggregationMerger<HashTableComplexKey>(*this, deferred));
       hash_table = &deferred;
-   } else if (key_size == 2) {
-      auto& deferred = dag.attachHashTableDirectLookup(dag.getPipelines().size(), payload_size);
-      deferred.state_merger.reset(new AggregationMerger<HashTableDirectLookup>(*this, deferred));
-      hash_table = &deferred;
    } else {
       auto& deferred = dag.attachHashTableSimpleKey(dag.getPipelines().size(), key_size, payload_size);
       deferred.state_merger.reset(new AggregationMerger<HashTableSimpleKey>(*this, deferred));
@@ -183,8 +179,6 @@ void Aggregation::decay(PipelineDAG& dag) const {
    // Dispatch the correct lookup function.
    if (key_size && requires_complex_ht) {
       curr_pipe.attachSuboperator(RuntimeFunctionSubop::htLookupOrInsert<HashTableComplexKey>(this, &agg_pointer_result, *packed_key_iu, std::move(pseudo), hash_table));
-   } else if (key_size == 2) {
-      curr_pipe.attachSuboperator(RuntimeFunctionSubop::htLookupOrInsert<HashTableDirectLookup>(this, &agg_pointer_result, *packed_key_iu, std::move(pseudo), hash_table));
    } else if (key_size != 0) {
       curr_pipe.attachSuboperator(RuntimeFunctionSubop::htLookupOrInsert<HashTableSimpleKey>(this, &agg_pointer_result, *packed_key_iu, std::move(pseudo), hash_table));
    } else {
@@ -216,8 +210,6 @@ void Aggregation::decay(PipelineDAG& dag) const {
          casted->state_merger->prepareState(ctx, total_threads);
       } else if (auto casted = dynamic_cast<HashTableComplexKeyState*>(hash_table)) {
          casted->state_merger->prepareState(ctx, total_threads);
-      } else if (auto casted = dynamic_cast<HashTableDirectLookupState*>(hash_table)) {
-         casted->state_merger->prepareState(ctx, total_threads);
       } else {
           throw std::runtime_error("Dispatch to invalid hash table state in aggregate rt prepare.");
       } },
@@ -226,8 +218,6 @@ void Aggregation::decay(PipelineDAG& dag) const {
       if (auto casted = dynamic_cast<HashTableSimpleKeyState*>(hash_table)) {
          casted->state_merger->mergeTables(ctx, thread_id);
       } else if (auto casted = dynamic_cast<HashTableComplexKeyState*>(hash_table)) {
-         casted->state_merger->mergeTables(ctx, thread_id);
-      } else if (auto casted = dynamic_cast<HashTableDirectLookupState*>(hash_table)) {
          casted->state_merger->mergeTables(ctx, thread_id);
       } else {
           throw std::runtime_error("Dispatch to invalid hash table state in aggregate rt worker.");
@@ -240,8 +230,6 @@ void Aggregation::decay(PipelineDAG& dag) const {
    // Dispatch the correct reader depending on the layout.
    if (requires_complex_ht) {
       read_pipe.attachSuboperator(ComplexHashTableSource::build(this, ht_scan_result, hash_table));
-   } else if (key_size == 2) {
-      read_pipe.attachSuboperator(DirectLookupHashTableSource::build(this, ht_scan_result, hash_table));
    } else {
       read_pipe.attachSuboperator(SimpleHashTableSource::build(this, ht_scan_result, hash_table));
    }

@@ -1,5 +1,6 @@
 #include "exec/QueryExecutor.h"
 
+#include <chrono>
 #include <list>
 #include <thread>
 #include <vector>
@@ -8,9 +9,16 @@ namespace inkfuse::QueryExecutor {
 
 namespace {
 
-void runRuntimeTask(ExecutionContext& ctx, const PipelineDAG::RuntimeTask& task, size_t num_threads) {
+struct RuntimeStats {
+   size_t single_threaded_micros;
+   size_t multi_threaded_micros;
+};
+
+RuntimeStats runRuntimeTask(ExecutionContext& ctx, const PipelineDAG::RuntimeTask& task, size_t num_threads) {
    // Run the setup.
+   auto st_start = std::chrono::steady_clock::now();
    task.prepare_function(ctx, num_threads);
+   auto st_stop = std::chrono::steady_clock::now();
    // Run the parallel workers.
    std::vector<std::thread> workers;
    workers.reserve(num_threads);
@@ -21,6 +29,13 @@ void runRuntimeTask(ExecutionContext& ctx, const PipelineDAG::RuntimeTask& task,
    for (auto& worker : workers) {
       worker.join();
    }
+   auto mt_stop = std::chrono::steady_clock::now();
+   size_t st_micros = std::chrono::duration_cast<std::chrono::microseconds>(st_stop - st_start).count();
+   size_t mt_micros = std::chrono::duration_cast<std::chrono::microseconds>(mt_stop - st_stop).count();
+   return RuntimeStats{
+      .single_threaded_micros = st_micros,
+      .multi_threaded_micros = mt_micros,
+   };
 }
 
 } // namespace
@@ -57,7 +72,9 @@ PipelineExecutor::PipelineStats StepwiseExecutor::runQuery() {
       while (rt_tasks_it != rt_tasks.end() && rt_tasks_it->after_pipe <= pipeline_idx) {
          assert(rt_tasks_it->after_pipe == pipeline_idx);
          ExecutionContext& ctx = executor.compile_state->context;
-         runRuntimeTask(ctx, *rt_tasks_it, num_threads);
+         const auto stats = runRuntimeTask(ctx, *rt_tasks_it, num_threads);
+         total_stats.runtime_microseconds_st += stats.single_threaded_micros;
+         total_stats.runtime_microseconds_mt += stats.multi_threaded_micros;
          rt_tasks_it++;
       }
       pipeline_idx++;
