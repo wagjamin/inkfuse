@@ -62,6 +62,9 @@ int main(int argc, char* argv[]) {
    const auto reps = FLAGS_repetitions;
    const auto perf_events = FLAGS_perf_events;
 
+   const auto num_threads = perf_events ? 1 : std::max(1u, std::thread::hardware_concurrency());
+   std::cout << "Running on " << num_threads << " threads." << std::endl;
+
    // Populate the fragment cache.
    std::cout << "Generating & Loading Fragments ..." << std::endl;
    FragmentCache::instance();
@@ -110,6 +113,9 @@ int main(int argc, char* argv[]) {
             const auto start = std::chrono::steady_clock::now();
             PipelineExecutor::PipelineStats query_stats;
             if (perf_events) {
+               if (num_threads != 1) {
+                  throw std::runtime_error("Measuring InkFuse with perf events only support a single thread.");
+               }
                // Split into compilation and execution as we don't want compilation to populate
                // perf metrics.
                QueryExecutor::StepwiseExecutor exec(control_block, backend_mode, q_name + "_" + std::to_string(rep));
@@ -121,7 +127,7 @@ int main(int argc, char* argv[]) {
                exec.runQuery();
                write_header = false;
             } else {
-               query_stats = QueryExecutor::runQuery(control_block, backend_mode, q_name + "_" + std::to_string(rep));
+               query_stats = QueryExecutor::runQuery(control_block, backend_mode, q_name + "_" + std::to_string(rep), num_threads);
             }
             const auto stop = std::chrono::steady_clock::now();
             const auto millis = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start).count();

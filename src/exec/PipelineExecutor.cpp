@@ -88,6 +88,7 @@ void PipelineExecutor::threadSwimlane(size_t thread_id, OnceBarrier& compile_pre
          }
          return std::holds_alternative<Suboperator::NoMoreMorsels>(morsel);
       };
+
       while (!fused_ready && !terminate) {
          terminate = timeAndRunInterpreted();
          std::unique_lock lock(compile_state->compiled_lock);

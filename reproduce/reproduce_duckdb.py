@@ -51,9 +51,6 @@ if __name__ == '__main__':
     set_up_schema(con)
     load_data(con)
 
-    # Limit threads to just a single one.
-    con.execute('PRAGMA threads=1;')
-
     with open(f'result_duckdb_{args.scale_factor}.csv', 'w') as results:
         # Run the queries.
         for file in os.listdir('sql'):
