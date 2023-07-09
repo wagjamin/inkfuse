@@ -25,7 +25,7 @@ void allocHashTable(
    // We want at least 2x capacity and two slots to keep linear probing chains short.
    const size_t min_capacity = std::max(static_cast<size_t>(2), 2 * total_rows);
    // Total slots needed are next power of 2.
-   size_t total_slots = 1ull << (64 - __builtin_clzl(min_capacity - 1));
+   const size_t total_slots = 1ull << (64 - __builtin_clzl(min_capacity - 1));
    // Allocate the hash table we will populate.
    ht_state.hash_table = std::make_unique<AtomicHashTable<SimpleKeyComparator>>(
       SimpleKeyComparator(key_size),
@@ -35,7 +35,7 @@ void allocHashTable(
 
 void materializedTupleToHashTable(
    size_t slot_size,
-   size_t total_threads,
+   size_t thread_id,
    TupleMaterializerState& mat,
    AtomicHashTableState<SimpleKeyComparator>& ht_state) {
    assert(ht_state.hash_table);
@@ -55,7 +55,6 @@ void materializedTupleToHashTable(
       }
    }
 }
-
 }
 
 Join::Join(std::vector<std::unique_ptr<RelAlgOp>> children_, std::string op_name_, std::vector<const IU*> keys_left_, std::vector<const IU*> payload_left_, std::vector<const IU*> keys_right_, std::vector<const IU*> payload_right_, JoinType type_, bool is_pk_join_)
@@ -194,17 +193,17 @@ void Join::decayPkJoin(inkfuse::PipelineDAG& dag) const {
    dag.addRuntimeTask(
       PipelineDAG::RuntimeTask{
          .after_pipe = dag.getPipelines().size() - 1,
-         .prepare_function = [&](size_t total_threads) { allocHashTable(
-                                                            key_size_left,
-                                                            key_size_left + payload_size_left,
-                                                            total_threads,
-                                                            mat_state,
-                                                            ht_state); },
-         .worker_function = [&](size_t total_threads) { materializedTupleToHashTable(
-                                                           key_size_left + payload_size_left,
-                                                           total_threads,
-                                                           mat_state,
-                                                           ht_state); },
+         .prepare_function = [&](ExecutionContext&, size_t total_threads) { allocHashTable(
+                                                                               key_size_left,
+                                                                               key_size_left + payload_size_left,
+                                                                               total_threads,
+                                                                               mat_state,
+                                                                               ht_state); },
+         .worker_function = [&](ExecutionContext&, size_t thread_id) { materializedTupleToHashTable(
+                                                                          key_size_left + payload_size_left,
+                                                                          thread_id,
+                                                                          mat_state,
+                                                                          ht_state); },
       });
    {
       // Step 2: Construct the probe pipeline.

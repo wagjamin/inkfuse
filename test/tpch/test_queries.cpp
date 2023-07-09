@@ -61,7 +61,8 @@ TEST_P(TPCHQueriesTestT, run) {
    auto control_block = std::make_shared<PipelineExecutor::QueryControlBlock>(std::move(root));
    std::stringstream stream;
    printer->setOstream(stream);
-   QueryExecutor::runQuery(control_block, std::get<1>(GetParam()), test_name);
+   // Run the query on 8 threads by default.
+   QueryExecutor::runQuery(control_block, std::get<1>(GetParam()), test_name, 8);
    EXPECT_EQ(printer->num_rows, expected_rows.at(test_name));
 }
 

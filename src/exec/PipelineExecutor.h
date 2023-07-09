@@ -13,6 +13,10 @@
 
 namespace inkfuse {
 
+namespace QueryExecutor {
+struct StepwiseExecutor;
+};
+
 struct InterruptableJob;
 
 /// The pipeline executor takes a full pipeline and runs it.
@@ -130,6 +134,10 @@ struct PipelineExecutor {
 
    /// The background thread performing compilation.
    std::thread compilation_job;
+
+   /// Query executor is responsible for running runtime tasks. It needs access to the
+   /// ExecutionContext.
+   friend struct QueryExecutor::StepwiseExecutor;
 };
 
 }

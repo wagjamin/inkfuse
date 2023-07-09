@@ -8,14 +8,14 @@ namespace inkfuse::QueryExecutor {
 
 namespace {
 
-void runRuntimeTask(const PipelineDAG::RuntimeTask& task, size_t num_threads) {
+void runRuntimeTask(ExecutionContext& ctx, const PipelineDAG::RuntimeTask& task, size_t num_threads) {
    // Run the setup.
-   task.prepare_function(num_threads);
+   task.prepare_function(ctx, num_threads);
    // Run the parallel workers.
    std::vector<std::thread> workers;
    workers.reserve(num_threads);
    for (size_t k = 0; k < num_threads; ++k) {
-      workers.emplace_back(task.worker_function, num_threads);
+      workers.emplace_back(task.worker_function, std::ref(ctx), k);
    }
    // Wait for them to be done.
    for (auto& worker : workers) {
@@ -56,7 +56,8 @@ PipelineExecutor::PipelineStats StepwiseExecutor::runQuery() {
       // Run all tasks belonging to this pipeline.
       while (rt_tasks_it != rt_tasks.end() && rt_tasks_it->after_pipe <= pipeline_idx) {
          assert(rt_tasks_it->after_pipe == pipeline_idx);
-         runRuntimeTask(*rt_tasks_it, num_threads);
+         ExecutionContext& ctx = executor.compile_state->context;
+         runRuntimeTask(ctx, *rt_tasks_it, num_threads);
          rt_tasks_it++;
       }
       pipeline_idx++;

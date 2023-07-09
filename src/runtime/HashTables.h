@@ -2,6 +2,7 @@
 #define INKFUSE_HASHTABLES_H
 
 #include <cstdint>
+#include <deque>
 #include <memory>
 
 /// This file contains the single-threaded hash tables used for aggregating data in InkFuse.
@@ -40,7 +41,11 @@ struct HashTableSimpleKey {
    static const std::string ID;
 
    HashTableSimpleKey(uint16_t key_size_, uint16_t payload_size_, size_t start_slots_ = 2048);
+   static std::deque<std::unique_ptr<HashTableSimpleKey>> buildMergeTables(
+      std::deque<std::unique_ptr<HashTableSimpleKey>>& preagg, size_t thread_count);
 
+   /// Compute the hash of some serialized key.
+   uint64_t computeHash(const char* key) const;
    /// Get the pointer to a given key, or nullptr if the group does not exist.
    char* lookup(const char* key);
    /// Get the pointer to a given key, or nullptr if the group does not exist.
@@ -96,7 +101,11 @@ struct HashTableComplexKey {
    static const std::string ID;
 
    HashTableComplexKey(uint16_t simple_key_size, uint16_t complex_key_slots, uint16_t payload_size, size_t start_slots = 64);
+   static std::deque<std::unique_ptr<HashTableComplexKey>> buildMergeTables(
+      std::deque<std::unique_ptr<HashTableComplexKey>>& preagg, size_t thread_count);
 
+   /// Compute the hash of some serialized key.
+   uint64_t computeHash(const char* key) const;
    /// Get the pointer to a given key, or nullptr if the group does not exist.
    char* lookup(const char* key);
    /// Get the pointer to a given key, creating a new group if it does not exist yet.
@@ -151,13 +160,16 @@ struct HashTableDirectLookup {
    static const std::string ID;
 
    HashTableDirectLookup(uint16_t payload_size_);
+   static std::deque<std::unique_ptr<HashTableDirectLookup>> buildMergeTables(
+      std::deque<std::unique_ptr<HashTableDirectLookup>>& preagg, size_t thread_count);
 
    /// Get the pointer to a given key, or nullptr if the group does not exist.
    char* lookup(const char* key);
    /// Get the pointer to a given key, creating a new group if it does not exist yet.
    char* lookupOrInsert(const char* key);
 
-
+   /// Compute the hash of some serialized key.
+   uint64_t computeHash(const char* key) const;
    /// Get an iterator to the first non-empty element of the hash table.
    /// Sets it_data to nullptr if the iterator is exhausted.
    void iteratorStart(char** it_data, uint64_t* it_idx);
@@ -173,8 +185,6 @@ struct HashTableDirectLookup {
    std::unique_ptr<char[]> data;
    /// Tags indicating which slot contains data.
    std::unique_ptr<bool[]> tags;
-   /// Size of the materialized simple key.
-   uint16_t key_size;
    /// Total slot size.
    uint16_t slot_size;
 };

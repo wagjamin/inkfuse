@@ -2,6 +2,7 @@
 #define INKFUSE_AGGREGATION_H
 
 #include "algebra/AggFunctionRegisty.h"
+#include "algebra/AggregationMerger.h"
 #include "algebra/RelAlgOp.h"
 #include <list>
 #include <optional>
@@ -54,6 +55,10 @@ struct Aggregation : public RelAlgOp {
    size_t payload_size = 0;
    /// Does this aggregation require a complex hash table?
    bool requires_complex_ht = false;
+
+   friend class AggregationMerger<HashTableSimpleKey>;
+   friend class AggregationMerger<HashTableComplexKey>;
+   friend class AggregationMerger<HashTableDirectLookup>;
 };
 
 }

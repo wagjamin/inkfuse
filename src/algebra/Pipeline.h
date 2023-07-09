@@ -92,9 +92,9 @@ struct PipelineDAG {
       /// After what pipeline should this task be run?
       size_t after_pipe;
       /// Single threaded prepare (e.g. allocate hash table).
-      std::function<void(size_t)> prepare_function;
+      std::function<void(ExecutionContext&, size_t)> prepare_function;
       /// Multi-threaded worker (e.g. populate hash table).
-      std::function<void(size_t)> worker_function;
+      std::function<void(ExecutionContext&, size_t)> worker_function;
    };
    /// Add a runtime task that should be run on all worker threads after a given pipeline id.
    void addRuntimeTask(RuntimeTask task);
