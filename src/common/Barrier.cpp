@@ -14,6 +14,7 @@ void OnceBarrier::arriveAndWait() {
       // Doesn't matter if the lock is held for a while, the other
       // threads need to wait anyhow.
       once();
+      lock.unlock();
       cv.notify_all();
       return;
    }

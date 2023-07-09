@@ -66,6 +66,10 @@ struct PipelineExecutor {
    struct PipelineStats {
       /// How many microseconds was execution stalled on waiting for code generation?
       size_t codegen_microseconds = 0;
+      /// How much time was spent in runtime tasks (single threaded part)?
+      size_t runtime_microseconds_st = 0;
+      /// How much time was spent in runtime tasks (multi threaded part)?
+      size_t runtime_microseconds_mt = 0;
    };
    /// Run the full pipeline to completion.
    PipelineStats runPipeline();
@@ -81,7 +85,7 @@ struct PipelineExecutor {
    Suboperator::PickMorselResult runInterpretedMorsel(size_t thread_id);
 
    /// After preparation in `runPipeline`, schedules the worker threads performing
-   /// query prcoessing. Waits for all worker threads to be done.
+   /// query processing. Waits for all worker threads to be done.
    void runSwimlanes();
    /// Execution loop for a thread. Called after preparation in `runPipeline`.
    /// @param compile_prep_barrier If we are in hybrid mode, a OnceBarrier is used

@@ -67,7 +67,7 @@ HashTableSimpleKey::HashTableSimpleKey(uint16_t key_size_, uint16_t payload_size
    if (key_size_ == 0) {
       // If they key size is 0, we can always create a table with 2 slots, as at most
       // one will be filled.
-      state = SharedHashTableState(key_size_ + payload_size_, 2);
+      state = SharedHashTableState(key_size_ + payload_size_, 4);
    }
 }
 
@@ -80,8 +80,8 @@ std::deque<std::unique_ptr<HashTableSimpleKey>> HashTableSimpleKey::buildMergeTa
    for (const auto& ht : preagg) {
       total_keys += ht->size();
    }
-   // 2x slack to make sure that we only have half capacity.
-   const size_t per_thread = 2 * std::max(static_cast<size_t>(128), total_keys / thread_count);
+   // 2x slack to make sure that we only have half capacity, also 20% capacity for skew.
+   const size_t per_thread = 1.2 * 2 * std::max(static_cast<size_t>(8), total_keys / thread_count);
    const size_t slots_per_merge_table = 1ull << (64 - __builtin_clzl(per_thread - 1));
 
    auto& original_table = preagg[0];
@@ -303,8 +303,8 @@ std::deque<std::unique_ptr<HashTableComplexKey>> HashTableComplexKey::buildMerge
    for (auto& ht : preagg) {
       total_keys += ht->size();
    }
-   // 2x slack to make sure that we only have half capacity.
-   const size_t per_thread = 2 * std::max(static_cast<size_t>(128), total_keys / thread_count);
+   // 2x slack to make sure that we only have half capacity, also 20% capacity for skew.
+   const size_t per_thread = 1.2 * 2 * std::max(static_cast<size_t>(8), total_keys / thread_count);
    const size_t slots_per_merge_table = 1ull << (64 - __builtin_clzl(per_thread - 1));
 
    auto& original_table = preagg[0];
@@ -499,6 +499,9 @@ char* HashTableDirectLookup::lookup(const char* key) {
 
 char* HashTableDirectLookup::lookupOrInsert(const char* key) {
    const uint16_t idx = *reinterpret_cast<const uint16_t*>(key);
+   if (!tags[idx]) {
+      num_inserted++;
+   }
    tags[idx] = true;
    char* ptr = &data[slot_size * idx];
    *reinterpret_cast<uint16_t*>(ptr) = idx;
@@ -527,11 +530,7 @@ void HashTableDirectLookup::iteratorAdvance(char** it_data, uint64_t* it_idx) {
 }
 
 size_t HashTableDirectLookup::size() const {
-   size_t count = 0;
-   for (size_t k = 0; k < 1 << 16; ++k) {
-      count += tags[k];
-   }
-   return count;
+   return num_inserted;
 }
 
 size_t HashTableDirectLookup::capacity() const {
