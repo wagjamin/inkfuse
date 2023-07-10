@@ -10,6 +10,10 @@ This creates:
 - `results_<configuration>.csv` results files for the different engines and scale factors.
 - `plots/main.pdf` containing a result figure.
 
+Note: sometimes the open-source `tpch-dbgen` tool sets up files with the wrong permissions and things aren't getting 
+cleaned up properly. In that case `reproduce_all.sh` might ask you whether you want to overwrite some files.
+In that case, always just click `yes`.
+
 ## Reproducing Individual Systems
 There are individual reproduction-scripts for all systems. These usually perform the following steps:
 - Download the TPC-H `dbgen` tool and create correctly formatted data at the target scale factor
