@@ -3,6 +3,13 @@
 # Install requirements.
 pip3 install -r requirements.txt
 
+# Benchmark Umbra
+echo "Reproducing Umbra"
+./reproduce_umbra.sh 0.01
+./reproduce_umbra.sh 0.1
+./reproduce_umbra.sh 1
+./reproduce_umbra.sh 10
+
 # Benchmark DuckDB
 echo "Reproducing DuckDB"
 ./reproduce_duckdb.py 0.01
