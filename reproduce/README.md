@@ -37,7 +37,13 @@ pip3 install -r requirements.txt
 ```
 
 ### Umbra
-While part of the evaluation section of the paper, Umbra reproducibility infrastructure is currently missing from this repository.
+To measure Umbra at a given scale factor `<sf>`, simply run:
+```
+# Simply run the reproduction script 
+./reproduce_umrba.sh <sf>
+```
+This set up a `umbra_data` directory into which all databases, binaries, etc. go.
+Huge thanks to the TUM database group for allowing us to share these reproduction scripts.
 
 
 
