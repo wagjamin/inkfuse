@@ -54,7 +54,7 @@ if __name__ == '__main__':
     with open(f'result_duckdb_{args.scale_factor}.csv', 'w') as results:
         # Run the queries.
         for file in os.listdir('sql'):
-            if file != 'schema.sql':
+            if file != 'schema.sql' and file != 'load.sql':
                 q_name = file[:-4]
                 print(f'Running query {q_name}')
                 for _ in range(args.repeat):
