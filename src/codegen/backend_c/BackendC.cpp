@@ -208,8 +208,11 @@ void BackendC::typeDescription(const IR::Type& type, ScopedWriter::Statement& st
       void visitPointer(const IR::Pointer& type, ScopedWriter::Statement& arg) override {
          typeDescription(*type.pointed_to, arg);
          // InkFuse doesn't generate C where pointers are aliased. Adding the restrict
-         // here makes it far easier for the compiler to generate efficient code.
-         arg.stream() << "*restrict";
+         // here makes it easier for the compiler to generate efficient code.
+         // But it's also much uglier to look at the fragments.
+         // TODO: benchmark this properly and check if it actually makes a performance difference.
+         // arg.stream() << "*restrict";
+         arg.stream() << "*";
       }
    };
 
