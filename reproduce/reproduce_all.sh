@@ -9,6 +9,7 @@ echo "Reproducing Umbra"
 ./reproduce_umbra.sh 0.1
 ./reproduce_umbra.sh 1
 ./reproduce_umbra.sh 10
+# ./reproduce_umbra.sh 100
 
 # Benchmark DuckDB
 echo "Reproducing DuckDB"
@@ -16,6 +17,7 @@ echo "Reproducing DuckDB"
 ./reproduce_duckdb.py 0.1
 ./reproduce_duckdb.py 1
 ./reproduce_duckdb.py 10
+# ./reproduce_duckdb.py 100
 
 # Benchmark InkFuse
 echo "Reproducing InkFuse"
@@ -23,6 +25,7 @@ echo "Reproducing InkFuse"
 ./reproduce_inkfuse.sh 0.1
 ./reproduce_inkfuse.sh 1
 ./reproduce_inkfuse.sh 10
+# ./reproduce_inkfuse.sh 100
 
 # Feel free to take a look if you want to, but not used in the experimental
 # section of our paper.
@@ -30,6 +33,7 @@ echo "Reproducing InkFuse"
 # ./reproduce_hyperapi 0.1
 # ./reproduce_hyperapi 1
 # ./reproduce_hyperapi 10
+# ./reproduce_hyperapi 100
 
 # Generate Plots
 echo "Generating Plots"

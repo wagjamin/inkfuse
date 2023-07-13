@@ -26,10 +26,16 @@ label_map = {
     'inkfuse_hybrid': 'Inkfuse (Hybrid)',
 }
 
-# If you're running up to SF 10
-scale_factors = ['0.01', '0.1', '1', '10']
-# If you're running up to SF 100
-# scale_factors = ['0.1', '1', '10', '100']
+# Broken y axis to make the plot prettier
+# https://matplotlib.org/3.7.0/gallery/subplots_axes_and_figures/broken_axis.html
+torn_y_lower = [None, None, 0.25, 2.5]
+torn_y_upper = [None, None, 1.0, 3]
+torn_y_max = [None, None, 1.5, 35]
+
+# Use this if you go up to scale factor 10 
+# scale_factors = ['0.01', '0.1', '1', '10']
+# Use this if you go up to scale factor 100
+scale_factors = ['0.1', '1', '10', '100']
 
 if __name__ == '__main__':
     con = duckdb.connect(database=':memory:')
@@ -48,14 +54,20 @@ if __name__ == '__main__':
     queries = ['Q1', 'Q3', 'Q4', 'Q6', 'Q14', 'Q18']
 
     # Plot 1: Backends at Different Scale Factors
-    gridspec = dict(height_ratios=[2, 3])
-    fig, axs = plt.subplots(2, 2, sharex=True, gridspec_kw=gridspec)
+    gridspec = dict(height_ratios=[4,6], width_ratios=[5, 1, 0.9, 5, 1, 0])
+    fig, axs = plt.subplots(2, 6, gridspec_kw=gridspec)
     fig.set_size_inches(22, 9)
     plt.set_cmap('Set3')
     x_vals = np.array([0, 1.5, 3, 4.5, 6, 7.5])
     for idx, sf in enumerate(scale_factors):
         pos_y = idx % 2
-        pos_x = idx // 2
+        if (pos_y == 1):
+            # [Main Queries, Q 18, Space]
+            pos_y = 3
+        high_sf = idx // 2
+        pos_x = 0
+        if high_sf:
+            pos_x = 1
         offset = -0.5
         for engine_idx, engine in enumerate(systems):
             # Get the queries with minimal latency for the different queries and engines.
@@ -77,38 +89,60 @@ if __name__ == '__main__':
                 # Milliseconds
                 stalled = res['codegen_stalled'] / 1000
                 non_stalled = res['latency'] - stalled
-                axs[pos_x, pos_y].bar(x_vals + offset, stalled, width=0.2, color=bar_color, edgecolor= 'black', hatch = global_hatch)
-                axs[pos_x, pos_y].bar(x_vals + offset, non_stalled, bottom=stalled, width=0.2, label=label_map[engine] if idx == 0 else "", color=bar_color, edgecolor= 'black')
+                # All but Q18 
+                axs[pos_x, pos_y].bar(x_vals[0:5] + offset, stalled[0:5], width=0.2, color=bar_color, edgecolor= 'black', hatch = global_hatch)
+                axs[pos_x, pos_y].bar(x_vals[0:5] + offset, non_stalled[0:5], bottom=stalled[0:5], width=0.2, label=label_map[engine] if idx == 0 else "", color=bar_color, edgecolor= 'black')
+                # Q 18
+                axs[pos_x, pos_y + 1].bar(x_vals[5] + offset, stalled[5], width=0.2, color=bar_color, edgecolor= 'black', hatch = global_hatch)
+                axs[pos_x, pos_y + 1].bar(x_vals[5] + offset, non_stalled[5], bottom=stalled[5], width=0.2, label="", color=bar_color, edgecolor= 'black')
+                axs[pos_x, pos_y + 1].yaxis.tick_right()
+                axs[pos_x, pos_y + 1].yaxis.set_label_position("right")
+                # Invisible space to the right
+                axs[pos_x, pos_y + 2].set_visible(False)
             else:
+                assert(pos_x == 1)
                 stalled = res['codegen_stalled'] / 1000000
                 non_stalled = res['latency'] / 1000 - stalled
                 # Seconds
-                axs[pos_x, pos_y].bar(x_vals + offset, stalled, width=0.2, color=bar_color, edgecolor= 'black', hatch = global_hatch)
-                axs[pos_x, pos_y].bar(x_vals + offset, non_stalled, bottom=stalled, width=0.2, label=label_map[engine] if idx == 0 else "", color=bar_color, edgecolor = 'black')
-            axs[pos_x, pos_y].set_xticks(x_vals, queries)
-            if (pos_y == 0 and pos_x == 0):
+                axs[pos_x, pos_y].bar(x_vals[0:5] + offset, stalled[0:5], width=0.2, color=bar_color, edgecolor= 'black', hatch = global_hatch)
+                axs[pos_x, pos_y].bar(x_vals[0:5] + offset, non_stalled[0:5], bottom=stalled[0:5], width=0.2, label=label_map[engine] if idx == 0 else "", color=bar_color, edgecolor = 'black')
+                # Q 18
+                axs[pos_x, pos_y + 1].bar(x_vals[5] + offset, stalled[5], width=0.2, color=bar_color, edgecolor= 'black', hatch = global_hatch)
+                axs[pos_x, pos_y + 1].bar(x_vals[5] + offset, non_stalled[5], bottom=stalled[5], width=0.2, label="", color=bar_color, edgecolor= 'black')
+                axs[pos_x, pos_y + 1].yaxis.tick_right()
+                axs[pos_x, pos_y + 1].yaxis.set_label_position("right")
+                # Invisible space to the right
+                axs[pos_x, pos_y + 2].set_visible(False)
+
+            axs[pos_x, pos_y].set_xticks(x_vals[0:5], queries[0:5])
+            axs[pos_x, pos_y + 1].set_xticks(x_vals[5:6], queries[5:6])
+            if (pos_x == 0):
                 axs[pos_x, pos_y].set_ylabel('Latency [ms]')
-            if (pos_y == 0 and pos_x == 1):
+            if (pos_x == 1):
                 axs[pos_x, pos_y].set_ylabel('Latency [s]')
             # if (pos_x == 1):
                 # axs[pos_x, pos_y].set_xlabel('TPC-H Query')
             if (pos_x == 0):
-            axs[pos_x, pos_y].set_title(f'TPC-H Scale Factor {sf}', y=0.85)
+                axs[pos_x, pos_y].set_title(f'                TPC-H Scale Factor {sf}', y=0.85)
+                axs[pos_x, pos_y].margins(y=0.1)
             else:
+                axs[pos_x, pos_y].set_title(f'                TPC-H Scale Factor {sf}', y=0.9)
+                axs[pos_x, pos_y].margins(y=0.1)
             axs[pos_x, pos_y].locator_params(axis='y', nbins=6) 
             offset += 0.2
     # HACK - Add empty bar to just get the legend to contain compliation latency
-    axs[0, 0].bar(x_vals + offset - 0.19, [0, 0, 0, 0, 0, 0], bottom=[0, 0, 0, 0, 0, 0], width=0.00001, label='Compilation Latency', hatch = global_hatch, color='white', edgecolor = 'black')
+    axs[0, 0].bar(x_vals[0:5] + offset - 0.19, [0, 0, 0, 0, 0], bottom=[0, 0, 0, 0, 0], width=0.00001, label='Compilation Latency', hatch = global_hatch, color='white', edgecolor = 'black')
     fig.legend(loc='upper center', ncol=len(systems) + 1, fancybox=True, labelspacing=0.1, handlelength=1.8, handletextpad=0.4, columnspacing=1.0)
     # Different style things
     # 1. Aligned y labels
     fig.align_ylabels(axs[:, 0])
     # 2. Better figure spacing
-    plt.subplots_adjust(wspace=0.065, hspace=0.09)
+    plt.subplots_adjust(wspace=0.01, hspace=0.15)
     # 3. Nicer colors
     # 4. Space legend (actually okay)
     # plt.subplots_adjust(top=0.82)
     plt.subplots_adjust(left=0.01, right=0.99)
+
     # plt.show()
-    os.makedirs('plots', exist_ok=True)
-    plt.savefig('plots/main.pdf', bbox_inches='tight', dpi=300)
+    os.makedirs('flots', exist_ok=True)
+    plt.savefig('plots/main_split_y.pdf', bbox_inches='tight', dpi=300)
