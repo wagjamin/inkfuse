@@ -311,7 +311,7 @@ if (WITH_BENCH)
     find_package(benchmark REQUIRED)
     add_executable(inkbench bench/benchmarks.cpp 
         bench/compiler_invoke.cpp 
-        # bench/ht_benchmark.cpp 
+        bench/ht_benchmark.cpp 
         bench/vectorized_ht.cpp
         )
     target_link_libraries(inkbench PUBLIC benchmark::benchmark inkfuse)
