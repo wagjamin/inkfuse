@@ -187,6 +187,8 @@ using TB8 = std::array<char, 8>;
 using TB32 = std::array<char, 32>;
 using TB64 = std::array<char, 64>;
 
+/* !!! Comment out benchmark definition below - some old Ubuntu system libraries come with old google
+ * bench libraries that don't have ArgsProduct yet. So commeting out to allow wider builds.
 // InkFuse Simple Key Map Insert Benchmarks.
 // Insert 1k, 100k, 10M, 50M keys.
 // Key sizes: 8, 32, 64 bytes.
@@ -227,6 +229,7 @@ BENCHMARK(ht_lookup_unordered_map_nomatch<std::pair<TB32, TB8>>)->ArgsProduct({{
 BENCHMARK(ht_lookup_unordered_map_nomatch<std::pair<TB32, TB64>>)->ArgsProduct({{1'000, 100'000, 10'000'000, 50'000'000}});
 BENCHMARK(ht_lookup_unordered_map_nomatch<std::pair<TB64, TB8>>)->ArgsProduct({{1'000, 100'000, 10'000'000, 50'000'000}});
 BENCHMARK(ht_lookup_unordered_map_nomatch<std::pair<TB64, TB64>>)->ArgsProduct({{1'000, 100'000, 10'000'000, 50'000'000}});
+*/ 
 
 }
 

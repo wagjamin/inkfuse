@@ -309,7 +309,11 @@ option(WITH_BENCH "Build inkfuse with microbenchmark support" OFF)
 if (WITH_BENCH)
     # Require gbench system installation for now. Not great, but ok.
     find_package(benchmark REQUIRED)
-    add_executable(inkbench bench/benchmarks.cpp bench/compiler_invoke.cpp bench/ht_benchmark.cpp)
+    add_executable(inkbench bench/benchmarks.cpp 
+        bench/compiler_invoke.cpp 
+        bench/ht_benchmark.cpp 
+        bench/vectorized_ht.cpp
+        )
     target_link_libraries(inkbench PUBLIC benchmark::benchmark inkfuse)
     # Move the testdata into the binary tree for easy ingest tests.
     file(COPY bench/testdata DESTINATION bench)
