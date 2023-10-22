@@ -23,10 +23,19 @@ struct PipelineRunner {
 
    virtual ~PipelineRunner() = default;
 
-   /// Run a single morsel of the backing pipeline.
-   /// @param force_pick should we always pick, even if we are not a fuse chunk source?
+   /// If the wrapped operator has a chunk size preference, return it.
+   /// This allows the PipelineExecutor to move to smaller batch sizes,
+   /// increasing performance.
+   virtual std::optional<size_t> getChunkSizePreference() const {
+      return std::nullopt;
+   };
+
+   /// Pick a morsel of the backing pipeline. Forwards the pickMorsel
+   /// call to the source of this `PipelineRunner`.
    /// @return result of picking a morsel.
-   virtual Suboperator::PickMorselResult runMorsel(size_t thread_id, bool force_pick);
+   Suboperator::PickMorselResult pickMorsel(size_t thread_id);
+   /// Run a morsel that was previously picked in this PipelineRunner.
+   virtual void runMorsel(size_t thread_id);
 
    /// Clean up the intermediate morsel state from a previous failure.
    /// Purges the morsel size of the sinks to make sure we get a fresh

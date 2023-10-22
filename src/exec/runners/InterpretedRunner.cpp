@@ -8,6 +8,8 @@ InterpretedRunner::InterpretedRunner(const Pipeline& backing_pipeline, size_t id
    : PipelineRunner(getRepiped(backing_pipeline, idx), original_context) {
    // Get the unique identifier of the operation which has to be interpreted.
    auto& op = backing_pipeline.getSubops()[idx];
+   // Load the optional chunk size preference.
+   chunk_size_preference = op->getOptimizationProperties().rt_chunk_size_prefeference;
    fragment_id = op->id();
    // Get the function we have to interpret.
    auto& cache = FragmentCache::instance();
@@ -39,19 +41,19 @@ InterpretedRunner::~InterpretedRunner() {
    }
 }
 
-Suboperator::PickMorselResult InterpretedRunner::runMorsel(size_t thread_id, bool force_pick) {
+void InterpretedRunner::runMorsel(size_t thread_id) {
    // Dispatch to the right interpretation strategy.
    switch (mode) {
       case ExecutionMode::DefaultRunMorsel:
          // Default strategy.
-         return PipelineRunner::runMorsel(thread_id, force_pick);
+         return PipelineRunner::runMorsel(thread_id);
       case ExecutionMode::ZeroCopyScan:
          // Custom zero-copy scan interpreter.
-         return runZeroCopyScan(thread_id, force_pick);
+         return runZeroCopyScan(thread_id);
    }
 }
 
-Suboperator::PickMorselResult InterpretedRunner::runZeroCopyScan(size_t thread_id, bool force_pick) {
+void InterpretedRunner::runZeroCopyScan(size_t thread_id) {
    // The TScanIUProvider used to make a superfluous copy of the table scan source.
    // We would take the table scan data, and do a contiguous copy of the data into a
    // FuseChunk.
@@ -61,15 +63,6 @@ Suboperator::PickMorselResult InterpretedRunner::runZeroCopyScan(size_t thread_i
    // Only the first TScanIUProvider needs to actually pick the new morsel.
    // That is marked with `force_pick`. In all other cases assume we already
    // have a morsel picked.
-   Suboperator::PickMorselResult morsel = Suboperator::PickedMorsel{
-      .morsel_size = 1,
-   };
-   if (force_pick) {
-      morsel = pipe->suboperators[0]->pickMorsel(thread_id);
-      if (std::holds_alternative<Suboperator::NoMoreMorsels>(morsel)) {
-         return morsel;
-      }
-   }
    if (zero_copy_state->fuse_chunk_ptrs[thread_id] == nullptr) {
       // Save the raw state of the fuse chunk column. Will be reinstalled on Runner destruction.
       zero_copy_state->fuse_chunk_ptrs[thread_id] = context.getColumn(*zero_copy_state->output_iu, thread_id).raw_data;
@@ -85,7 +78,6 @@ Suboperator::PickMorselResult InterpretedRunner::runZeroCopyScan(size_t thread_i
    Column& out_col = context.getColumn(*zero_copy_state->output_iu, thread_id);
    out_col.size = (driver_state->end - driver_state->start);
    out_col.raw_data = (*provider_state->start) + (driver_state->start * zero_copy_state->type_width);
-   return morsel;
 }
 
 // static

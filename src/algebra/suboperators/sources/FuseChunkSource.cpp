@@ -1,6 +1,8 @@
 #include "algebra/suboperators/sources/FuseChunkSource.h"
 #include "exec/ExecutionContext.h"
 
+#include <iostream>
+
 namespace inkfuse {
 
 std::unique_ptr<FuseChunkSourceDriver> FuseChunkSourceDriver::build() {

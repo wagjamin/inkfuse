@@ -2,7 +2,9 @@
 #include "xxhash.h"
 #include <cassert>
 #include <cstring>
+#include <iostream>
 #include <stdexcept>
+#include <vector>
 
 namespace inkfuse {
 
@@ -13,6 +15,9 @@ const uint8_t tag_fill_mask = 1u << 7u;
 const uint8_t fingerprint_inversion_mask = tag_fill_mask - 1;
 /// Lower order 7 bits in the hash slot store salt of the hash.
 const uint8_t tag_hash_mask = tag_fill_mask - 1;
+
+/// Print hash table size on destruction.
+constexpr bool DEBUG_PRINT = false;
 }
 
 template <>
@@ -80,6 +85,26 @@ AtomicHashTable<Comparator>::AtomicHashTable(Comparator comp_, uint16_t total_sl
    // Set up hash table based on the provided start size.
    tags = std::make_unique<std::atomic<uint8_t>[]>(num_slots);
    data = std::make_unique<char[]>(num_slots * total_slot_size);
+}
+
+template <class Comparator>
+AtomicHashTable<Comparator>::~AtomicHashTable() {
+   if constexpr (DEBUG_PRINT) {
+      size_t filled_slots = 0;
+      std::vector<uint8_t> ordered_tags;
+      for (size_t idx = 0; idx < num_slots; ++idx) {
+         std::atomic<uint8_t>& tag = tags[idx];
+         if (tag.load() != 0) {
+            ordered_tags.push_back(tag.load());
+            filled_slots += 1;
+         }
+      }
+      std::cout << "Hash Table Filled Slots " << filled_slots << "\n";
+      std::sort(ordered_tags.begin(), ordered_tags.end());
+      for (auto& tag : ordered_tags) {
+         std::cout << "Tag: " << static_cast<int>(tag) << "\n";
+      }
+   }
 }
 
 template <class Comparator>
@@ -226,18 +251,17 @@ template <class Comparator>
 void AtomicHashTable<Comparator>::itAdvance(IteratorState& it) const {
    assert(it.data_ptr != nullptr && it.tag_ptr != nullptr);
    if (it.idx == mod_mask) [[unlikely]] {
-         // Wrap around.
-         it.idx = 0;
-         it.data_ptr = &data[0];
-         it.tag_ptr = &tags[0];
-      }
-   else
+      // Wrap around.
+      it.idx = 0;
+      it.data_ptr = &data[0];
+      it.tag_ptr = &tags[0];
+   } else
       [[likely]] {
-         // Regular advance.
-         it.data_ptr += total_slot_size;
-         it.tag_ptr++;
-         it.idx++;
-      }
+      // Regular advance.
+      it.data_ptr += total_slot_size;
+      it.tag_ptr++;
+      it.idx++;
+   }
 }
 
 template <class Comparator>
@@ -246,16 +270,15 @@ void AtomicHashTable<Comparator>::itAdvanceNoWrap(IteratorState& it) const {
    assert(it.data_ptr != nullptr && it.tag_ptr != nullptr);
    assert(it.idx <= mod_mask);
    if (it.idx == mod_mask) [[unlikely]] {
-         // Reached end. Set the data to null.
-         it.data_ptr = nullptr;
-      }
-   else
+      // Reached end. Set the data to null.
+      it.data_ptr = nullptr;
+   } else
       [[likely]] {
-         // Regular advance.
-         it.data_ptr += total_slot_size;
-         it.tag_ptr++;
-         it.idx++;
-      }
+      // Regular advance.
+      it.data_ptr += total_slot_size;
+      it.tag_ptr++;
+      it.idx++;
+   }
 }
 
 // Declare all permitted template instantiations.

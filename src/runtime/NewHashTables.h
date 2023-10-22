@@ -42,6 +42,7 @@ struct AtomicHashTable {
    static const std::string ID;
 
    AtomicHashTable(Comparator comp_, uint16_t total_slot_size_, size_t num_slots_);
+   ~AtomicHashTable();
 
    /// Compute the hash for a given key.
    uint64_t compute_hash(const char* key) const;

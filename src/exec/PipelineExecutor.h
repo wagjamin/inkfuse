@@ -127,6 +127,8 @@ struct PipelineExecutor {
    Pipeline& pipe;
    /// Interpreters for the different sub-operators.
    std::vector<PipelineRunnerPtr> interpreters;
+   /// Suboperator offsets of the individual interpreters.
+   std::vector<size_t> interpreter_offsets;
    /// Backing execution mode.
    ExecutionMode mode;
    /// Potential full name of the generated program.
@@ -142,6 +144,7 @@ struct PipelineExecutor {
    /// Query executor is responsible for running runtime tasks. It needs access to the
    /// ExecutionContext.
    friend struct QueryExecutor::StepwiseExecutor;
+   friend struct RechunkBarrier;
 };
 
 }

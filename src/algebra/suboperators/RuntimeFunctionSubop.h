@@ -43,7 +43,7 @@ struct RuntimeFunctionSubop : public TemplatedSuboperator<RuntimeFunctionSubopSt
       std::vector<const IU*> out_ius_{&hash_};
       std::vector<const IU*> args{&key_};
       const IU* out = &hash_;
-      return std::unique_ptr<RuntimeFunctionSubop>(
+      std::unique_ptr<RuntimeFunctionSubop> result_subop(
          new RuntimeFunctionSubop(
             source,
             state_init_,
@@ -53,6 +53,8 @@ struct RuntimeFunctionSubop : public TemplatedSuboperator<RuntimeFunctionSubopSt
             std::move(args),
             std::move(ref),
             out));
+      result_subop->optimization_properties.rt_chunk_size_prefeference = 256;
+      return result_subop;
    }
 
    /// Hash a key with the hash table's hash function.
@@ -80,6 +82,24 @@ struct RuntimeFunctionSubop : public TemplatedSuboperator<RuntimeFunctionSubopSt
       // the code tuple-at-a time. As a result, the followup superator (e.g. HT lookup)
       // will directly cause the cache miss anyways.
       result_subop->optimization_properties.ct_only_vectorized = true;
+      // Prefetch instructions induce a new chunk preference. When working with large hash
+      // tables this is really important. The tuple-at-a-time lookup of operator fusing
+      // code performs worse than a well-built vectorized implementation. This is because
+      // the generated code cannot issue a lot of parallel independent loads.
+      //
+      // For our vectorized backend, we are able to actually generate more efficient code.
+      // We take a fuse chunk through a chain of three operations
+      // 1. Hash computation  -> Computes the hash for every tuple.
+      // 2. Slot prefetching  -> Prefetches the slots in the hash table for the tuple.
+      //                         This is great, because we have a lot of independent loads.
+      // 3. Hash table lookup -> Looks up the key in the hash table.
+      //
+      // For peak performance, the prefetching should load the respective cache lines into
+      // L1 cache, and when we get to (3), the slot should still be in cache. For this,
+      // morsel sizes & traditional vectorized chunks are often too big. Because of this we
+      // reduce the chunk size preference significantly.
+      // This takes a morsel through the hash table operations in smaller batches.
+      result_subop->optimization_properties.rt_chunk_size_prefeference = 1024;
       return result_subop;
    }
 

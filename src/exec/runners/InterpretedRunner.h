@@ -17,11 +17,17 @@ struct InterpretedRunner final : public PipelineRunner {
 
    /// Run-morsel override. The InterpretedRunner can interpret some morsels without
    /// actually doing any work.
-   Suboperator::PickMorselResult runMorsel(size_t thread_id, bool force_pick) override;
+   void runMorsel(size_t thread_id) override;
+
+   std::optional<size_t> getChunkSizePreference() const override {
+      return chunk_size_preference;
+   };
 
    private:
    /// Get the properly repiped pipeline for the actual execution.
    static PipelinePtr getRepiped(const Pipeline& backing_pipeline, size_t idx);
+   /// Optional chunk size preference for the wrapped operator.
+   std::optional<size_t> chunk_size_preference;
    /// The fragment id - mainly useful for debugging purposes.
    std::string fragment_id;
 
@@ -47,7 +53,7 @@ struct InterpretedRunner final : public PipelineRunner {
    };
    std::optional<ZeroCopyScanState> zero_copy_state;
    /// Custom interpreter for a zero copy scan.
-   Suboperator::PickMorselResult runZeroCopyScan(size_t thread_id, bool force_pick);
+   void runZeroCopyScan(size_t thread_id);
 };
 }
 
