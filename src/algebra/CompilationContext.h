@@ -7,22 +7,37 @@
 #include "exec/FuseChunk.h"
 
 #include <cstdint>
-#include <optional>
-#include <memory>
-#include <unordered_map>
 #include <map>
+#include <memory>
+#include <optional>
 #include <set>
+#include <unordered_map>
 
 namespace inkfuse {
 
 struct Suboperator;
 
+/// Hints that can be used during the code generation to generate more optimized
+/// code. Examples:
+///
+/// When we are generating `OperatorFusing` code, we do not issue prefetch instructions.
+/// These are exclusively used in the vectorized backends to issue independent loads
+/// and hide cache miss latency for followup operators.
+struct OptimizationHints {
+   enum class CodegenMode {
+      OperatorFusing,
+      Vectorized,
+   };
+
+   CodegenMode mode = CodegenMode::OperatorFusing;
+};
+
 /// Context for compiling a single pipeline.
 struct CompilationContext {
    /// Set up a compilation context for generating code for a full given pipeline.
-   CompilationContext(std::string program_name, const Pipeline& pipeline_);
+   CompilationContext(std::string program_name, const Pipeline& pipeline_, OptimizationHints hints_ = OptimizationHints{});
    /// Set up a compilation context which will generate the code within a specific IR program for the full pipeline.
-   CompilationContext(IR::ProgramArc program_, std::string fct_name_, const Pipeline& pipeline_);
+   CompilationContext(IR::ProgramArc program_, std::string fct_name_, const Pipeline& pipeline_, OptimizationHints hints_ = OptimizationHints{});
 
    /// Compile the code for this context.
    void compile();
@@ -50,6 +65,9 @@ struct CompilationContext {
    const IR::Program& getProgram();
    IR::FunctionBuilder& getFctBuilder();
 
+   /// Get the optimization hints for the generated program.
+   const OptimizationHints& getOptimizationHints() const;
+
    private:
    static IR::FunctionBuilder createFctBuilder(IR::IRBuilder& program, std::string fct_name);
 
@@ -73,6 +91,8 @@ struct CompilationContext {
    const std::string fct_name;
    /// The backing IR program.
    IR::ProgramArc program;
+   /// Optimization hints that can be used during code generation.
+   OptimizationHints optimization_hints;
    /// The function builder for the generated code.
    std::optional<Builder> builder;
    /// Which sub-operators were computed already? Needed to prevent double-computation in DAGs.

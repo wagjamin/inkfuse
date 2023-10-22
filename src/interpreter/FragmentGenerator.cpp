@@ -6,10 +6,10 @@
 #include "interpreter/CountingSinkFragmentizer.h"
 #include "interpreter/ExpressionFragmentizer.h"
 #include "interpreter/HashTableSourceFragmentizer.h"
+#include "interpreter/KeyPackingFragmentizer.h"
 #include "interpreter/RuntimeExpressionFragmentizer.h"
 #include "interpreter/RuntimeFunctionSubopFragmentizer.h"
 #include "interpreter/RuntimeKeyExpressionFragmentizer.h"
-#include "interpreter/KeyPackingFragmentizer.h"
 #include "interpreter/TScanFragmentizer.h"
 
 namespace inkfuse {
@@ -53,7 +53,7 @@ TypeDecorator& TypeDecorator::attachFloatingPoints() {
 TypeDecorator& TypeDecorator::attachNumeric() {
    attachIntegers();
    attachFloatingPoints();
-   // We also count dates as numeric types. This is because a date internally 
+   // We also count dates as numeric types. This is because a date internally
    // is represented as a 4 byte signed integer (day offset to the epoch).
    types.push_back(IR::Date::build());
    return *this;
@@ -66,8 +66,7 @@ TypeDecorator& TypeDecorator::attachTypes() {
    return *this;
 }
 
-TypeDecorator& TypeDecorator::attachStringType()
-{
+TypeDecorator& TypeDecorator::attachStringType() {
    types.push_back(IR::String::build());
    return *this;
 }
@@ -104,6 +103,10 @@ IR::ProgramArc FragmentGenerator::build() {
 
    // Create the IR program.
    auto program = std::make_shared<IR::Program>("fragments", false);
+   // Custom optimization hints that indicate that we generate vectorized code.
+   OptimizationHints hints{
+      .mode = OptimizationHints::CodegenMode::Vectorized,
+   };
    // And generate the code for all fragments.
    for (auto& fragmentizer : fragmentizers) {
       for (const auto& [name, pipe] : fragmentizer->getFragments()) {
@@ -111,7 +114,7 @@ IR::ProgramArc FragmentGenerator::build() {
          // the right fuse-chunk input and output operators which are needed in the actual fragment.
          // This in turn means that sub-operators don't have to create fuse chunk sources and sinks themselves.
          auto repiped = pipe.repipeAll(0, pipe.getSubops().size());
-         CompilationContext context(program, name, *repiped);
+         CompilationContext context(program, name, *repiped, hints);
          context.compile();
       }
    }

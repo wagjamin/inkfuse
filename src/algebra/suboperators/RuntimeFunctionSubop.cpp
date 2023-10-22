@@ -99,14 +99,12 @@ void RuntimeFunctionSubop::consumeAllChildren(CompilationContext& context) {
 
    std::unordered_set<const IU*> provided;
 
-   // Declare the output IUs that are not pseudo IUs.
+   // Declare the output IUs.
    for (const IU* out_iu : provided_ius) {
-      if (out_iu->type->id() != "Void") {
-         provided.emplace(out_iu);
-         auto iu_name = context.buildIUIdentifier(*out_iu);
-         const auto& declare = builder.appendStmt(IR::DeclareStmt::build(std::move(iu_name), out_iu->type));
-         context.declareIU(*out_iu, declare);
-      }
+      provided.emplace(out_iu);
+      auto iu_name = context.buildIUIdentifier(*out_iu);
+      const auto& declare = builder.appendStmt(IR::DeclareStmt::build(std::move(iu_name), out_iu->type));
+      context.declareIU(*out_iu, declare);
    }
 
    // Assemble the input expressions.
