@@ -62,7 +62,9 @@ struct AtomicHashTableTestT : public ::testing::TestWithParam<ParamT> {
    void checkContains(const RandomDataResult& data, size_t idx) {
       const char* key_ptr = &data.keys[idx * std::get<0>(GetParam())];
       const char* payload_ptr = &data.payloads[idx * 16];
-      auto slot_lookup = ht.lookup(key_ptr);
+      const auto hash = ht.compute_hash(key_ptr);
+      ht.slot_prefetch(hash);
+      const auto slot_lookup = ht.lookup(key_ptr, hash);
       ASSERT_NE(slot_lookup, nullptr);
       // Check that key was serialized properly.
       EXPECT_EQ(std::memcmp(slot_lookup, key_ptr, std::get<0>(GetParam())), 0);
@@ -71,7 +73,10 @@ struct AtomicHashTableTestT : public ::testing::TestWithParam<ParamT> {
    }
 
    void checkNotContains(const RandomDataResult& data, size_t idx) {
-      auto slot = ht.lookup(&data.keys[idx * std::get<0>(GetParam())]);
+      const char* key_ptr = &data.keys[idx * std::get<0>(GetParam())];
+      const auto hash = ht.compute_hash(key_ptr);
+      ht.slot_prefetch(hash);
+      const auto slot = ht.lookup(key_ptr, hash);
       EXPECT_EQ(slot, nullptr);
    }
 

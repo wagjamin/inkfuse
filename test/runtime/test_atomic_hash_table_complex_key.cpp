@@ -63,7 +63,9 @@ struct AtomicComplexHashTableTestT : public ::testing::TestWithParam<ParamT> {
    void checkContains(const std::vector<std::string>& data, size_t idx) {
       const char* raw_string = data[idx].data();
       const char* key_ptr = reinterpret_cast<const char*>(&raw_string);
-      auto slot_lookup = ht.lookup(key_ptr);
+      const auto hash = ht.compute_hash(key_ptr);
+      ht.slot_prefetch(hash);
+      const auto slot_lookup = ht.lookup(key_ptr, hash);
       ASSERT_NE(slot_lookup, nullptr);
       // Check that key was serialized properly.
       EXPECT_EQ(std::strcmp(*reinterpret_cast<char**>(slot_lookup), *reinterpret_cast<char* const*>(key_ptr)), 0);
@@ -75,7 +77,9 @@ struct AtomicComplexHashTableTestT : public ::testing::TestWithParam<ParamT> {
       if (std::find(data_exists.begin(), data_exists.end(), str) == data_exists.end()) {
          const char* raw_string = str.data();
          const char* key_ptr = reinterpret_cast<const char*>(&raw_string);
-         auto slot = ht.lookup(key_ptr);
+         const auto hash = ht.compute_hash(key_ptr);
+         ht.slot_prefetch(hash);
+         const auto slot = ht.lookup(key_ptr, hash);
          EXPECT_EQ(slot, nullptr);
       }
    }

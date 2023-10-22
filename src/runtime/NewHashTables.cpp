@@ -83,14 +83,27 @@ AtomicHashTable<Comparator>::AtomicHashTable(Comparator comp_, uint16_t total_sl
 }
 
 template <class Comparator>
-char* AtomicHashTable<Comparator>::lookup(const char* key) const {
+uint64_t AtomicHashTable<Comparator>::compute_hash(const char* key) const {
+   return comp.hash(key);
+}
+
+template <class Comparator>
+void AtomicHashTable<Comparator>::slot_prefetch(uint64_t hash) const {
+   const uint64_t slot_id = hash & mod_mask;
+   // Prefetch the actual data array.
+   __builtin_prefetch(&data[slot_id * total_slot_size]);
+   // Prefetch the bitmask slot.
+   __builtin_prefetch(&tags[slot_id]);
+}
+
+template <class Comparator>
+char* AtomicHashTable<Comparator>::lookup(const char* key, uint64_t hash) const {
+   const uint64_t slot_id = hash & mod_mask;
    // Look up the initial slot in the linear probing chain.
-   const uint64_t hash = comp.hash(key);
-   const auto idx = hash & mod_mask;
    IteratorState it{
-      .idx = idx,
-      .data_ptr = &data[idx * total_slot_size],
-      .tag_ptr = &tags[idx],
+      .idx = slot_id,
+      .data_ptr = &data[slot_id * total_slot_size],
+      .tag_ptr = &tags[slot_id],
    };
    // The tag we are looking for.
    const uint8_t target_tag = tag_fill_mask | static_cast<uint8_t>(hash >> 56ul);
@@ -111,9 +124,14 @@ char* AtomicHashTable<Comparator>::lookup(const char* key) const {
 }
 
 template <class Comparator>
-char* AtomicHashTable<Comparator>::lookupDisable(const char* key) {
-   // Look up the initial slot in the linear probing chain.
+char* AtomicHashTable<Comparator>::lookup(const char* key) const {
    const uint64_t hash = comp.hash(key);
+   return lookup(key, hash);
+}
+
+template <class Comparator>
+char* AtomicHashTable<Comparator>::lookupDisable(const char* key, uint64_t hash) {
+   // Look up the initial slot in the linear probing chain.
    const auto idx = hash & mod_mask;
    IteratorState it{
       .idx = idx,
@@ -146,6 +164,12 @@ char* AtomicHashTable<Comparator>::lookupDisable(const char* key) {
       itAdvance(it);
    }
    return it.data_ptr;
+}
+
+template <class Comparator>
+char* AtomicHashTable<Comparator>::lookupDisable(const char* key) {
+   const uint64_t hash = comp.hash(key);
+   return lookupDisable(key, hash);
 }
 
 template <class Comparator>

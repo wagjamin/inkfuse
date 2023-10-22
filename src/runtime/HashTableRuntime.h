@@ -29,13 +29,21 @@ extern "C" char* ht_at_sk_lookup(void* table, char* key);
 extern "C" char* ht_at_sk_lookup_disable(void* table, char* key);
 extern "C" char* ht_at_ck_lookup(void* table, char* key);
 
+extern "C" uint64_t ht_at_sk_compute_hash(void* table, char* key);
+extern "C" void ht_at_sk_slot_prefetch(void* table, uint64_t hash);
+extern "C" char* ht_at_sk_lookup_with_hash(void* table, char* key, uint64_t hash);
+extern "C" char* ht_at_sk_lookup_with_hash_disable(void* table, char* key, uint64_t hash);
+
+extern "C" uint64_t ht_at_ck_compute_hash(void* table, char* key);
+extern "C" void ht_at_ck_slot_prefetch(void* table, uint64_t hash);
+extern "C" char* ht_at_ck_lookup_with_hash(void* table, char* key, uint64_t hash);
+extern "C" char* ht_at_ck_lookup_with_hash_disable(void* table, char* key, uint64_t hash);
+
 /// Special lookup function if we know we have a 0-byte key.
 extern "C" char* ht_nk_lookup(void* table);
 
 void registerRuntime();
 };
-
-
 }
 
 #endif //INKFUSE_HASHTABLERUNTIME_H

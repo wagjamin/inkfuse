@@ -53,29 +53,6 @@ std::unique_ptr<RuntimeFunctionSubop> RuntimeFunctionSubop::htInsert(const inkfu
          pointers_));
 }
 
-std::unique_ptr<RuntimeFunctionSubop> RuntimeFunctionSubop::htLookupDisable(const RelAlgOp* source, const IU& pointers_, const IU& keys_, std::vector<const IU*> pseudo_ius_, DefferredStateInitializer* state_init_) {
-   std::string fct_name = "ht_at_sk_lookup_disable";
-   std::vector<const IU*> in_ius{&keys_};
-   for (auto pseudo : pseudo_ius_) {
-      // Pseudo IUs are used as input IUs in the backing graph, but do not influence arguments.
-      in_ius.push_back(pseudo);
-   }
-   std::vector<bool> ref{keys_.type->id() != "ByteArray" && keys_.type->id() != "Ptr_Char"};
-   std::vector<const IU*> out_ius_{&pointers_};
-   std::vector<const IU*> args{&keys_};
-   const IU* out = &pointers_;
-   return std::unique_ptr<RuntimeFunctionSubop>(
-      new RuntimeFunctionSubop(
-         source,
-         state_init_,
-         std::move(fct_name),
-         std::move(in_ius),
-         std::move(out_ius_),
-         std::move(args),
-         std::move(ref),
-         out));
-}
-
 std::unique_ptr<RuntimeFunctionSubop> RuntimeFunctionSubop::htNoKeyLookup(const RelAlgOp* source, const IU& pointers_, const IU& input_dependency, DefferredStateInitializer* state_init_) {
    std::string fct_name = "ht_nk_lookup";
    std::vector<const IU*> in_ius{&input_dependency};
@@ -122,12 +99,14 @@ void RuntimeFunctionSubop::consumeAllChildren(CompilationContext& context) {
 
    std::unordered_set<const IU*> provided;
 
-   // Declare the output IUs.
+   // Declare the output IUs that are not pseudo IUs.
    for (const IU* out_iu : provided_ius) {
-      provided.emplace(out_iu);
-      auto iu_name = context.buildIUIdentifier(*out_iu);
-      const auto& declare = builder.appendStmt(IR::DeclareStmt::build(std::move(iu_name), out_iu->type));
-      context.declareIU(*out_iu, declare);
+      if (out_iu->type->id() != "Void") {
+         provided.emplace(out_iu);
+         auto iu_name = context.buildIUIdentifier(*out_iu);
+         const auto& declare = builder.appendStmt(IR::DeclareStmt::build(std::move(iu_name), out_iu->type));
+         context.declareIU(*out_iu, declare);
+      }
    }
 
    // Assemble the input expressions.

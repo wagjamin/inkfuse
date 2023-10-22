@@ -62,6 +62,11 @@ struct Join : public RelAlgOp {
    /// Packed scratch pad IU right.
    std::optional<IU> scratch_pad_right;
 
+   /// Computed hash on the probe side.
+   std::optional<IU> hash_right;
+   /// Prefetch pseudo IU - ensures that we prefetch before probing.
+   std::optional<IU> prefetch_pseudo;
+
    /// Lookup result left.
    std::optional<IU> lookup_left;
    /// Lookup result right.

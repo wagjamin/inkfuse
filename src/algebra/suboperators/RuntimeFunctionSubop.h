@@ -30,8 +30,80 @@ struct RuntimeFunctionSubop : public TemplatedSuboperator<RuntimeFunctionSubopSt
    /// Build an insert function for a hash table.
    static std::unique_ptr<RuntimeFunctionSubop> htInsert(const RelAlgOp* source, const IU* pointers_, const IU& key_, std::vector<const IU*> pseudo_ius_, DefferredStateInitializer* state_init_ = nullptr);
 
-   /// Build a hash table lookup function that disables every found slot.
-   static std::unique_ptr<RuntimeFunctionSubop> htLookupDisable(const RelAlgOp* source, const IU& pointers_, const IU& key_, std::vector<const IU*> pseudo_ius_, DefferredStateInitializer* state_init_ = nullptr);
+   /// Hash a key with the hash table's hash function.
+   template <class HashTable>
+   static std::unique_ptr<RuntimeFunctionSubop> htHash(const RelAlgOp* source, const IU& hash_, const IU& key_, std::vector<const IU*> pseudo_ius_, DefferredStateInitializer* state_init_ = nullptr) {
+      std::string fct_name = "ht_" + HashTable::ID + "_compute_hash";
+      std::vector<const IU*> in_ius{&key_};
+      for (auto pseudo : pseudo_ius_) {
+         // Pseudo IUs are used as input IUs in the backing graph, but do not influence arguments.
+         in_ius.push_back(pseudo);
+      }
+      std::vector<bool> ref{key_.type->id() != "ByteArray" && key_.type->id() != "Ptr_Char"};
+      std::vector<const IU*> out_ius_{&hash_};
+      std::vector<const IU*> args{&key_};
+      const IU* out = &hash_;
+      return std::unique_ptr<RuntimeFunctionSubop>(
+         new RuntimeFunctionSubop(
+            source,
+            state_init_,
+            std::move(fct_name),
+            std::move(in_ius),
+            std::move(out_ius_),
+            std::move(args),
+            std::move(ref),
+            out));
+   }
+
+   /// Hash a key with the hash table's hash function.
+   template <class HashTable>
+   static std::unique_ptr<RuntimeFunctionSubop> htPrefetch(const RelAlgOp* source, const IU* prefetch_pseudo, const IU& hash_, DefferredStateInitializer* state_init_ = nullptr) {
+      std::string fct_name = "ht_" + HashTable::ID + "_slot_prefetch";
+      std::vector<const IU*> in_ius{&hash_};
+      std::vector<bool> ref{false};
+      std::vector<const IU*> out_ius_{};
+      if (prefetch_pseudo) {
+         out_ius_.push_back(prefetch_pseudo);
+      }
+      std::vector<const IU*> args{&hash_};
+      return std::unique_ptr<RuntimeFunctionSubop>(
+         new RuntimeFunctionSubop(
+            source,
+            state_init_,
+            std::move(fct_name),
+            std::move(in_ius),
+            std::move(out_ius_),
+            std::move(args),
+            std::move(ref),
+            /* out = */ nullptr));
+   }
+
+   /// Build a hash table lookup function.
+   template <class HashTable, bool disable_slot>
+   static std::unique_ptr<RuntimeFunctionSubop> htLookupWithHash(const RelAlgOp* source, const IU& pointers_, const IU& key_, const IU& hash_, const IU* prefetch_pseudo_, DefferredStateInitializer* state_init_ = nullptr) {
+      std::string fct_name = "ht_" + HashTable::ID + "_lookup_with_hash";
+      if constexpr (disable_slot) {
+         fct_name += "_disable";
+      }
+      std::vector<const IU*> in_ius{&key_, &hash_};
+      if (prefetch_pseudo_) {
+         in_ius.push_back(prefetch_pseudo_);
+      }
+      std::vector<bool> ref{key_.type->id() != "ByteArray" && key_.type->id() != "Ptr_Char", false};
+      std::vector<const IU*> out_ius_{&pointers_};
+      std::vector<const IU*> args{&key_, &hash_};
+      const IU* out = &pointers_;
+      return std::unique_ptr<RuntimeFunctionSubop>(
+         new RuntimeFunctionSubop(
+            source,
+            state_init_,
+            std::move(fct_name),
+            std::move(in_ius),
+            std::move(out_ius_),
+            std::move(args),
+            std::move(ref),
+            out));
+   }
 
    /// Build a hash table lookup function.
    template <class HashTable>
