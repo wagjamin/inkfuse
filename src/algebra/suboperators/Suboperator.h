@@ -116,6 +116,21 @@ struct Suboperator {
    const std::vector<const IU*>& getSourceIUs() const { return source_ius; }
    const std::vector<const IU*>& getIUs() const { return provided_ius; }
 
+   /// Properties that can influence runtime and code generation behaviour of suboperators.
+   /// These allow improving the performance of the system.
+   struct OptimizationProperties {
+      /// Compile-time property. When set, the suboperator does not generate code
+      /// for when compiled for operator-fusing code generation.
+      bool ct_only_vectorized = false;
+      /// Runtime property. If a chunk size preference is set, the vectorized backend
+      /// will try to break a morsel into smaller chunk that respect the chunk size
+      /// preference. This allows us to e.g. perform hash table lookups in a highly
+      /// optimized way. We can go to smaller chunk sizes that will have better cache
+      /// locality. This matters as we split prefetching and lookups into two phases.
+      std::optional<size_t> rt_chunk_size_prefeference = std::nullopt;
+   };
+   const OptimizationProperties& getOptimizationProperties() const { return optimization_properties; };
+
    protected:
    /// The operator which decayed into this Suboperator.
    const RelAlgOp* source;
@@ -127,6 +142,9 @@ struct Suboperator {
    /// interpreting an operator to make sure that the input columns are extracted in
    /// the right order.
    std::vector<const IU*> source_ius;
+
+   /// Optimization properties that can be used to improve suboperator performance.
+   OptimizationProperties optimization_properties;
 };
 
 /// Empty state which can be used in the templated suboperators.

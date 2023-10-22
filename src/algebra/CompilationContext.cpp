@@ -6,12 +6,12 @@
 
 namespace inkfuse {
 
-CompilationContext::CompilationContext(std::string program_name, const Pipeline& pipeline_)
-   : pipeline(pipeline_), program(std::make_shared<IR::Program>(std::move(program_name), false)), fct_name("execute") {
+CompilationContext::CompilationContext(std::string program_name, const Pipeline& pipeline_, OptimizationHints hints_)
+   : pipeline(pipeline_), program(std::make_shared<IR::Program>(std::move(program_name), false)), fct_name("execute"), optimization_hints(hints_) {
 }
 
-CompilationContext::CompilationContext(IR::ProgramArc program_, std::string fct_name_, const Pipeline& pipeline_)
-   : pipeline(pipeline_), program(std::move(program_)), fct_name(std::move(fct_name_)) {
+CompilationContext::CompilationContext(IR::ProgramArc program_, std::string fct_name_, const Pipeline& pipeline_, OptimizationHints hints_)
+   : pipeline(pipeline_), program(std::move(program_)), fct_name(std::move(fct_name_)), optimization_hints(hints_) {
 }
 
 void CompilationContext::compile() {
@@ -57,8 +57,17 @@ void CompilationContext::notifyIUsReady(Suboperator& op) {
    // Consume in the original requestor.
    requestor->consume(*iu, *this);
    if (++properties[requestor].serviced_requests == requestor->getNumSourceIUs()) {
-      // Consume in the original requestor notifying it that all children were produced successfuly.
-      requestor->consumeAllChildren(*this);
+      const bool generates_fusing = optimization_hints.mode == OptimizationHints::CodegenMode::OperatorFusing;
+      const bool only_generate_when_vectorized = requestor->getOptimizationProperties().ct_only_vectorized;
+      if (generates_fusing && only_generate_when_vectorized) {
+         // We don't need to generate any code for this suboperator.
+         // Directly mark the output IUs as ready (those are all pseudo IUs).
+         notifyIUsReady(*requestor);
+      } else {
+         // Consume in the original requestor notifying it that all children were produced successfuly.
+         // Actually let the consumer generate the required code.
+         requestor->consumeAllChildren(*this);
+      }
    }
 }
 
@@ -137,6 +146,10 @@ const IR::Program& CompilationContext::getProgram() {
 
 IR::FunctionBuilder& CompilationContext::getFctBuilder() {
    return builder->fct_builder;
+}
+
+const OptimizationHints& CompilationContext::getOptimizationHints() const {
+   return optimization_hints;
 }
 
 CompilationContext::Builder::Builder(IR::Program& program, std::string fct_name)
