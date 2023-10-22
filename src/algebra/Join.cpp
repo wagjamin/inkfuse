@@ -131,6 +131,11 @@ void Join::plan() {
    lookup_left.emplace(IR::Pointer::build(IR::Char::build()));
    lookup_right.emplace(IR::Pointer::build(IR::Char::build()));
    filter_pseudo_iu.emplace(IR::Void::build());
+
+   // The probe hash is always a unit64_t.
+   hash_right.emplace(IR::UnsignedInt::build(8));
+   // Pseudo IU for making sure we prefetch before we probe.
+   prefetch_pseudo.emplace(IR::Void::build());
 }
 
 void Join::decay(inkfuse::PipelineDAG& dag) const {
@@ -245,12 +250,19 @@ void Join::decayPkJoin(inkfuse::PipelineDAG& dag) const {
          pseudo.push_back(&pseudo_iu);
       }
 
+      // 2.2.1 Compute the hash.
+      probe_pipe.attachSuboperator(RuntimeFunctionSubop::htHash<AtomicHashTable<SimpleKeyComparator>>(this, *hash_right, *scratch_pad_right, std::move(pseudo), &ht_state));
+
+      // 2.2.2 Prefetch the slot.
+      probe_pipe.attachSuboperator(RuntimeFunctionSubop::htPrefetch<AtomicHashTable<SimpleKeyComparator>>(this, &*prefetch_pseudo, *hash_right, &ht_state));
+
+      // 2.2.3 Perfom the lookup.
       if (type == JoinType::LeftSemi) {
          // Lookup on a slot disables the slot, giving semi-join behaviour.
-         probe_pipe.attachSuboperator(RuntimeFunctionSubop::htLookupDisable(this, *lookup_right, *scratch_pad_right, std::move(pseudo), &ht_state));
+         probe_pipe.attachSuboperator(RuntimeFunctionSubop::htLookupWithHash<AtomicHashTable<SimpleKeyComparator>, true>(this, *lookup_right, *scratch_pad_right, *hash_right, &*prefetch_pseudo, &ht_state));
       } else {
          // Regular lookup that does not disable slots.
-         probe_pipe.attachSuboperator(RuntimeFunctionSubop::htLookup<AtomicHashTable<SimpleKeyComparator>>(this, *lookup_right, *scratch_pad_right, std::move(pseudo), &ht_state));
+         probe_pipe.attachSuboperator(RuntimeFunctionSubop::htLookupWithHash<AtomicHashTable<SimpleKeyComparator>, false>(this, *lookup_right, *scratch_pad_right, *hash_right, &*prefetch_pseudo, &ht_state));
       }
 
       // 2.3 Filter on probe matches.

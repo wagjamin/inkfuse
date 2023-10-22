@@ -1,10 +1,13 @@
 #include "benchmark/benchmark.h"
+#include "runtime/NewHashTables.h"
 #include "xxhash.h"
 #include <algorithm>
 #include <chrono>
 #include <cstring>
 #include <iostream>
 #include <vector>
+
+using namespace inkfuse;
 
 /**
  * Microbenchmarks inspired by Peter's feedback: In vectorized engines,
@@ -48,7 +51,6 @@
  * BM_ht_perf_vectorized/524288/256        10098416 ns     10093265 ns           72 items_per_second=51.9443M/s
  * BM_ht_perf_vectorized/33554432/256     971872286 ns    971838853 ns            1 items_per_second=34.5267M/s
  * BM_ht_perf_vectorized/1073741824/256 51425526675 ns  51422464322 ns            1 items_per_second=20.8808M/s
- * BM_ht_perf_vectorized/33554432/256     933936147 ns    933873161 ns            1 items_per_second=35.9304M/s
  *
  */
 namespace {
@@ -188,10 +190,72 @@ void BM_ht_perf_vectorized(benchmark::State& state) {
    state.SetItemsProcessed(state.iterations() * num_elems);
 }
 
+void BM_ht_perf_tat_inkfuse(benchmark::State& state) {
+   const uint64_t num_elems = state.range(0);
+   inkfuse::SimpleKeyComparator comp{8};
+   AtomicHashTable<inkfuse::SimpleKeyComparator> ht{comp, 16, 2 * num_elems};
+   for (uint64_t k = 1; k <= num_elems; ++k) {
+      const uint64_t key = 7 * k;
+      char* value = ht.insert<true>(reinterpret_cast<const char*>(&key));
+      reinterpret_cast<uint64_t*>(value)[1] = k;
+   }
+   for (auto _ : state) {
+      for (uint64_t k = 1; k <= num_elems; ++k) {
+         const uint64_t key = 7 * k;
+         char* res = ht.lookup(reinterpret_cast<const char*>(&key));
+         if (reinterpret_cast<const uint64_t*>(res)[1] > num_elems) {
+            throw std::runtime_error("bad ht lookup for " + std::to_string(k));
+         }
+      }
+   }
+   state.SetItemsProcessed(state.iterations() * num_elems);
+}
+
+void BM_ht_perf_vectorized_inkfuse(benchmark::State& state) {
+   const uint64_t num_elems = state.range(0);
+   const uint64_t batch_size = state.range(1);
+   inkfuse::SimpleKeyComparator comp{8};
+   AtomicHashTable<inkfuse::SimpleKeyComparator> ht{comp, 16, 2 * num_elems};
+   for (uint64_t k = 1; k <= num_elems; ++k) {
+      const uint64_t key = 7 * k;
+      char* value = ht.insert<true>(reinterpret_cast<const char*>(&key));
+      reinterpret_cast<uint64_t*>(value)[1] = k;
+   }
+   std::vector<uint64_t> keys(batch_size);
+   std::vector<uint64_t> hashes(batch_size);
+   for (auto _ : state) {
+      // Lookup every key again.
+      for (uint64_t k = 1; k <= num_elems; k += batch_size) {
+         const auto curr_batch = std::min(batch_size, num_elems - k + 1);
+         for (uint64_t tid = 0; tid < curr_batch; ++tid) {
+            keys[tid] = 7 * (k + tid);
+         }
+         for (uint64_t tid = 0; tid < curr_batch; ++tid) {
+            hashes[tid] = ht.compute_hash(reinterpret_cast<const char*>(&keys[tid]));
+         }
+         for (uint64_t tid = 0; tid < curr_batch; ++tid) {
+            ht.slot_prefetch(hashes[tid]);
+         }
+         for (uint64_t tid = 0; tid < curr_batch; ++tid) {
+            const auto* res = ht.lookup(reinterpret_cast<const char*>(&keys[tid]), hashes[tid]);
+            if (reinterpret_cast<const uint64_t*>(res)[1] > num_elems) {
+               throw std::runtime_error("bad ht lookup for " + std::to_string(k));
+            }
+         }
+      }
+   }
+   state.SetItemsProcessed(state.iterations() * num_elems);
+}
+
 BENCHMARK(BM_ht_perf_tat)->Arg(1 << 9)->Arg(1 << 13)->Arg(1 << 15)->Arg(1 << 19)->Arg(1 << 25)->Arg(1 << 30);
-// Different hash table sizes.
+BENCHMARK(BM_ht_perf_tat_inkfuse)->Arg(1 << 9)->Arg(1 << 13)->Arg(1 << 15)->Arg(1 << 19)->Arg(1 << 25)->Arg(1 << 30);
+
 BENCHMARK(BM_ht_perf_vectorized)->ArgPair(1 << 9, 256)->ArgPair(1 << 13, 256)->ArgPair(1 << 15, 256)->ArgPair(1 << 19, 256)->ArgPair(1 << 25, 256)->ArgPair(1 << 30, 256);
-// Different internal batch sizes.
-BENCHMARK(BM_ht_perf_vectorized)->ArgPair(1 << 25, 64)->ArgPair(1 << 25, 128)->ArgPair(1 << 25, 256)->ArgPair(1 << 25, 512)->ArgPair(1 << 25, 1024)->ArgPair(1 << 25, 2024)->ArgPair(1 << 25, 4048)->ArgPair(1 << 25, 8096)->ArgPair(1<<25, 16192);
+// Different internal batch sizes. 256 is a good value.
+BENCHMARK(BM_ht_perf_vectorized)->ArgPair(1 << 25, 64)->ArgPair(1 << 25, 128)->ArgPair(1 << 25, 256)->ArgPair(1 << 25, 512)->ArgPair(1 << 25, 1024)->ArgPair(1 << 25, 2024)->ArgPair(1 << 25, 4048)->ArgPair(1 << 25, 8096)->ArgPair(1 << 25, 16192);
+
+BENCHMARK(BM_ht_perf_vectorized_inkfuse)->ArgPair(1 << 9, 256)->ArgPair(1 << 13, 256)->ArgPair(1 << 15, 256)->ArgPair(1 << 19, 256)->ArgPair(1 << 25, 256)->ArgPair(1 << 30, 256);
+// Different internal batch sizes. 256 is a good value.
+BENCHMARK(BM_ht_perf_vectorized_inkfuse)->ArgPair(1 << 25, 64)->ArgPair(1 << 25, 128)->ArgPair(1 << 25, 256)->ArgPair(1 << 25, 512)->ArgPair(1 << 25, 1024)->ArgPair(1 << 25, 2024)->ArgPair(1 << 25, 4048)->ArgPair(1 << 25, 8096)->ArgPair(1 << 25, 16192);
 
 } // namespacf

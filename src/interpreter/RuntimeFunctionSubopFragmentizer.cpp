@@ -38,13 +38,31 @@ RuntimeFunctionSubopFragmentizer::RuntimeFunctionSubopFragmentizer() {
          name = op.id();
       }
 
-      // Fragmentize hash table lookup that disables the slot (for left semi joins).
+      // Fragmentize Vectorized Hash Table Primitives
       {
+         // Hash:
          auto& [name, pipe] = pipes.emplace_back();
          const auto& key = generated_ius.emplace_back(in_type);
-         const auto& result_ptr = generated_ius.emplace_back(IR::Pointer::build(IR::Char::build()));
-         // No pseudo-IU inputs, these only matter for more complex DAGs.
-         const auto& op = pipe.attachSuboperator(RuntimeFunctionSubop::htLookupDisable(nullptr, result_ptr, key, {}));
+         const auto& hash = generated_ius.emplace_back(IR::UnsignedInt::build(8));
+         const auto& op = pipe.attachSuboperator(RuntimeFunctionSubop::htHash<AtomicHashTable<SimpleKeyComparator>>(nullptr, hash, key, {}));
+         name = op.id();
+      }
+      {
+         // Lookup don't disable slot:
+         auto& [name, pipe] = pipes.emplace_back();
+         const auto& hash = generated_ius.emplace_back(IR::UnsignedInt::build(8));
+         const auto& key = generated_ius.emplace_back(in_type);
+         const auto& result = generated_ius.emplace_back(IR::Pointer::build(IR::Char::build()));
+         const auto& op = pipe.attachSuboperator(RuntimeFunctionSubop::htLookupWithHash<AtomicHashTable<SimpleKeyComparator>, false>(nullptr, result, key, hash, nullptr));
+         name = op.id();
+      }
+      {
+         // Lookup disable slot:
+         auto& [name, pipe] = pipes.emplace_back();
+         const auto& hash = generated_ius.emplace_back(IR::UnsignedInt::build(8));
+         const auto& key = generated_ius.emplace_back(in_type);
+         const auto& result = generated_ius.emplace_back(IR::Pointer::build(IR::Char::build()));
+         const auto& op = pipe.attachSuboperator(RuntimeFunctionSubop::htLookupWithHash<AtomicHashTable<SimpleKeyComparator>, true>(nullptr, result, key, hash, nullptr));
          name = op.id();
       }
 
@@ -86,6 +104,14 @@ RuntimeFunctionSubopFragmentizer::RuntimeFunctionSubopFragmentizer() {
             name = op.id();
          }
       }
+   }
+
+   // Fragmentize Prefetch.
+   {
+      auto& [name, pipe] = pipes.emplace_back();
+      const auto& hash = generated_ius.emplace_back(IR::UnsignedInt::build(8));
+      const auto& op = pipe.attachSuboperator(RuntimeFunctionSubop::htPrefetch<AtomicHashTable<SimpleKeyComparator>>(nullptr, nullptr, hash));
+      name = op.id();
    }
 
    // Fragmentize tuple materialization.

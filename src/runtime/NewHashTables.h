@@ -43,6 +43,18 @@ struct AtomicHashTable {
 
    AtomicHashTable(Comparator comp_, uint16_t total_slot_size_, size_t num_slots_);
 
+   /// Compute the hash for a given key.
+   uint64_t compute_hash(const char* key) const;
+   /// Prefetch the tag and data slots for a specific hash.
+   void slot_prefetch(uint64_t hash) const;
+   /// Get the pointer to a given key, or nullptr if the group does not exist.
+   /// Already requires the hash was computed.
+   char* lookup(const char* key, uint64_t hash) const;
+   /// Get the pointer to a given key, or nullptr if the group does not exist.
+   /// If it finds a slot, disables it. Needed for e.g. left semi joins.
+   /// Already requires the hash was computed.
+   char* lookupDisable(const char* key, uint64_t hash);
+
    /// Get the pointer to a given key, or nullptr if the group does not exist.
    char* lookup(const char* key) const;
    /// Get the pointer to a given key, or nullptr if the group does not exist.
