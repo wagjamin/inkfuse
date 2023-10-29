@@ -8,7 +8,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     # Run builds and tests both in Debug and RelWithDebInfo
     strategy:
         matrix:
@@ -21,5 +21,8 @@ jobs:
           build-type: ${{ matrix.build-type }}
     - name: Test
       working-directory: ${{github.workspace}}/build
-      run: ./tester
+      # Unfortunately we're running into https://github.com/llvm/llvm-project/issues/59432
+      # This is some Ubuntu packaging issue that causes alloc/dealloc mismatches when asan
+      # is enabled with libc++
+      run: ASAN_OPTIONS=alloc_dealloc_mismatch=0 ./tester
       
