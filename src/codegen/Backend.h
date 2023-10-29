@@ -24,7 +24,7 @@ struct BackendProgram {
    virtual void unlink() = 0;
 
    /// Compile the backend program to actual machine code. The interrupt is used to stop compilation.
-   virtual void compileToMachinecode(InterruptableJob& interrupt) = 0;
+   virtual void compileToMachinecode(InterruptableJob& interrupt, bool compile_for_interpreter = false) = 0;
 
    /// Get a function with the specified name from the compiled program.
    virtual void* getFunction(std::string_view name) = 0;

@@ -27,7 +27,11 @@ struct BackendProgramC : public IR::BackendProgram {
    void unlink() override;
 
    /// Compile the backend program to actual machine code. The interrupt is used to stop compilation.
-   void compileToMachinecode(InterruptableJob& interrupt) override;
+   void compileToMachinecode(InterruptableJob& interrupt, bool compile_for_interpreter) override;
+   /// Fast compilation path to an SO used during JIT compilation.
+   void compileJIT(InterruptableJob& interrupt);
+   /// Slow compilation path to an SO used for generating the interpreter.
+   void compileInterpreter(InterruptableJob& interrupt);
 
    /// Get a function with the specified name from the compiled program.
    void* getFunction(std::string_view name) override;
