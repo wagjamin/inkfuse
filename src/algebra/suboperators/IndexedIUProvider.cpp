@@ -8,7 +8,7 @@ const char* IndexedIUProviderState::name = "IndexedIUProviderState";
 
 void IndexedIUProviderRuntime::registerRuntime() {
    RuntimeStructBuilder{IndexedIUProviderState::name}
-      .addMember("start", IR::Pointer::build(IR::Char::build()))
+      .addMember("start", IR::Pointer::build(IR::Pointer::build(IR::Char::build())))
       .addMember("type_param", IR::UnsignedInt::build(8));
 }
 

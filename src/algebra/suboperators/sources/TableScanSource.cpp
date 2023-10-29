@@ -43,7 +43,7 @@ std::string TScanDriver::id() const {
 
 void TScanIUProvider::setUpStateImpl(const ExecutionContext& context) {
    for (auto& state : *states) {
-      state.start = raw_data;
+      state.start = &raw_data;
    }
 }
 

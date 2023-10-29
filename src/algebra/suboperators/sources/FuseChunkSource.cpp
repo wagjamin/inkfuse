@@ -54,7 +54,8 @@ void FuseChunkSourceIUProvider::setUpStateImpl(const ExecutionContext& context) 
       auto& state = (*states)[k];
       // Extract the raw data from which to read within the backing chunk.
       auto& col = context.getColumn(**provided_ius.begin(), k);
-      state.start = col.raw_data;
+      // Double indirection: col.raw_data might be rewired during execution.
+      state.start = &col.raw_data;
       if (runtime_params.type_param) {
          // Fetch the underlying raw data from the associated runtime parameters.
          // If the value was hard-coded in the generated code already it will simply never be accessed.

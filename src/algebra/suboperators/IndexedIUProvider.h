@@ -13,8 +13,12 @@ namespace inkfuse {
 struct IndexedIUProviderState {
    static const char* name;
 
-   /// Pointer to the raw data of the underlying column to be read.
-   char* start;
+   /// Pointer to a pointer to the raw data of the underlying column to be read.
+   /// Why do we need the double indirection here? When we use the IndexedIUProviderState
+   /// for FuseChunks, the chunk pointers may be dynamically rewired during execution.
+   /// An example is InterpretedRunner::runZeroCopyScan. In that case the pointer is switched
+   /// dynamically. We need to be able to pick up these pointer changes.
+   char** start;
    /// Runtime parameter if we are providing a parametrized type.
    uint64_t type_param;
 };
@@ -61,7 +65,9 @@ struct IndexedIUProvider : public TemplatedSuboperator<IndexedIUProviderState>, 
          auto assign_start = IR::AssignmentStmt::build(
             *decl_start,
             IR::CastExpr::build(
-               IR::StructAccessExpr::build(std::move(cast_expr), "start"),
+               // Need to deref `start` as the start member has double indirection.
+               IR::DerefExpr::build(
+                  IR::StructAccessExpr::build(std::move(cast_expr), "start")),
                target_ptr_type));
          // Add this to the function preamble.
          std::deque<IR::StmtPtr> preamble_stmts;
