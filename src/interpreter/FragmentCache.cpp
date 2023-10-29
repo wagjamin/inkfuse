@@ -12,7 +12,7 @@ FragmentCache::FragmentCache()
    BackendC backend;
    program = backend.generate(*fragments);
    InterruptableJob interrupt;
-   program->compileToMachinecode(interrupt);
+   program->compileToMachinecode(interrupt, /* compile_for_interpreter = */ true);
    // And link directly to now slow down the first queries.
    program->link();
 }

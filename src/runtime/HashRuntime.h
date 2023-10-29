@@ -3,7 +3,6 @@
 
 #include <cstddef>
 #include <cstdint>
-#include "xxhash.h"
 namespace inkfuse {
 
 /// Hash runtime allowing generated code to hash values. We currently
@@ -16,10 +15,6 @@ namespace inkfuse {
 /// (Also note that the include-style option (1) only works nicely in a world where we generate C).
 /// TODO Narrower types should use narrower hashes, but fine for now. No point to compute 64 bit hashes on 32 bit data.
 namespace HashRuntime {
-
-extern "C" uint64_t hash(void* in, uint64_t len);
-extern "C" uint64_t hash4(void* in);
-extern "C" uint64_t hash8(void* in);
 
 void registerRuntime();
 
