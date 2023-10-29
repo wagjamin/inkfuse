@@ -64,6 +64,7 @@ struct Pipeline {
    friend class CompilationContext;
    friend class ExecutionContext;
    friend class PipelineRunner;
+   friend class InterpretedRunner;
 
    /// The sub-operators within this pipeline. These are arranged in a topological order of the backing
    /// DAG structure.
