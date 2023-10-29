@@ -65,6 +65,9 @@ struct AtomicHashTable {
    ///                       the payload as well.
    template <bool copy_only_key = true>
    char* insert(const char* key);
+   /// Insert variation when we already computed the hash.
+   template <bool copy_only_key = true>
+   char* insert(const char* key, uint64_t hash);
 
    private:
    /// An iterator within the atomic hash table.
