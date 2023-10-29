@@ -174,9 +174,8 @@ char* AtomicHashTable<Comparator>::lookupDisable(const char* key) {
 
 template <class Comparator>
 template <bool copy_only_key>
-char* AtomicHashTable<Comparator>::insert(const char* key) {
+char* AtomicHashTable<Comparator>::insert(const char* key, uint64_t hash) {
    // Look up the initial slot in the linear probing chain .
-   const uint64_t hash = comp.hash(key);
    const auto idx = hash & mod_mask;
    IteratorState it{
       .idx = idx,
@@ -201,6 +200,13 @@ char* AtomicHashTable<Comparator>::insert(const char* key) {
       // Move on to the next tag and try again.
       itAdvance(it);
    }
+}
+
+template <class Comparator>
+template <bool copy_only_key>
+char* AtomicHashTable<Comparator>::insert(const char* key) {
+   const uint64_t hash = comp.hash(key);
+   return insert(key, hash);
 }
 
 template <class Comparator>
@@ -257,9 +263,15 @@ template class AtomicHashTable<SimpleKeyComparator>;
 template char* AtomicHashTable<SimpleKeyComparator>::insert<true>(const char* key);
 template char* AtomicHashTable<SimpleKeyComparator>::insert<false>(const char* key);
 
+template char* AtomicHashTable<SimpleKeyComparator>::insert<true>(const char* key, uint64_t hash);
+template char* AtomicHashTable<SimpleKeyComparator>::insert<false>(const char* key, uint64_t hash);
+
 template class AtomicHashTable<ComplexKeyComparator>;
 template char* AtomicHashTable<ComplexKeyComparator>::insert<true>(const char* key);
 template char* AtomicHashTable<ComplexKeyComparator>::insert<false>(const char* key);
+
+template char* AtomicHashTable<ComplexKeyComparator>::insert<true>(const char* key, uint64_t hash);
+template char* AtomicHashTable<ComplexKeyComparator>::insert<false>(const char* key, uint64_t hash);
 
 template class ExclusiveHashTable<SimpleKeyComparator>;
 template class ExclusiveHashTable<ComplexKeyComparator>;

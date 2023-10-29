@@ -41,16 +41,30 @@ void materializedTupleToHashTable(
    assert(ht_state.hash_table);
    assert(!mat.handles.empty());
    assert(mat.handles.size() == mat.materializers.size());
+   const size_t batch_size = 256;
+   std::vector<uint64_t> hashes(batch_size);
    for (auto& read_handle : mat.handles) {
       // Pick morsels from the read handle.
       while (const TupleMaterializer::MatChunk* chunk = read_handle->pullChunk()) {
          // Materialize all tuples from the chunk.
+         // We traverse the materialized tuple in batches of 256 similar as a vectorized
+         // engine would. For large hash tables this increases throughput significantly.
          const char* curr_tuple = reinterpret_cast<const char*>(chunk->data.get());
          while (curr_tuple < chunk->end_ptr) {
-            // Copy over the whole tuple into the hash table.
-            ht_state.hash_table->insert<false>(curr_tuple);
+            size_t curr_batch_size = std::min(batch_size, (chunk->end_ptr - curr_tuple) / slot_size);
+            const char* curr_tuple_hash_it = curr_tuple;
+            for (size_t batch_idx = 0; batch_idx < curr_batch_size; ++batch_idx) {
+               hashes[batch_idx] = ht_state.hash_table->compute_hash(curr_tuple_hash_it);
+               curr_tuple_hash_it += slot_size;
+            }
+            for (size_t batch_idx = 0; batch_idx < curr_batch_size; ++batch_idx) {
+               ht_state.hash_table->slot_prefetch(hashes[batch_idx]);
+            }
+            for (size_t batch_idx = 0; batch_idx < curr_batch_size; ++batch_idx) {
+               ht_state.hash_table->insert<false>(curr_tuple, hashes[batch_idx]);
+               curr_tuple += slot_size;
+            }
             // Move to the next tuple.
-            curr_tuple += slot_size;
          }
       }
    }
