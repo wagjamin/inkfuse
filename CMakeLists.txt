@@ -14,7 +14,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -rdynamic -stdlib=libc++")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -rdynamic -g -O0 -fsanitize=address")
-set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
+set(CMAKE_CXX_FLAGS_RELEASE "-rdynamic -O3")
+set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-rdynamic -g -O3")
 
 # ---------------------------------------------------------------------------
 # Dependencies
@@ -55,6 +56,21 @@ include_directories(
 # ---------------------------------------------------------------------------
 # Sources
 # ---------------------------------------------------------------------------
+
+# Runtime System C++ Files - directly linked against the generated code.
+set(RUNTIME_INCLUDE_C
+        "${CMAKE_SOURCE_DIR}/src/runtime/ExternHashTableRuntime.h"
+        "${CMAKE_SOURCE_DIR}/src/runtime/HashTables.h"
+        "${CMAKE_SOURCE_DIR}/src/runtime/NewHashTables.h"
+    )
+
+set(RUNTIME_SRC_CC
+        "${CMAKE_SOURCE_DIR}/src/runtime/ExternHashTableRuntime.cpp"
+        "${CMAKE_SOURCE_DIR}/src/runtime/HashTables.cpp"
+        "${CMAKE_SOURCE_DIR}/src/runtime/NewHashTables.cpp"
+    )
+
+# Inkfuse C++ Files - the actual database system: executors, code generation logic, ...
 set(SRC_CC
         "${CMAKE_SOURCE_DIR}/src/algebra/Pipeline.cpp"
         "${CMAKE_SOURCE_DIR}/src/algebra/Print.cpp"
@@ -131,9 +147,7 @@ set(SRC_CC
         "${CMAKE_SOURCE_DIR}/src/interpreter/KeyPackingFragmentizer.cpp"
         "${CMAKE_SOURCE_DIR}/src/runtime/HashRuntime.cpp"
         "${CMAKE_SOURCE_DIR}/src/runtime/HashTableRuntime.cpp"
-        "${CMAKE_SOURCE_DIR}/src/runtime/HashTables.cpp"
         "${CMAKE_SOURCE_DIR}/src/runtime/MemoryRuntime.cpp"
-        "${CMAKE_SOURCE_DIR}/src/runtime/NewHashTables.cpp"
         "${CMAKE_SOURCE_DIR}/src/runtime/TupleMaterializer.cpp"
         )
 
@@ -182,6 +196,16 @@ set(TOOLS_SRC
 # ---------------------------------------------------------------------------
 # Targets
 # ---------------------------------------------------------------------------
+# The inkfuse runtime: exposes functions that will be called from the generated
+# code. The purpose of the runtime is to be able to write C++ code for e.g.
+# hash tables, and make it easy to export these symbols to the generated
+# C code.
+add_library(inkfuse_runtime OBJECT ${RUNTIME_SRC_CC})
+add_library(inkfuse_runtime_static STATIC ${RUNTIME_SRC_CC})
+target_compile_options(inkfuse_runtime_static PUBLIC -flto)
+# Copy the runtime code required to separate
+file(COPY src/runtime DESTINATION runtime_code)
+file(COPY src/runtime DESTINATION runtime_code)
 
 # Core inkfuse library, we have to declare it as a shared library
 # in order to make runtime symbols visible during dlopen.
@@ -190,16 +214,21 @@ add_library(inkfuse STATIC ${SRC_CC})
 # the compiled code will not find it.
 # target_link_libraries(inkfuse PUBLIC )
 # Need to link to dl in order to open compiled code at runtime
-target_link_libraries(inkfuse PRIVATE xxhash_static gflags dl Threads::Threads)
-
+target_link_libraries(inkfuse PRIVATE xxhash_static dl Threads::Threads)
 
 # inkfuse binary for running TPC-H queries in an interactive way
-add_executable(inkfuse_runner tools/inkfuse_runner.cpp)
+add_executable(inkfuse_runner 
+    tools/inkfuse_runner.cpp 
+    $<TARGET_OBJECTS:inkfuse_runtime>
+)
 set_property(TARGET inkfuse_runner PROPERTY ENABLE_EXPORTS 1)
 target_link_libraries(inkfuse_runner PRIVATE inkfuse gflags Threads::Threads)
 
 # inkfuse binary for benchmarking TPC-H queries in the reproducibility folder
-add_executable(inkfuse_bench tools/inkfuse_bench.cpp)
+add_executable(inkfuse_bench 
+    tools/inkfuse_bench.cpp
+    $<TARGET_OBJECTS:inkfuse_runtime>
+)
 set_property(TARGET inkfuse_bench PROPERTY ENABLE_EXPORTS 1)
 target_link_libraries(inkfuse_bench PRIVATE inkfuse gflags Threads::Threads)
 
@@ -207,7 +236,12 @@ target_link_libraries(inkfuse_bench PRIVATE inkfuse gflags Threads::Threads)
 # Tests
 # ---------------------------------------------------------------------------
 
-add_executable(tester test/tester.cc ${TEST_CC})
+add_executable(tester 
+    test/tester.cc 
+    ${TEST_CC}
+    $<TARGET_OBJECTS:inkfuse_runtime>
+)
+set_property(TARGET tester PROPERTY ENABLE_EXPORTS 1)
 target_include_directories(tester PRIVATE ${CMAKE_SOURCE_DIR}/test)
 target_link_libraries(tester PRIVATE inkfuse gtest gmock Threads::Threads)
 # Move the testdata into the binary tree for easy ingest tests.
