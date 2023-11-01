@@ -4,6 +4,7 @@
 #include "algebra/IU.h"
 #include "codegen/Type.h"
 #include <memory>
+#include <thread>
 #include <unordered_map>
 
 namespace inkfuse {

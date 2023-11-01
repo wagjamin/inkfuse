@@ -191,8 +191,8 @@ INSTANTIATE_TEST_CASE_P(
    ExpressionExecution,
    ExpressionTParametrized,
    ::testing::Values(PipelineExecutor::ExecutionMode::Fused,
-                     PipelineExecutor::ExecutionMode::Interpreted));
-
+                     PipelineExecutor::ExecutionMode::Interpreted,
+                     PipelineExecutor::ExecutionMode::ROF));
 }
 
 }

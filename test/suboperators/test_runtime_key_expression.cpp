@@ -82,8 +82,10 @@ INSTANTIATE_TEST_CASE_P(
    RuntimeKeyExpressionSubop,
    RuntimeKeyExpressionTest,
    ::testing::Combine(::testing::Values(0, 4, 8),
-                      ::testing::Values(PipelineExecutor::ExecutionMode::Fused, PipelineExecutor::ExecutionMode::Interpreted)));
-
+                      ::testing::Values(
+                         PipelineExecutor::ExecutionMode::Fused,
+                         PipelineExecutor::ExecutionMode::Interpreted,
+                         PipelineExecutor::ExecutionMode::ROF)));
 }
 
 }

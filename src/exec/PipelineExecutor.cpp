@@ -11,8 +11,14 @@
 
 namespace inkfuse {
 
+using ROFStrategy = Suboperator::OptimizationProperties::ROFStrategy;
+
 PipelineExecutor::PipelineExecutor(Pipeline& pipe_, size_t num_threads, ExecutionMode mode, std::string full_name_, PipelineExecutor::QueryControlBlockArc control_block_)
-   : compile_state(std::make_shared<AsyncCompileState>(std::move(control_block_), pipe_, num_threads)), pipe(pipe_), mode(mode), full_name(std::move(full_name_)) {
+   : context(std::make_shared<ExecutionContext>(pipe_, num_threads)),
+     pipe(pipe_),
+     mode(mode),
+     full_name(std::move(full_name_)),
+     control_block(std::move(control_block_)) {
    assert(pipe.getSubops()[0]->isSource());
    assert(pipe.getSubops().back()->isSink());
 }
@@ -21,13 +27,15 @@ PipelineExecutor::~PipelineExecutor() noexcept {
    for (auto& op : pipe.getSubops()) {
       op->tearDownState();
    }
-   if (compilation_job.joinable()) {
-      compilation_job.join();
+   for (auto& job : compilation_jobs) {
+      if (job.joinable()) {
+         job.join();
+      }
    }
 }
 
 const ExecutionContext& PipelineExecutor::getExecutionContext() const {
-   return compile_state->context;
+   return *context;
 }
 
 void PipelineExecutor::preparePipeline(ExecutionMode prep_mode) {
@@ -35,9 +43,9 @@ void PipelineExecutor::preparePipeline(ExecutionMode prep_mode) {
       throw std::runtime_error("Prepare can only be called with compiled/interpreted mode");
    }
 
-   if (prep_mode == ExecutionMode::Fused && !compiler_setup_started) {
+   if ((prep_mode == ExecutionMode::Fused || prep_mode == ExecutionMode::ROF) && !compiler_setup_started) {
       // Prepare asynchronous compilation on a background thread.
-      compilation_job = setUpFusedAsync();
+      compilation_jobs = setUpFusedAsync(prep_mode);
       compiler_setup_started = true;
    }
 
@@ -49,13 +57,16 @@ void PipelineExecutor::preparePipeline(ExecutionMode prep_mode) {
 
 void PipelineExecutor::threadSwimlane(size_t thread_id, OnceBarrier& compile_prep_barrier) {
    // Scope guard for memory compile_state->context and flags.
-   ExecutionContext::RuntimeGuard guard{compile_state->context, thread_id};
+   ExecutionContext::RuntimeGuard guard{*context, thread_id};
    if (mode == ExecutionMode::Fused) {
       // Run compiled morsels till exhaustion.
       while (std::holds_alternative<Suboperator::PickedMorsel>(runFusedMorsel(thread_id))) {}
    } else if (mode == ExecutionMode::Interpreted) {
       // Run interpreted morsels till exhaustion.
       while (std::holds_alternative<Suboperator::PickedMorsel>(runInterpretedMorsel(thread_id))) {}
+   } else if (mode == ExecutionMode::ROF) {
+      // Run ROF morsels until exhaustion.
+      while (std::holds_alternative<Suboperator::PickedMorsel>(runROFMorsel(thread_id))) {}
    } else {
       // Dynamically switch between vectorization and compilation depending on the performance.
 
@@ -91,8 +102,8 @@ void PipelineExecutor::threadSwimlane(size_t thread_id, OnceBarrier& compile_pre
 
       while (!fused_ready && !terminate) {
          terminate = timeAndRunInterpreted();
-         std::unique_lock lock(compile_state->compiled_lock);
-         fused_ready = compile_state->fused_set_up;
+         std::unique_lock lock(compile_state[0]->compiled_lock);
+         fused_ready = compile_state[0]->fused_set_up;
       }
 
       // Code is ready - set up for compiled execution. All threads synchronize around
@@ -117,7 +128,7 @@ void PipelineExecutor::threadSwimlane(size_t thread_id, OnceBarrier& compile_pre
 }
 
 void PipelineExecutor::runSwimlanes() {
-   const size_t num_threads = compile_state->context.getNumThreads();
+   const size_t num_threads = context->getNumThreads();
 
    // If we are in hybrid mode all threads need to synchronize around the compiled
    // code becoming ready.
@@ -125,12 +136,12 @@ void PipelineExecutor::runSwimlanes() {
       num_threads,
       // Called by the last worker registering with the OnceBarrier.
       [&]() {
-         std::unique_lock lock(compile_state->compiled_lock);
-         if (compile_state->compiled) {
+         std::unique_lock lock(compile_state[0]->compiled_lock);
+         if (compile_state[0]->compiled) {
             // If `compile_state->complied` is not set up yet, then all threads picked all of
             // their morsels before compilation was done. In that case all of them are set
             // to terminate and not continue executing compiled code.
-            compile_state->compiled->setUpState();
+            compile_state[0]->compiled->setUpState();
          }
       }};
 
@@ -157,15 +168,15 @@ PipelineExecutor::PipelineStats PipelineExecutor::runPipeline() {
    if (mode == ExecutionMode::Fused) {
       // Generate code and wait for it to become ready.
       preparePipeline(ExecutionMode::Fused);
-      if (compilation_job.joinable()) {
+      if (compilation_jobs[0].joinable()) {
          // For compiled execution we need to wait for the compiled code
          // to be ready.
-         compilation_job.join();
+         compilation_jobs[0].join();
       }
       const auto compilation_done_ts = std::chrono::steady_clock::now();
       // Store how long we were stalled waiting for compilation to finish.
       result.codegen_microseconds = std::chrono::duration_cast<std::chrono::microseconds>(compilation_done_ts - start_execution_ts).count();
-      compile_state->compiled->setUpState();
+      compile_state[0]->compiled->setUpState();
 
       // Execute.
       runSwimlanes();
@@ -176,6 +187,32 @@ PipelineExecutor::PipelineStats PipelineExecutor::runPipeline() {
          interpreter->setUpState();
       }
 
+      // Execute.
+      runSwimlanes();
+   } else if (mode == ExecutionMode::ROF) {
+      // Prepare ROF fragments.
+      preparePipeline(ExecutionMode::ROF);
+      for (auto& compile_job : compilation_jobs) {
+         if (compile_job.joinable()) {
+            compile_job.join();
+         }
+      }
+      const auto compilation_done_ts = std::chrono::steady_clock::now();
+      // Store how long we were stalled waiting for compilation to finish.
+      result.codegen_microseconds = std::chrono::duration_cast<std::chrono::microseconds>(compilation_done_ts - start_execution_ts).count();
+
+      std::cout << "Found " << compilation_jobs.size() << " JIT fragments \n";
+
+      for (auto& compiled_fragment : compile_state) {
+         assert(compiled_fragment->compiled);
+         compiled_fragment->compiled->setUpState();
+      }
+
+      // Prepare interpreter.
+      preparePipeline(ExecutionMode::Interpreted);
+      for (auto& interpreter : interpreters) {
+         interpreter->setUpState();
+      }
       // Execute.
       runSwimlanes();
    } else {
@@ -192,28 +229,27 @@ PipelineExecutor::PipelineStats PipelineExecutor::runPipeline() {
       runSwimlanes();
 
       // Async interrupt trigger - saves us some wall clock time.
-      std::thread([compilation_job = std::move(compilation_job), compile_state = compile_state]() mutable {
-         // Stop the backing compilation job (if not finished) and clean up.
-         compile_state->interrupt.interrupt();
-         // Detach the thread, it can exceed the lifecycle of this PipelineExecutor.
-         compilation_job.detach();
+      std::thread([compilation_jobs = std::move(compilation_jobs), compile_state = compile_state]() mutable {
+         for (size_t k = 0; k < compilation_jobs.size(); ++k) {
+            // Stop the backing compilation job (if not finished) and clean up.
+            compile_state[k]->interrupt.interrupt();
+            // Detach the thread, it can exceed the lifecycle of this PipelineExecutor.
+            compilation_jobs[k].detach();
+         }
       }).detach();
    }
    return result;
 }
 
 Suboperator::PickMorselResult PipelineExecutor::runMorsel(size_t thread_id) {
-   if (compilation_job.joinable()) {
-      compilation_job.join();
-   }
    // Scope guard for memory compile_state->context and flags.
-   ExecutionContext::RuntimeGuard guard{compile_state->context, thread_id};
+   ExecutionContext::RuntimeGuard guard{*context, thread_id};
    if (mode == ExecutionMode::Fused || (mode == ExecutionMode::Hybrid)) {
       preparePipeline(ExecutionMode::Fused);
-      if (compilation_job.joinable()) {
-         compilation_job.join();
+      if (compilation_jobs[0].joinable()) {
+         compilation_jobs[0].join();
       }
-      compile_state->compiled->setUpState();
+      compile_state[0]->compiled->setUpState();
       return runFusedMorsel(thread_id);
    } else {
       preparePipeline(ExecutionMode::Interpreted);
@@ -238,50 +274,103 @@ void PipelineExecutor::setUpInterpreted() {
       return false;
    };
 
+   size_t suboperator_idx = 0;
    for (size_t k = 0; k < count; ++k) {
       const auto& op = *pipe.getSubops()[k];
       if (!op.outgoingStrongLinks() && !isFuseChunkOp(&op)) {
          // Only operators without outgoing strong links have to be interpreted.
-         interpreters.push_back(std::make_unique<InterpretedRunner>(pipe, k, compile_state->context));
+         // The first interpreter is the one picking morsels from the source table.
+         interpreters.push_back(std::make_unique<InterpretedRunner>(pipe, k, *context, interpreters.empty()));
+         // Store the mapping from suboperator to interpreter.
+         interpreter_offsets.push_back(suboperator_idx);
+         suboperator_idx++;
+      } else {
+         // There is no interpreter for this suboperator index.
+         interpreter_offsets.push_back(std::nullopt);
       }
    }
 }
 
-std::thread PipelineExecutor::setUpFusedAsync() {
-   auto repiped = pipe.repipeRequired(0, pipe.getSubops().size());
-   auto runner = std::make_unique<CompiledRunner>(std::move(repiped), compile_state->context, full_name);
-   // In the hybrid mode we detach the runner thread so that we don't have to wait on subprocess termination.
-   // This makes things much faster, but requires that the async thread does not access any member
-   // of this PipelineExecutor. The thread might be alive longer.
-   auto ret = std::thread([runner = std::move(runner), state = compile_state]() mutable {
-      // Generate C code in the backend.
-      runner->generateC();
-      // Turn the generated C into machine code.
-      bool done = runner->generateMachineCode(state->interrupt);
-      if (done) {
-         // If we were not interrupted, provide the PipelineExecutor with the compilation result.
-         std::unique_lock lock(state->compiled_lock);
-         state->compiled = std::move(runner);
-         state->fused_set_up = true;
+std::vector<std::thread> PipelineExecutor::setUpFusedAsync(ExecutionMode mode) {
+   // Create a compile state for the respective JIT interval.
+   auto attach_compile_state = [&](size_t start, size_t end) {
+      std::cout << "Attaching compile state " << start << ", " << end << std::endl;
+      auto repiped = pipe.repipeRequired(start, end);
+      std::pair<size_t, size_t> jit_interval{start, end};
+      // Create a fragment name that will be unique across different ROF intervals in the pipeline.
+      std::string fragment_name = full_name + "_" + std::to_string(start) + "_" + std::to_string(end);
+      auto runner = std::make_unique<CompiledRunner>(std::move(repiped), *context, fragment_name);
+      compile_state.emplace_back(std::make_shared<AsyncCompileState>(control_block, context, jit_interval));
+      // In the hybrid mode we detach the runner thread so that we don't have to wait on subprocess termination.
+      // This makes things much faster, but requires that the async thread does not access any member
+      // of this PipelineExecutor. The thread might be alive longer.
+      return std::thread([runner = std::move(runner), state = compile_state.back()]() mutable {
+         // Generate C code in the backend.
+         runner->generateC();
+         // Turn the generated C into machine code.
+         bool done = runner->generateMachineCode(state->interrupt);
+         if (done) {
+            // If we were not interrupted, provide the PipelineExecutor with the compilation result.
+            std::unique_lock lock(state->compiled_lock);
+            state->compiled = std::move(runner);
+            state->fused_set_up = true;
+         }
+      });
+   };
+
+   if (mode == ExecutionMode::Fused) {
+      std::vector<std::thread> ret;
+      ret.emplace_back(attach_compile_state(0, pipe.getSubops().size()));
+      return ret;
+   } else if (mode == ExecutionMode::ROF) {
+      std::vector<std::thread> ret;
+      // Figure out which fragments need to be compiled based on the suboperator optimization
+      // properties.
+      auto& subops = pipe.getSubops();
+      bool in_vectorized_interval = false;
+      size_t curr_interval_start = 0;
+      for (size_t k = 0; k < subops.size(); ++k) {
+         auto& curr_subop = subops[k];
+         if (curr_subop->getOptimizationProperties().rof_strategy == ROFStrategy::BeginVectorized) {
+            // Vectorization should start at this suboperator. This means we need to compile
+            // a fragment for the previous interval.
+            in_vectorized_interval = true;
+            ret.emplace_back(attach_compile_state(curr_interval_start, k));
+         }
+         if (curr_subop->getOptimizationProperties().rof_strategy == ROFStrategy::EndVectorized) {
+            // After this suboperator we want to JIT compile again. Set up the state accordingly.
+            // Plus one as the current suboperator still belongs to the vectorized block.
+            assert(in_vectorized_interval);
+            curr_interval_start = k + 1;
+            in_vectorized_interval = false;
+         }
       }
-   });
-   return ret;
+      if (!in_vectorized_interval) {
+         // If we aren't in a vectorized interval at the end we need to compile
+         // for the suboperator suffix.
+         ret.emplace_back(attach_compile_state(curr_interval_start, subops.size()));
+      }
+      return ret;
+   } else {
+      throw std::runtime_error("setUpFusedAsync only supports setting up for Fused and ROF");
+   }
 }
 
 void PipelineExecutor::cleanUp(size_t thread_id) {
-   compile_state->context.clear(thread_id);
+   context->clear(thread_id);
    // Reset the restart flag to have a clean slate for the next morsel.
    ExecutionContext::getInstalledRestartFlag() = false;
 }
 
 Suboperator::PickMorselResult PipelineExecutor::runFusedMorsel(size_t thread_id) {
-   assert(compile_state->fused_set_up);
+   assert(compile_state[0]->fused_set_up);
    // Run the whole compiled executor.
-   auto morsel = compile_state->compiled->runMorsel(thread_id, true);
+   auto morsel = compile_state[0]->compiled->pickMorsel(thread_id);
    if (std::holds_alternative<Suboperator::PickedMorsel>(morsel)) {
+      compile_state[0]->compiled->runMorsel(thread_id);
       if (auto printer = pipe.getPrettyPrinter()) {
          // Tell the printer that a morsel is done.
-         if (printer->markMorselDone(compile_state->context, thread_id)) {
+         if (printer->markMorselDone(*context, thread_id)) {
             // Output is closed - no more work to be done.
             return Suboperator::NoMoreMorsels{};
          }
@@ -292,36 +381,20 @@ Suboperator::PickMorselResult PipelineExecutor::runFusedMorsel(size_t thread_id)
 }
 
 Suboperator::PickMorselResult PipelineExecutor::runInterpretedMorsel(size_t thread_id) {
-   // Run a morsel and retry it if the `restart_flag` gets set to true.
-   // This is needed to defend against e.g. hash table resizes without
-   // massively complicating the generated code.
-   auto runMorselWithRetry = [&](PipelineRunner& runner, bool force_pick) {
-      // The restart flag was installed by the current compile_state->context in `runPipeline` or `runMorsel`.
-      bool& restart_flag = ExecutionContext::getInstalledRestartFlag();
-      assert(!restart_flag);
-
-      // Run the morsel until the flag is not set. The flag can be set multiple times if e.g.
-      // multiple hash table resizes happen for the same chunk.
-      auto pick_result = runner.runMorsel(thread_id, force_pick);
-      while (restart_flag) {
-         restart_flag = false;
-         runner.prepareForRerun(thread_id);
-         runner.runMorsel(thread_id, false);
-      }
-
-      return pick_result;
-   };
-
    // Only the first interpreter is allowed to pick a morsel - the morsel of that source is then
    // fixed for all remaining interpreters in the pipeline.
-   auto morsel = runMorselWithRetry(*interpreters[0], true);
+   auto morsel = interpreters[0]->pickMorsel(thread_id);
    if (std::holds_alternative<Suboperator::PickedMorsel>(morsel)) {
+      runMorselWithRetry(*interpreters[0], thread_id);
       for (auto interpreter = interpreters.begin() + 1; interpreter < interpreters.end(); ++interpreter) {
-         runMorselWithRetry(**interpreter, false);
+         // For intermediate interpreters we have to pick a morsel to properly initialize the FuseChunk
+         // sources.
+         (*interpreter)->pickMorsel(thread_id);
+         runMorselWithRetry(**interpreter, thread_id);
       }
       if (auto printer = pipe.getPrettyPrinter()) {
          // Tell the printer that a morsel is done.
-         if (printer->markMorselDone(compile_state->context, thread_id)) {
+         if (printer->markMorselDone(*context, thread_id)) {
             // Output is closed - no more work to be done.
             return Suboperator::NoMoreMorsels{};
          }
@@ -329,5 +402,71 @@ Suboperator::PickMorselResult PipelineExecutor::runInterpretedMorsel(size_t thre
       cleanUp(thread_id);
    }
    return morsel;
+}
+
+Suboperator::PickMorselResult PipelineExecutor::runROFMorsel(size_t thread_id) {
+   // The first block should be JIT compiled.
+   assert(!compile_state.empty());
+   assert(compile_state[0]->jit_interval.first == 0);
+   assert(compile_state[0]->fused_set_up);
+
+   // Pick a morsel.
+   auto morsel = compile_state[0]->compiled->pickMorsel(thread_id);
+
+   if (std::holds_alternative<Suboperator::PickedMorsel>(morsel)) {
+      // Run the first compiled morsel.
+      compile_state[0]->compiled->runMorsel(thread_id);
+      ExecutionContext::getInstalledRestartFlag() = false;
+      // Go over all remaining suboperators and try to run them.
+      size_t next_compile_state = 1;
+      size_t current_subop_idx = compile_state[0]->jit_interval.second;
+      while (current_subop_idx < pipe.getSubops().size()) {
+         if (next_compile_state < compile_state.size() && compile_state[next_compile_state]->jit_interval.first == current_subop_idx) {
+            // There exists a JIT compiled fragment for the next interval.
+            compile_state[next_compile_state]->compiled->pickMorsel(thread_id);
+            compile_state[next_compile_state]->compiled->runMorsel(thread_id);
+            ExecutionContext::getInstalledRestartFlag() = false;
+            // Move on until after the JIT fragment.
+            current_subop_idx = compile_state[next_compile_state]->jit_interval.second;
+            next_compile_state++;
+         } else if (interpreter_offsets[current_subop_idx].has_value()) {
+            // The next suboperator needs to be interpreted. Fetch the correct interpreter.
+            auto& interpreter = interpreters[*interpreter_offsets[current_subop_idx]];
+            // Pick a morsel for it to make sure the fuse chunk sources are set up correctly.
+            interpreter->pickMorsel(thread_id);
+            // And run it.
+            runMorselWithRetry(*interpreter, thread_id);
+            ++current_subop_idx;
+         } else {
+            // No interpreter at the current index, move on to the next.
+            ++current_subop_idx;
+         }
+      }
+      if (auto printer = pipe.getPrettyPrinter()) {
+         // Tell the printer that a morsel is done.
+         if (printer->markMorselDone(*context, thread_id)) {
+            // Output is closed - no more work to be done.
+            return Suboperator::NoMoreMorsels{};
+         }
+      }
+      cleanUp(thread_id);
+   }
+
+   return morsel;
+}
+
+void PipelineExecutor::runMorselWithRetry(PipelineRunner& runner, size_t thread_id) {
+   // The restart flag was installed by the current compile_state->context in `runPipeline` or `runMorsel`.
+   bool& restart_flag = ExecutionContext::getInstalledRestartFlag();
+   assert(!restart_flag);
+
+   // Run the morsel until the flag is not set. The flag can be set multiple times if e.g.
+   // multiple hash table resizes happen for the same chunk.
+   runner.runMorsel(thread_id);
+   while (restart_flag) {
+      restart_flag = false;
+      runner.prepareForRerun(thread_id);
+      runner.runMorsel(thread_id);
+   }
 }
 }

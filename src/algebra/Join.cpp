@@ -259,71 +259,79 @@ void Join::decayPkJoin(inkfuse::PipelineDAG& dag) const {
       }
 
       // 2.2 Probe.
-      std::vector<const IU*> pseudo;
-      for (const auto& pseudo_iu : right_pseudo_ius) {
-         pseudo.push_back(&pseudo_iu);
-      }
+      {
+         {
+            // Perform the actual lookup in a fully vectorized fashion.
+            Pipeline::ROFScopeGuard rof_guard{probe_pipe};
 
-      // 2.2.1 Compute the hash.
-      probe_pipe.attachSuboperator(RuntimeFunctionSubop::htHash<AtomicHashTable<SimpleKeyComparator>>(this, *hash_right, *scratch_pad_right, std::move(pseudo), &ht_state));
+            std::vector<const IU*> pseudo;
+            for (const auto& pseudo_iu : right_pseudo_ius) {
+               pseudo.push_back(&pseudo_iu);
+            }
 
-      // 2.2.2 Prefetch the slot.
-      probe_pipe.attachSuboperator(RuntimeFunctionSubop::htPrefetch<AtomicHashTable<SimpleKeyComparator>>(this, &*prefetch_pseudo, *hash_right, &ht_state));
+            // 2.2.1 Compute the hash.
+            probe_pipe.attachSuboperator(RuntimeFunctionSubop::htHash<AtomicHashTable<SimpleKeyComparator>>(this, *hash_right, *scratch_pad_right, std::move(pseudo), &ht_state));
 
-      // 2.2.3 Perfom the lookup.
-      if (type == JoinType::LeftSemi) {
-         // Lookup on a slot disables the slot, giving semi-join behaviour.
-         probe_pipe.attachSuboperator(RuntimeFunctionSubop::htLookupWithHash<AtomicHashTable<SimpleKeyComparator>, true>(this, *lookup_right, *scratch_pad_right, *hash_right, &*prefetch_pseudo, &ht_state));
-      } else {
-         // Regular lookup that does not disable slots.
-         probe_pipe.attachSuboperator(RuntimeFunctionSubop::htLookupWithHash<AtomicHashTable<SimpleKeyComparator>, false>(this, *lookup_right, *scratch_pad_right, *hash_right, &*prefetch_pseudo, &ht_state));
-      }
+            // 2.2.2 Prefetch the slot.
+            probe_pipe.attachSuboperator(RuntimeFunctionSubop::htPrefetch<AtomicHashTable<SimpleKeyComparator>>(this, &*prefetch_pseudo, *hash_right, &ht_state));
 
-      // 2.3 Filter on probe matches.
-      probe_pipe.attachSuboperator(ColumnFilterScope::build(this, *lookup_right, *filter_pseudo_iu));
-      // The filter on the build site filters "itself". This has some repercussions on the repiping
-      // behaviour of the suboperator and needs to be passed explicitly.
-      probe_pipe.attachSuboperator(ColumnFilterLogic::build(this, *filter_pseudo_iu, *lookup_right, *filtered_build, /* filter_type= */ lookup_right->type, /* filters_itself= */ true));
-      if (type != JoinType::LeftSemi) {
-         // If we need to produce columns on the probe side, we also have to filter the probe result.
-         // Note: the filtered ByteArray from the probe side becomes a Char* after filtering.
-         probe_pipe.attachSuboperator(ColumnFilterLogic::build(this, *filter_pseudo_iu, *scratch_pad_right, *filtered_probe, /* filter_type_= */ lookup_right->type));
-      }
-
-      // 2.4 Unpack everything.
-      // 2.4.1 Unpack Build Side IUs
-      size_t build_unpack_offset = 0;
-      for (const auto& iu : keys_left_out) {
-         auto& unpacker = probe_pipe.attachSuboperator(KeyUnpackerSubop::build(this, *filtered_build, iu));
-         KeyPackingRuntimeParams param;
-         param.offsetSet(IR::UI<2>::build(build_unpack_offset));
-         reinterpret_cast<KeyUnpackerSubop&>(unpacker).attachRuntimeParams(std::move(param));
-         build_unpack_offset += iu.type->numBytes();
-      }
-      for (const auto& iu : payload_left_out) {
-         auto& unpacker = probe_pipe.attachSuboperator(KeyUnpackerSubop::build(this, *filtered_build, iu));
-         KeyPackingRuntimeParams param;
-         param.offsetSet(IR::UI<2>::build(build_unpack_offset));
-         reinterpret_cast<KeyUnpackerSubop&>(unpacker).attachRuntimeParams(std::move(param));
-         build_unpack_offset += iu.type->numBytes();
-      }
-      // 2.4.1 Unpack Probe Side IUs. Not needed for semi joins.
-      if (type != JoinType::LeftSemi) {
-         size_t probe_unpack_offset = 0;
-         for (const auto& iu : keys_right_out) {
-            auto& unpacker = probe_pipe.attachSuboperator(KeyUnpackerSubop::build(this, *filtered_probe, iu));
-            KeyPackingRuntimeParams param;
-            param.offsetSet(IR::UI<2>::build(probe_unpack_offset));
-            reinterpret_cast<KeyUnpackerSubop&>(unpacker).attachRuntimeParams(std::move(param));
-            probe_unpack_offset += iu.type->numBytes();
+            // 2.2.3 Perfom the lookup.
+            if (type == JoinType::LeftSemi) {
+               // Lookup on a slot disables the slot, giving semi-join behaviour.
+               probe_pipe.attachSuboperator(RuntimeFunctionSubop::htLookupWithHash<AtomicHashTable<SimpleKeyComparator>, true>(this, *lookup_right, *scratch_pad_right, *hash_right, &*prefetch_pseudo, &ht_state));
+            } else {
+               // Regular lookup that does not disable slots.
+               probe_pipe.attachSuboperator(RuntimeFunctionSubop::htLookupWithHash<AtomicHashTable<SimpleKeyComparator>, false>(this, *lookup_right, *scratch_pad_right, *hash_right, &*prefetch_pseudo, &ht_state));
+            }
          }
-         for (const auto& iu : payload_right_out) {
-            auto& unpacker = probe_pipe.attachSuboperator(KeyUnpackerSubop::build(this, *filtered_probe, iu));
-            KeyPackingRuntimeParams param;
-            param.offsetSet(IR::UI<2>::build(probe_unpack_offset));
-            reinterpret_cast<KeyUnpackerSubop&>(unpacker).attachRuntimeParams(std::move(param));
-            probe_unpack_offset += iu.type->numBytes();
+
+         // 2.3 Filter on probe matches.
+         probe_pipe.attachSuboperator(ColumnFilterScope::build(this, *lookup_right, *filter_pseudo_iu));
+         // The filter on the build site filters "itself". This has some repercussions on the repiping
+         // behaviour of the suboperator and needs to be passed explicitly.
+         probe_pipe.attachSuboperator(ColumnFilterLogic::build(this, *filter_pseudo_iu, *lookup_right, *filtered_build, /* filter_type= */ lookup_right->type, /* filters_itself= */ true));
+         if (type != JoinType::LeftSemi) {
+            // If we need to produce columns on the probe side, we also have to filter the probe result.
+            // Note: the filtered ByteArray from the probe side becomes a Char* after filtering.
+            probe_pipe.attachSuboperator(ColumnFilterLogic::build(this, *filter_pseudo_iu, *scratch_pad_right, *filtered_probe, /* filter_type_= */ lookup_right->type));
          }
+
+         // 2.4 Unpack everything.
+         // 2.4.1 Unpack Build Side IUs
+         size_t build_unpack_offset = 0;
+         for (const auto& iu : keys_left_out) {
+            auto& unpacker = probe_pipe.attachSuboperator(KeyUnpackerSubop::build(this, *filtered_build, iu));
+            KeyPackingRuntimeParams param;
+            param.offsetSet(IR::UI<2>::build(build_unpack_offset));
+            reinterpret_cast<KeyUnpackerSubop&>(unpacker).attachRuntimeParams(std::move(param));
+            build_unpack_offset += iu.type->numBytes();
+         }
+         for (const auto& iu : payload_left_out) {
+            auto& unpacker = probe_pipe.attachSuboperator(KeyUnpackerSubop::build(this, *filtered_build, iu));
+            KeyPackingRuntimeParams param;
+            param.offsetSet(IR::UI<2>::build(build_unpack_offset));
+            reinterpret_cast<KeyUnpackerSubop&>(unpacker).attachRuntimeParams(std::move(param));
+            build_unpack_offset += iu.type->numBytes();
+         }
+         // 2.4.1 Unpack Probe Side IUs. Not needed for semi joins.
+         if (type != JoinType::LeftSemi) {
+            size_t probe_unpack_offset = 0;
+            for (const auto& iu : keys_right_out) {
+               auto& unpacker = probe_pipe.attachSuboperator(KeyUnpackerSubop::build(this, *filtered_probe, iu));
+               KeyPackingRuntimeParams param;
+               param.offsetSet(IR::UI<2>::build(probe_unpack_offset));
+               reinterpret_cast<KeyUnpackerSubop&>(unpacker).attachRuntimeParams(std::move(param));
+               probe_unpack_offset += iu.type->numBytes();
+            }
+            for (const auto& iu : payload_right_out) {
+               auto& unpacker = probe_pipe.attachSuboperator(KeyUnpackerSubop::build(this, *filtered_probe, iu));
+               KeyPackingRuntimeParams param;
+               param.offsetSet(IR::UI<2>::build(probe_unpack_offset));
+               reinterpret_cast<KeyUnpackerSubop&>(unpacker).attachRuntimeParams(std::move(param));
+               probe_unpack_offset += iu.type->numBytes();
+            }
+         }
+         // End vectorized Block.
       }
    }
 }

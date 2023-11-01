@@ -35,7 +35,10 @@ std::unique_ptr<Pipeline> Pipeline::repipeRequired(size_t start, size_t end) con
       suboperators.begin() + end,
       [&](const SuboperatorArc& subop) {
          for (auto iu : subop->getIUs()) {
-            out_provided.insert(iu);
+            if (!dynamic_cast<IR::Void*>(iu->type.get())) {
+               // We do not add void IUs as these present pseudo IUs to properly connect the graph.
+               out_provided.insert(iu);
+            }
          }
       });
 
@@ -46,7 +49,7 @@ std::unique_ptr<Pipeline> Pipeline::repipeRequired(size_t start, size_t end) con
       suboperators.end(),
       [&](const SuboperatorArc& subop) {
          for (auto iu : subop->getSourceIUs()) {
-            if (!out_provided.count(iu)) {
+            if (out_provided.count(iu)) {
                out_required.insert(iu);
             }
          }

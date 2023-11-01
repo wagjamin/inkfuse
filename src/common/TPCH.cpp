@@ -606,7 +606,6 @@ std::unique_ptr<Print> q6(const Schema& schema) {
       "l_extendedprice",
       "l_discount",
       "l_shipdate",
-      "l_discount",
       "l_quantity"};
    auto scan = TableScan::build(*rel, cols, "scan");
    auto& scan_ref = *scan;

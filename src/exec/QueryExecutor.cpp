@@ -51,10 +51,20 @@ void StepwiseExecutor::prepareQuery() {
       const auto& pipe = pipes[idx];
       // TODO(benjamin) - run with multiple threads
       auto& executor = executors.emplace_back(*pipe, num_threads, mode, qname + "_pipe_" + std::to_string(idx), control_block);
-      if (mode != PipelineExecutor::ExecutionMode::Interpreted) {
-         // If we have to generate code, already kick off asynchronous compilation.
-         // This hides compilation latency much better than kicking it off at the beginning of each pipeline.
-         executor.preparePipeline(PipelineExecutor::ExecutionMode::Fused);
+      // If we have to generate code, already kick off asynchronous compilation.
+      // This hides compilation latency much better than kicking it off at the beginning of each pipeline.
+      switch (mode) {
+         case PipelineExecutor::ExecutionMode::Fused:
+            executor.preparePipeline(PipelineExecutor::ExecutionMode::Fused);
+            break;
+         case PipelineExecutor::ExecutionMode::Hybrid:
+            executor.preparePipeline(PipelineExecutor::ExecutionMode::Fused);
+            break;
+         case PipelineExecutor::ExecutionMode::ROF:
+            executor.preparePipeline(PipelineExecutor::ExecutionMode::ROF);
+            break;
+         default:
+            break;
       }
    }
 }
@@ -71,7 +81,7 @@ PipelineExecutor::PipelineStats StepwiseExecutor::runQuery() {
       // Run all tasks belonging to this pipeline.
       while (rt_tasks_it != rt_tasks.end() && rt_tasks_it->after_pipe <= pipeline_idx) {
          assert(rt_tasks_it->after_pipe == pipeline_idx);
-         ExecutionContext& ctx = executor.compile_state->context;
+         ExecutionContext& ctx = *executor.context;
          const auto stats = runRuntimeTask(ctx, *rt_tasks_it, num_threads);
          total_stats.runtime_microseconds_st += stats.single_threaded_micros;
          total_stats.runtime_microseconds_mt += stats.multi_threaded_micros;

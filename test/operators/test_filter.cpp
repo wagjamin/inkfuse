@@ -139,9 +139,8 @@ INSTANTIATE_TEST_CASE_P(
    FilterExecution,
    FilterTParametrized,
    ::testing::Values(PipelineExecutor::ExecutionMode::Fused,
-                     PipelineExecutor::ExecutionMode::Interpreted)
-   );
-
+                     PipelineExecutor::ExecutionMode::Interpreted,
+                     PipelineExecutor::ExecutionMode::ROF));
 }
 
 }

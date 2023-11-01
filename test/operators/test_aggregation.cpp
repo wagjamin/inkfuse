@@ -190,11 +190,11 @@ INSTANTIATE_TEST_CASE_P(
       ::testing::Values(
          PipelineExecutor::ExecutionMode::Fused,
          PipelineExecutor::ExecutionMode::Interpreted,
+         PipelineExecutor::ExecutionMode::ROF,
          PipelineExecutor::ExecutionMode::Hybrid)),
    [](const ::testing::TestParamInfo<ParamT>& info) -> std::string {
       std::string opcode_names = buildTestCaseName(std::get<0>(info.param));
       return opcode_names + "_" + std::to_string(static_cast<int>(std::get<1>(info.param)));
    });
-
 }
 }

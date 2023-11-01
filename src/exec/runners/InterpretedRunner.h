@@ -12,18 +12,24 @@ namespace inkfuse {
 /// The pipeline intepreter receives a single pipeline
 struct InterpretedRunner final : public PipelineRunner {
    /// Create a pipeline interpreter which will interpret the sub-operator at the given index.
-   InterpretedRunner(const Pipeline& backing_pipeline, size_t idx, ExecutionContext& original_context);
+   /// @param pick_from_source_table: The first interpreter for a table scan should pick from the source table.
+   InterpretedRunner(const Pipeline& backing_pipeline, size_t idx, ExecutionContext& original_context, bool pick_from_source_table_);
    ~InterpretedRunner();
+
+   /// Pick-morsel override.
+   Suboperator::PickMorselResult pickMorsel(size_t thread_id) override;
 
    /// Run-morsel override. The InterpretedRunner can interpret some morsels without
    /// actually doing any work.
-   Suboperator::PickMorselResult runMorsel(size_t thread_id, bool force_pick) override;
+   void runMorsel(size_t thread_id) override;
 
    private:
    /// Get the properly repiped pipeline for the actual execution.
    static PipelinePtr getRepiped(const Pipeline& backing_pipeline, size_t idx);
    /// The fragment id - mainly useful for debugging purposes.
    std::string fragment_id;
+   /// Should `pickMorsel` pick from the source table?
+   bool pick_from_source_table;
 
    /// How a morsel should be executed.
    enum class ExecutionMode {
@@ -47,7 +53,7 @@ struct InterpretedRunner final : public PipelineRunner {
    };
    std::optional<ZeroCopyScanState> zero_copy_state;
    /// Custom interpreter for a zero copy scan.
-   Suboperator::PickMorselResult runZeroCopyScan(size_t thread_id, bool force_pick);
+   void runZeroCopyScan(size_t thread_id);
 };
 }
 

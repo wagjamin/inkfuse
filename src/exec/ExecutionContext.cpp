@@ -34,6 +34,8 @@ Column& ExecutionContext::getColumn(const IU& iu, size_t thread_id) const {
 }
 
 void ExecutionContext::clear(size_t thread_id) const {
+   assert(thread_id < chunks.size());
+   assert(chunks[thread_id]);
    chunks[thread_id]->clearColumns();
 }
 

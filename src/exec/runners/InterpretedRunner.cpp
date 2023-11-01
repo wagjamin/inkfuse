@@ -1,11 +1,12 @@
 #include "InterpretedRunner.h"
+#include "algebra/suboperators/row_layout/KeyPackerSubop.h"
 #include "algebra/suboperators/sources/TableScanSource.h"
 #include "interpreter/FragmentCache.h"
 
 namespace inkfuse {
 
-InterpretedRunner::InterpretedRunner(const Pipeline& backing_pipeline, size_t idx, ExecutionContext& original_context)
-   : PipelineRunner(getRepiped(backing_pipeline, idx), original_context) {
+InterpretedRunner::InterpretedRunner(const Pipeline& backing_pipeline, size_t idx, ExecutionContext& original_context, bool pick_from_source_table_)
+   : PipelineRunner(getRepiped(backing_pipeline, idx), original_context), pick_from_source_table(pick_from_source_table_) {
    // Get the unique identifier of the operation which has to be interpreted.
    auto& op = backing_pipeline.getSubops()[idx];
    fragment_id = op->id();
@@ -39,19 +40,51 @@ InterpretedRunner::~InterpretedRunner() {
    }
 }
 
-Suboperator::PickMorselResult InterpretedRunner::runMorsel(size_t thread_id, bool force_pick) {
+Suboperator::PickMorselResult InterpretedRunner::pickMorsel(size_t thread_id) {
+   if (mode == ExecutionMode::ZeroCopyScan && !pick_from_source_table) {
+       // If this is a suboperator interpreting a table scan, but not the first one,
+       // then we should not pick from the table scan. We need to bind to the original
+       // morsel of the first interpreter instead.
+      return Suboperator::PickedMorsel{
+         .morsel_size = 1,
+      };
+   }
+
+   // Pick a morsel from the source suboperator.
+   auto morsel = pipe->suboperators[0]->pickMorsel(thread_id);
+
+   if (auto picked = std::get_if<Suboperator::PickedMorsel>(&morsel); picked) {
+      // FIXME - HACKFIX - Tread With Caution
+      // It could be that we require scratch pad IUs within this pipeline.
+      // As these are never officially produced by an expression, we need
+      // to make sure their sizes are set up properly.
+      for (const auto& subop : pipe->getSubops()) {
+         if (dynamic_cast<KeyPackerSubop*>(subop.get())) {
+            assert(subop->getSourceIUs().size() == 2);
+            const IU* scratch_pad_iu = subop->getSourceIUs()[1];
+            context.getColumn(*scratch_pad_iu, thread_id).size = picked->morsel_size;
+         }
+      }
+   }
+
+   return morsel;
+}
+
+void InterpretedRunner::runMorsel(size_t thread_id) {
    // Dispatch to the right interpretation strategy.
    switch (mode) {
       case ExecutionMode::DefaultRunMorsel:
          // Default strategy.
-         return PipelineRunner::runMorsel(thread_id, force_pick);
+         PipelineRunner::runMorsel(thread_id);
+         break;
       case ExecutionMode::ZeroCopyScan:
          // Custom zero-copy scan interpreter.
-         return runZeroCopyScan(thread_id, force_pick);
+         runZeroCopyScan(thread_id);
+         break;
    }
 }
 
-Suboperator::PickMorselResult InterpretedRunner::runZeroCopyScan(size_t thread_id, bool force_pick) {
+void InterpretedRunner::runZeroCopyScan(size_t thread_id) {
    // The TScanIUProvider used to make a superfluous copy of the table scan source.
    // We would take the table scan data, and do a contiguous copy of the data into a
    // FuseChunk.
@@ -61,15 +94,6 @@ Suboperator::PickMorselResult InterpretedRunner::runZeroCopyScan(size_t thread_i
    // Only the first TScanIUProvider needs to actually pick the new morsel.
    // That is marked with `force_pick`. In all other cases assume we already
    // have a morsel picked.
-   Suboperator::PickMorselResult morsel = Suboperator::PickedMorsel{
-      .morsel_size = 1,
-   };
-   if (force_pick) {
-      morsel = pipe->suboperators[0]->pickMorsel(thread_id);
-      if (std::holds_alternative<Suboperator::NoMoreMorsels>(morsel)) {
-         return morsel;
-      }
-   }
    if (zero_copy_state->fuse_chunk_ptrs[thread_id] == nullptr) {
       // Save the raw state of the fuse chunk column. Will be reinstalled on Runner destruction.
       zero_copy_state->fuse_chunk_ptrs[thread_id] = context.getColumn(*zero_copy_state->output_iu, thread_id).raw_data;
@@ -85,7 +109,6 @@ Suboperator::PickMorselResult InterpretedRunner::runZeroCopyScan(size_t thread_i
    Column& out_col = context.getColumn(*zero_copy_state->output_iu, thread_id);
    out_col.size = (driver_state->end - driver_state->start);
    out_col.raw_data = (*provider_state->start) + (driver_state->start * zero_copy_state->type_width);
-   return morsel;
 }
 
 // static
@@ -93,5 +116,4 @@ PipelinePtr InterpretedRunner::getRepiped(const Pipeline& backing_pipeline, size
    auto res = backing_pipeline.repipeAll(idx, idx + 1);
    return res;
 }
-
 }

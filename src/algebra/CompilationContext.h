@@ -101,6 +101,9 @@ struct CompilationContext {
    std::unordered_map<Suboperator*, NodeProperties> properties;
    /// The open IU requests which need to be mapped. (from -> to)
    std::unordered_map<Suboperator*, std::pair<Suboperator*, const IU*>> requests;
+   /// Suboperators that proruce IUs where there exists no requestor.
+   /// These come from suoperators that have only outgoing pseudo IUs.
+   std::unordered_set<const Suboperator*> producing_no_request;
    /// IU declarations.
    std::map<const IU*, const IR::Stmt*> iu_declarations;
 };

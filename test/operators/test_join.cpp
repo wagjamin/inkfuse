@@ -134,8 +134,5 @@ TEST_P(PkJoinTestT, two_keys) {
    QueryExecutor::runQuery(control_block, GetParam(), "join_two_keys");
 }
 
-INSTANTIATE_TEST_CASE_P(PkJoinTest, PkJoinTestT, ::testing::Values(PipelineExecutor::ExecutionMode::Fused,
-                                                                   PipelineExecutor::ExecutionMode::Interpreted,
-                                                                   PipelineExecutor::ExecutionMode::Hybrid));
-
+INSTANTIATE_TEST_CASE_P(PkJoinTest, PkJoinTestT, ::testing::Values(PipelineExecutor::ExecutionMode::Fused, PipelineExecutor::ExecutionMode::Interpreted, PipelineExecutor::ExecutionMode::ROF, PipelineExecutor::ExecutionMode::Hybrid));
 }

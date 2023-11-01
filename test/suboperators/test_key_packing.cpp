@@ -116,7 +116,10 @@ TEST_P(KeyPackingTest, test_pack_unpack) {
 INSTANTIATE_TEST_CASE_P(
    KeyPacking,
    KeyPackingTest,
-   ::testing::Values(PipelineExecutor::ExecutionMode::Fused, PipelineExecutor::ExecutionMode::Interpreted));
+   ::testing::Values(
+      PipelineExecutor::ExecutionMode::Fused,
+      PipelineExecutor::ExecutionMode::Interpreted,
+      PipelineExecutor::ExecutionMode::ROF));
 }
 
 }

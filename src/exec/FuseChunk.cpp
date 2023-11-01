@@ -30,9 +30,8 @@ void FuseChunk::attachColumn(const IU& iu) {
    }
 }
 
-void FuseChunk::clearColumns()
-{
-   for (auto& column: columns) {
+void FuseChunk::clearColumns() {
+   for (auto& column : columns) {
       column.second->size = 0;
    }
 }

@@ -155,6 +155,7 @@ INSTANTIATE_TEST_CASE_P(basic_multithreaded, MultithreadedJoinTestT,
                         ::testing::Combine(
                            ::testing::Values(PipelineExecutor::ExecutionMode::Fused,
                                              PipelineExecutor::ExecutionMode::Interpreted,
+                                             PipelineExecutor::ExecutionMode::ROF,
                                              PipelineExecutor::ExecutionMode::Hybrid),
                            ::testing::Values(16)));
 

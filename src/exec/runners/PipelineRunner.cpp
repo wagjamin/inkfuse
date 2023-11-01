@@ -1,5 +1,4 @@
 #include "PipelineRunner.h"
-#include "algebra/suboperators/row_layout/KeyPackerSubop.h"
 #include "algebra/suboperators/sinks/FuseChunkSink.h"
 #include "algebra/suboperators/sources/FuseChunkSource.h"
 
@@ -45,37 +44,14 @@ void PipelineRunner::setUpState() {
    set_up = true;
 }
 
-Suboperator::PickMorselResult PipelineRunner::runMorsel(size_t thread_id, bool force_pick) {
+Suboperator::PickMorselResult PipelineRunner::pickMorsel(size_t thread_id) {
+   // Pick a morsel.
+   return pipe->suboperators[0]->pickMorsel(thread_id);
+}
+
+void PipelineRunner::runMorsel(size_t thread_id) {
    assert(prepared && fct);
-
-   // By default we assume a morsel was picked successfully by the source of the pipeline.
-   Suboperator::PickMorselResult morsel = Suboperator::PickedMorsel{
-      .morsel_size = 1,
-   };
-
-   if (fuseChunkSource || force_pick) {
-      // If we are driven by a fuse chunk source or are forced to pick, we have to
-      // pick a morsel.
-      morsel = pipe->suboperators[0]->pickMorsel(thread_id);
-
-      if (auto picked = std::get_if<Suboperator::PickedMorsel>(&morsel)) {
-         // FIXME - HACKFIX - Tread With Caution
-         // It could be that we provide scratch pad IUs within this pipeline.
-         // As these are never officially produced by an expression, we need
-         // to make sure their sizes are set up properly.
-         for (const auto& subop : pipe->getSubops()) {
-            if (dynamic_cast<KeyPackerSubop*>(subop.get())) {
-               assert(subop->getSourceIUs().size() == 2);
-               const IU* scratch_pad_iu = subop->getSourceIUs()[1];
-               context.getColumn(*scratch_pad_iu, thread_id).size = picked->morsel_size;
-            }
-         }
-      }
-   }
-   if (std::holds_alternative<Suboperator::PickedMorsel>(morsel)) {
-      fct(states[thread_id].data());
-   }
-   return morsel;
+   fct(states[thread_id].data());
 }
 
 void PipelineRunner::prepareForRerun(size_t thread_id) {
