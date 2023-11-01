@@ -32,6 +32,30 @@ struct PipelineGraph {
 /// Internally, the pipeline is a DAG of suboperators.
 struct Pipeline {
    public:
+   /// A scope guard for relaxed operator fusion. Sets the preferred strategy
+   /// to vectorized on construction, and ends the vectorized block on destruction.
+   struct ROFScopeGuard {
+      ROFScopeGuard(Pipeline& pipe_) : pipe(pipe_), size_at_start(pipe.getSubops().size()) {
+      }
+
+      ~ROFScopeGuard() {
+         if (pipe.getSubops().size() > (size_at_start + 2)) {
+            // Start vectorized execution at the suboperator after the scope guard was set up.
+            pipe.getSubops()[size_at_start]->setROFStrategy(
+               Suboperator::OptimizationProperties::ROFStrategy::BeginVectorized);
+            // End vectorized execution at the currently last suboperator.
+            pipe.getSubops()[pipe.getSubops().size() - 1]->setROFStrategy(
+               Suboperator::OptimizationProperties::ROFStrategy::EndVectorized);
+         }
+      }
+
+      private:
+      /// The pipeline wrapped into the scope guard.
+      Pipeline& pipe;
+      /// How many supoperators existed on startup.
+      size_t size_at_start = 0;
+   };
+
    /// Rebuild the pipeline for a subset of the sub-operators in the given range.
    /// Inserts fake sources and fake sinks. Materializes all IUs that are produced by nodes that don't have a strong output link.
    std::unique_ptr<Pipeline> repipeAll(size_t start, size_t end) const;

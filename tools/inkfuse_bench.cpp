@@ -50,6 +50,7 @@ const std::vector<std::pair<std::string, PipelineExecutor::ExecutionMode>> backe
    {"hybrid", PipelineExecutor::ExecutionMode::Hybrid},
    {"interpreted", PipelineExecutor::ExecutionMode::Interpreted},
    {"fused", PipelineExecutor::ExecutionMode::Fused},
+   {"rof", PipelineExecutor::ExecutionMode::ROF},
 };
 
 }

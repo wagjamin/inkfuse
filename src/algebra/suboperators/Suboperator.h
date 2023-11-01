@@ -3,6 +3,7 @@
 
 #include "algebra/IU.h"
 #include "exec/ExecutionContext.h"
+#include <cstddef>
 #include <memory>
 #include <optional>
 #include <set>
@@ -128,8 +129,25 @@ struct Suboperator {
       /// optimized way. We can go to smaller chunk sizes that will have better cache
       /// locality. This matters as we split prefetching and lookups into two phases.
       std::optional<size_t> rt_chunk_size_prefeference = std::nullopt;
+
+      /// Strategy for applying relaxed operator fusion. The performance of the final
+      /// plan depends on where we insert staging points. The ROFStrategy enum
+      /// can be used to implement staging point heuristics.
+      enum class ROFStrategy {
+         /// Retain the current strategy. No preference for the suboperator.
+         Default,
+         /// Begin interpreting suboperators in a vectorized fashion at this point.
+         BeginVectorized,
+         /// End interpreting suboperators in a vectorized fashion at this point.
+         EndVectorized,
+      };
+      /// ROF Strategy for this suboperator.
+      ROFStrategy rof_strategy = ROFStrategy::Default;
    };
    const OptimizationProperties& getOptimizationProperties() const { return optimization_properties; };
+   void setROFStrategy(OptimizationProperties::ROFStrategy strategy) {
+      optimization_properties.rof_strategy = strategy;
+   };
 
    protected:
    /// The operator which decayed into this Suboperator.

@@ -9,7 +9,7 @@ namespace inkfuse {
 
 namespace {
 
-static constexpr bool debug_mode = false;
+static constexpr bool debug_mode = true;
 
 /// Generate the path for the c program.
 std::string path(std::string_view program_name) {
@@ -44,7 +44,7 @@ void BackendProgramC::compileToMachinecode(InterruptableJob& interrupt) {
 #endif
       command << path(program_name);
       if constexpr (debug_mode) {
-         command << " -g -O0 -fPIC";
+         command << " -g -O0 -fPIC -gdwarf-4 ";
       } else {
          command << " -O3 -fPIC";
       }
@@ -329,6 +329,11 @@ void BackendC::compileStatement(const IR::Stmt& statement, ScopedWriter& writer)
          return true;
       }
 
+      bool visitExpr(const IR::ExprStmt& stmt, ScopedWriter::Statement& writer) override {
+         compileExpression(*stmt.expr, writer);
+         return true;
+      }
+
       bool visitAssignment(const IR::AssignmentStmt& stmt, ScopedWriter::Statement& writer) override {
          compileExpression(*stmt.left_side, writer);
          writer.stream() << " = ";
@@ -428,6 +433,18 @@ void BackendC::compileExpression(const IR::Expr& expr, ScopedWriter::Statement& 
          stmt.stream() << ") (";
          // Set up what should be casted.
          compileExpression(*type.children[0], stmt);
+         stmt.stream() << "))";
+      }
+
+      void visitMemcopy(const IR::MemcopyExpression& type, ScopedWriter::Statement& stmt) override {
+         assert(type.children.size() == 3);
+         // Set up cast into target type.
+         stmt.stream() << "(memcpy(";
+         compileExpression(*type.children[0], stmt);
+         stmt.stream() << ", ";
+         compileExpression(*type.children[1], stmt);
+         stmt.stream() << ", ";
+         compileExpression(*type.children[2], stmt);
          stmt.stream() << "))";
       }
    };

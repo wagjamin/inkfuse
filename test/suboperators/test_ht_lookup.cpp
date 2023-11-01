@@ -90,8 +90,8 @@ INSTANTIATE_TEST_CASE_P(
    HtLookupSubop,
    HtLookupSubopTest,
    ::testing::Values(PipelineExecutor::ExecutionMode::Fused,
-                     PipelineExecutor::ExecutionMode::Interpreted));
-
+                     PipelineExecutor::ExecutionMode::Interpreted,
+                     PipelineExecutor::ExecutionMode::ROF));
 }
 
 }

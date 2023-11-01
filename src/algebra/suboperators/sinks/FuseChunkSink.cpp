@@ -26,9 +26,14 @@ void FuseChunkSink::consume(const IU& iu, CompilationContext& context) {
    const auto& program = context.getProgram();
 
    const auto& input_iu = context.getIUDeclaration(**source_ius.begin());
+   const bool is_variable_size_type = (dynamic_cast<IR::ByteArray*>((*source_ius.begin())->type.get()) != nullptr);
+   // TODO - Should be an erasable runtime parameter.
+   const size_t type_width = (*source_ius.begin())->type->numBytes();
 
    const IR::Stmt* decl_data_ptr;
    const IR::Stmt* decl_size_ptr;
+   // A custom iterator for dynamically sized types.
+   const IR::Stmt* decl_custom_iterator;
    {
       // In a first step we get the raw data pointer and size pointer and extract it into the root scope.
       auto state_expr_1 = context.accessGlobalState(*this);
@@ -64,17 +69,57 @@ void FuseChunkSink::consume(const IU& iu, CompilationContext& context) {
       preamble_stmts.push_back(std::move(assign_data));
       preamble_stmts.push_back(std::move(decl_size));
       preamble_stmts.push_back(std::move(assign_size));
+      if (is_variable_size_type) {
+         // This is a dynamically sized type and we have to carry our own iterator.
+         // Usually the `size` is enough to perform offsetting logic, but this is not the case
+         // for dynamically sized types.
+         auto iterator_name = this->getVarIdentifier();
+         iterator_name << "_iterator";
+         decl_custom_iterator = preamble_stmts.emplace_back(IR::DeclareStmt::build(iterator_name.str(), IR::UnsignedInt::build(8))).get();
+         // Zero the iterator in the beginning.
+         preamble_stmts.push_back(IR::AssignmentStmt::build(*decl_custom_iterator, IR::ConstExpr::build(IR::UI<8>::build(0))));
+      }
+
       builder.getRootBlock().appendStmts(std::move(preamble_stmts));
    }
 
-   // Assign value into output buffer. This is done by adding the offset to the data pointer and dereferencing.
-   auto assign = IR::AssignmentStmt::build(
-      IR::DerefExpr::build(
+   if (is_variable_size_type) {
+      assert(type_width > 0);
+      // Perfom a memcopy into the output buffer.
+      auto memcopy = IR::ExprStmt::build(
+         IR::MemcopyExpression::build(
+            // Destination: Cast input char** to char*, apply offset
+            IR::ArithmeticExpr::build(
+               IR::CastExpr::build(
+                  IR::VarRefExpr::build(*decl_data_ptr),
+                  IR::Pointer::build(IR::Char::build())),
+               IR::VarRefExpr::build(*decl_custom_iterator),
+               IR::ArithmeticExpr::Opcode::Add),
+            // Source
+            IR::VarRefExpr::build(input_iu),
+            // Copy width is the type width.
+            IR::ConstExpr::build(IR::UI<8>::build(type_width))));
+      // And update the iterator.
+      auto update_iterator = IR::AssignmentStmt::build(
+         IR::VarRefExpr::build(*decl_custom_iterator),
          IR::ArithmeticExpr::build(
-            IR::VarRefExpr::build(*decl_data_ptr),
-            IR::DerefExpr::build(IR::VarRefExpr::build(*decl_size_ptr)),
-            IR::ArithmeticExpr::Opcode::Add)),
-      IR::VarRefExpr::build(input_iu));
+            IR::VarRefExpr::build(*decl_custom_iterator),
+            IR::ConstExpr::build(IR::UI<8>::build(type_width)),
+            IR::ArithmeticExpr::Opcode::Add));
+      builder.appendStmt(std::move(memcopy));
+      builder.appendStmt(std::move(update_iterator));
+
+   } else {
+      // Assign value into output buffer. This is done by adding the offset to the data pointer and dereferencing.
+      auto assign = IR::AssignmentStmt::build(
+         IR::DerefExpr::build(
+            IR::ArithmeticExpr::build(
+               IR::VarRefExpr::build(*decl_data_ptr),
+               IR::DerefExpr::build(IR::VarRefExpr::build(*decl_size_ptr)),
+               IR::ArithmeticExpr::Opcode::Add)),
+         IR::VarRefExpr::build(input_iu));
+      builder.appendStmt(std::move(assign));
+   }
 
    // And update the size counter.
    auto update_counter = IR::AssignmentStmt::build(
@@ -83,9 +128,7 @@ void FuseChunkSink::consume(const IU& iu, CompilationContext& context) {
          IR::DerefExpr::build(IR::VarRefExpr::build(*decl_size_ptr)),
          IR::ConstExpr::build(IR::UI<8>::build(1)),
          IR::ArithmeticExpr::Opcode::Add));
-
-   // Add the statements to the program.
-   builder.appendStmt(std::move(assign));
+   // Add the statement to the program.
    builder.appendStmt(std::move(update_counter));
 }
 

@@ -17,13 +17,12 @@ IR::TypeArc ExpressionOp::derive(ComputeNode::Type code, const std::vector<Node*
 
 IR::TypeArc ExpressionOp::derive(ComputeNode::Type code, const std::vector<IR::TypeArc>& types) {
    // Operations that return a boolean as result.
-   static std::unordered_set<ComputeNode::Type> bool_returning {
-      ComputeNode::Type::Eq, ComputeNode::Type::Neq, 
-      ComputeNode::Type::Less, ComputeNode::Type::LessEqual, 
+   static std::unordered_set<ComputeNode::Type> bool_returning{
+      ComputeNode::Type::Eq, ComputeNode::Type::Neq,
+      ComputeNode::Type::Less, ComputeNode::Type::LessEqual,
       ComputeNode::Type::Greater, ComputeNode::Type::GreaterEqual,
       ComputeNode::Type::StrEquals, ComputeNode::Type::And,
-      ComputeNode::Type::Or
-   };
+      ComputeNode::Type::Or};
    if (code == ComputeNode::Type::Hash) {
       return IR::UnsignedInt::build(8);
    }
@@ -43,8 +42,7 @@ ExpressionOp::ExpressionOp(std::vector<std::unique_ptr<RelAlgOp>> children_, std
    }
 }
 
-std::unique_ptr<ExpressionOp> ExpressionOp::build(std::vector<std::unique_ptr<RelAlgOp>> children_, std::string op_name_, std::vector<Node*> out_, std::vector<NodePtr> nodes_)
-{
+std::unique_ptr<ExpressionOp> ExpressionOp::build(std::vector<std::unique_ptr<RelAlgOp>> children_, std::string op_name_, std::vector<Node*> out_, std::vector<NodePtr> nodes_) {
    return std::make_unique<ExpressionOp>(std::move(children_), std::move(op_name_), std::move(out_), std::move(nodes_));
 }
 
@@ -71,6 +69,7 @@ void ExpressionOp::decay(PipelineDAG& dag) const {
    for (const auto& child : children) {
       child->decay(dag);
    }
+
    // The set stores which expression suboperators were created already.
    std::unordered_map<Node*, const IU*> built;
    for (const auto root : out) {

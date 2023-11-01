@@ -215,6 +215,20 @@ struct CastExpr : public UnaryExpr {
    static CastResult validateCastable(const Type& src, const Type& target);
 };
 
+/// Standard C Memcopy expression.
+struct MemcopyExpression : public Expr {
+   MemcopyExpression(ExprPtr dest, ExprPtr src, ExprPtr size) : Expr(IR::Void::build()) {
+      children.reserve(3);
+      children.push_back(std::move(dest));
+      children.push_back(std::move(src));
+      children.push_back(std::move(size));
+   };
+
+   static ExprPtr build(ExprPtr dest, ExprPtr src, ExprPtr size) {
+      return std::make_unique<MemcopyExpression>(std::move(dest), std::move(src), std::move(size));
+   }
+};
+
 /// ExpressionOp visitor utility.
 template <typename Arg>
 struct ExprVisitor {
@@ -236,6 +250,8 @@ struct ExprVisitor {
          visitStructAccess(*elem, arg);
       } else if (auto elem = dynamic_cast<const CastExpr*>(&expr)) {
          visitCast(*elem, arg);
+      } else if (auto elem = dynamic_cast<const MemcopyExpression*>(&expr)) {
+         visitMemcopy(*elem, arg);
       } else {
          assert(false);
       }
@@ -257,6 +273,8 @@ struct ExprVisitor {
    virtual void visitStructAccess(const StructAccessExpr& type, Arg arg) {}
 
    virtual void visitCast(const CastExpr& type, Arg arg) {}
+
+   virtual void visitMemcopy(const MemcopyExpression& type, Arg arg) {}
 };
 
 }

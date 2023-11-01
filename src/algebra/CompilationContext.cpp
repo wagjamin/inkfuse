@@ -1,6 +1,7 @@
 #include "algebra/CompilationContext.h"
 #include "algebra/Pipeline.h"
 #include "algebra/suboperators/Suboperator.h"
+#include "algebra/suboperators/row_layout/KeyPackerSubop.h"
 #include <iostream>
 #include <sstream>
 
@@ -18,10 +19,22 @@ void CompilationContext::compile() {
    // Create the builder.
    builder.emplace(*program, fct_name);
    // Collect all sinks.
-   std::set<Suboperator*> sinks;
+   std::vector<Suboperator*> sinks;
+   std::for_each(pipeline.suboperators.begin(), pipeline.suboperators.end(), [&](const SuboperatorArc& op) {
+      if (!op->isSink() && !pipeline.graph.outgoing_edges.contains(op.get())) {
+         // If there is no outgoing edge we still need to produce code for the suboperator.
+         // This can e.g. happen during ROF if we cut at an outgoing strong edge.
+         // The most common example is cutting right after key packing.
+         // We need to open these operators before the actual sinks as they actually
+         // open loop scopes that the sinks may depend on.
+         // Change the order for TPC-H Q3 and look at pipeline 1 to understand the problem.
+         sinks.push_back(op.get());
+         producing_no_request.insert(&*op);
+      }
+   });
    std::for_each(pipeline.suboperators.begin(), pipeline.suboperators.end(), [&](const SuboperatorArc& op) {
       if (op->isSink()) {
-         sinks.insert(op.get());
+         sinks.push_back(op.get());
       }
    });
    // Open all sinks.
@@ -50,6 +63,11 @@ void CompilationContext::notifyOpClosed(Suboperator& op) {
 void CompilationContext::notifyIUsReady(Suboperator& op) {
    // Fetch the sub-operator which requested the given IU.
    computed.emplace(&op);
+   if (producing_no_request.count(&op)) {
+      // There is no suboperator in the current pipeline that needs the
+      // output IUs.
+      return;
+   }
    auto [requestor, iu] = requests[&op];
    // Remove the now serviced request from the map again.
    requests.erase(&op);
@@ -170,5 +188,4 @@ IR::FunctionBuilder CompilationContext::createFctBuilder(IR::IRBuilder& program,
    auto return_type = IR::UnsignedInt::build(1);
    return program.createFunctionBuilder(std::make_shared<IR::Function>(std::move(fct_name), std::move(args), std::move(constness), std::move(return_type)));
 }
-
 }

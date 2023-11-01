@@ -73,9 +73,11 @@ INSTANTIATE_TEST_CASE_P(
    AggReaderSubopCount,
    AggReaderSubopTest,
    ::testing::Combine(
-      ::testing::Values(PipelineExecutor::ExecutionMode::Fused, PipelineExecutor::ExecutionMode::Interpreted),
+      ::testing::Values(
+         PipelineExecutor::ExecutionMode::Fused,
+         PipelineExecutor::ExecutionMode::Interpreted,
+         PipelineExecutor::ExecutionMode::ROF),
       ::testing::Values(0, 4, 8, 12, 16)));
-
 }
 
 }

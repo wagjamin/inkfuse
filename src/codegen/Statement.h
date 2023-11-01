@@ -39,6 +39,17 @@ struct InvokeFctStmt : public Stmt {
    ExprPtr invoke_fct_expr;
 };
 
+/// Standalone expression whose result is discarded.
+struct ExprStmt : public Stmt {
+   ExprStmt(ExprPtr expr_) : expr(std::move(expr_)) {}
+
+   static StmtPtr build(ExprPtr expr_) {
+      return std::make_unique<ExprStmt>(std::move(expr_));
+   }
+
+   ExprPtr expr;
+};
+
 /// Variable declaration statement.
 struct DeclareStmt : public Stmt {
    DeclareStmt(std::string name_, TypeArc type_) : name(std::move(name_)), type(std::move(type_)) {}
@@ -106,6 +117,8 @@ struct StmtVisitor {
    bool visit(const Stmt& stmt, Arg arg) {
       if (const auto elem = dynamic_cast<const InvokeFctStmt*>(&stmt)) {
          return visitInvokeFct(*elem, arg);
+      } else if (auto elem = dynamic_cast<const ExprStmt*>(&stmt)) {
+         return visitExpr(*elem, arg);
       } else if (auto elem = dynamic_cast<const DeclareStmt*>(&stmt)) {
          return visitDeclare(*elem, arg);
       } else if (auto elem = dynamic_cast<const AssignmentStmt*>(&stmt)) {
@@ -124,11 +137,13 @@ struct StmtVisitor {
    private:
    virtual bool visitInvokeFct(const InvokeFctStmt& type, Arg arg) { return false; }
 
+   virtual bool visitExpr(const ExprStmt& type, Arg arg) { return false; }
+
    virtual bool visitDeclare(const DeclareStmt& type, Arg arg) { return false; }
 
    virtual bool visitAssignment(const AssignmentStmt& type, Arg arg) { return false; }
 
-   virtual bool visitIf(const IfStmt& type, Arg arg) { return false;}
+   virtual bool visitIf(const IfStmt& type, Arg arg) { return false; }
 
    virtual bool visitWhile(const WhileStmt& type, Arg arg) { return false; }
 

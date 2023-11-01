@@ -75,8 +75,8 @@ INSTANTIATE_TEST_CASE_P(
    HtInsert,
    HtInsertTest,
    ::testing::Values(PipelineExecutor::ExecutionMode::Fused,
-                     PipelineExecutor::ExecutionMode::Interpreted));
-
+                     PipelineExecutor::ExecutionMode::Interpreted,
+                     PipelineExecutor::ExecutionMode::ROF));
 }
 
 }
