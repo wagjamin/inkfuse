@@ -1,5 +1,6 @@
 #include "benchmark/benchmark.h"
 #include "exec/InterruptableJob.h"
+#include <array>
 #include <fstream>
 
 /// The benchmarks in this file test the overhead of invoking the

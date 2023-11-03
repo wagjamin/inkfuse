@@ -83,8 +83,14 @@ AtomicHashTable<Comparator>::AtomicHashTable(Comparator comp_, uint16_t total_sl
 }
 
 template <class Comparator>
-uint64_t AtomicHashTable<Comparator>::compute_hash(const char* key) const {
-   return comp.hash(key);
+uint64_t AtomicHashTable<Comparator>::compute_hash_and_prefetch(const char* key) const {
+   uint64_t hash = comp.hash(key);
+   const uint64_t slot_id = hash & mod_mask;
+   // Prefetch the actual data array.
+   __builtin_prefetch(&data[slot_id * total_slot_size]);
+   // Prefetch the bitmask slot.
+   __builtin_prefetch(&tags[slot_id]);
+   return hash;
 }
 
 template <class Comparator>

@@ -107,6 +107,13 @@ struct BenchmarkHashTable {
       __builtin_prefetch(&entries[slot_idx]);
    };
 
+   const uint64_t vec_slot_and_load(const KeyType& key) const {
+      const auto hash = XXH3_64bits(&key, key_size);
+      const auto slot = hash % capacity;
+      __builtin_prefetch(&entries[slot]);
+      return slot;
+   };
+
    const Entry* vec_lookup(const KeyType& key, uint64_t slot_idx) const {
       const Entry* entry = &entries[slot_idx];
       while (entry->key != 0) {
@@ -190,6 +197,42 @@ void BM_ht_perf_vectorized(benchmark::State& state) {
    state.SetItemsProcessed(state.iterations() * num_elems);
 }
 
+/**
+ * Vectorized hash table as in the ROF paper. Fused prefetching & hash
+ * computation to overlap loads and computation nicely.
+ */
+void BM_ht_perf_vectorized_rof(benchmark::State& state) {
+   const uint64_t num_elems = state.range(0);
+   const uint64_t batch_size = state.range(1);
+   BenchmarkHashTable<uint64_t, uint64_t> ht{static_cast<size_t>(num_elems) * 2, 8};
+   for (uint64_t k = 1; k <= num_elems; ++k) {
+      ht.tat_insert(7 * k, k);
+   }
+   std::vector<uint64_t> keys(batch_size);
+   std::vector<uint64_t> slots(batch_size);
+   for (auto _ : state) {
+      // Lookup every key again.
+      for (uint64_t k = 1; k <= num_elems; k += batch_size) {
+         const auto curr_batch = std::min(batch_size, num_elems - k + 1);
+         for (uint64_t tid = 0; tid < curr_batch; ++tid) {
+            keys[tid] = 7 * (k + tid);
+         }
+         for (uint64_t tid = 0; tid < curr_batch; ++tid) {
+            slots[tid] = ht.vec_slot_and_load(keys[tid]);
+         }
+         for (uint64_t tid = 0; tid < curr_batch; ++tid) {
+            const auto* res = ht.vec_lookup(keys[tid], slots[tid]);
+            // We have to do something with the result, otherwise the compiler is too smart
+            // to optimize memory accesses away.
+            if (res->value > num_elems) {
+               throw std::runtime_error("bad ht lookup for " + std::to_string(k));
+            }
+         }
+      }
+   }
+   state.SetItemsProcessed(state.iterations() * num_elems);
+}
+
 void BM_ht_perf_tat_inkfuse(benchmark::State& state) {
    const uint64_t num_elems = state.range(0);
    inkfuse::SimpleKeyComparator comp{8};
@@ -231,10 +274,7 @@ void BM_ht_perf_vectorized_inkfuse(benchmark::State& state) {
             keys[tid] = 7 * (k + tid);
          }
          for (uint64_t tid = 0; tid < curr_batch; ++tid) {
-            hashes[tid] = ht.compute_hash(reinterpret_cast<const char*>(&keys[tid]));
-         }
-         for (uint64_t tid = 0; tid < curr_batch; ++tid) {
-            ht.slot_prefetch(hashes[tid]);
+            hashes[tid] = ht.compute_hash_and_prefetch(reinterpret_cast<const char*>(&keys[tid]));
          }
          for (uint64_t tid = 0; tid < curr_batch; ++tid) {
             const auto* res = ht.lookup(reinterpret_cast<const char*>(&keys[tid]), hashes[tid]);
@@ -254,8 +294,12 @@ BENCHMARK(BM_ht_perf_vectorized)->ArgPair(1 << 9, 256)->ArgPair(1 << 13, 256)->A
 // Different internal batch sizes. 256 is a good value.
 BENCHMARK(BM_ht_perf_vectorized)->ArgPair(1 << 25, 64)->ArgPair(1 << 25, 128)->ArgPair(1 << 25, 256)->ArgPair(1 << 25, 512)->ArgPair(1 << 25, 1024)->ArgPair(1 << 25, 2024)->ArgPair(1 << 25, 4048)->ArgPair(1 << 25, 8096)->ArgPair(1 << 25, 16192);
 
+BENCHMARK(BM_ht_perf_vectorized_rof)->ArgPair(1 << 9, 256)->ArgPair(1 << 13, 256)->ArgPair(1 << 15, 256)->ArgPair(1 << 19, 256)->ArgPair(1 << 25, 256)->ArgPair(1 << 30, 256);
+// Different internal batch sizes. 256 is a good value.
+BENCHMARK(BM_ht_perf_vectorized_rof)->ArgPair(1 << 25, 64)->ArgPair(1 << 25, 128)->ArgPair(1 << 25, 256)->ArgPair(1 << 25, 512)->ArgPair(1 << 25, 1024)->ArgPair(1 << 25, 2024)->ArgPair(1 << 25, 4048)->ArgPair(1 << 25, 8096)->ArgPair(1 << 25, 16192);
+
 BENCHMARK(BM_ht_perf_vectorized_inkfuse)->ArgPair(1 << 9, 256)->ArgPair(1 << 13, 256)->ArgPair(1 << 15, 256)->ArgPair(1 << 19, 256)->ArgPair(1 << 25, 256)->ArgPair(1 << 30, 256);
 // Different internal batch sizes. 256 is a good value.
 BENCHMARK(BM_ht_perf_vectorized_inkfuse)->ArgPair(1 << 25, 64)->ArgPair(1 << 25, 128)->ArgPair(1 << 25, 256)->ArgPair(1 << 25, 512)->ArgPair(1 << 25, 1024)->ArgPair(1 << 25, 2024)->ArgPair(1 << 25, 4048)->ArgPair(1 << 25, 8096)->ArgPair(1 << 25, 16192);
 
-} // namespacf
+} // namespace

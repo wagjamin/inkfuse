@@ -2,6 +2,7 @@
 #include "algebra/suboperators/RuntimeFunctionSubop.h"
 #include "algebra/suboperators/row_layout/KeyPackerSubop.h"
 #include "codegen/Type.h"
+#include "exec/FuseChunk.h"
 #include "exec/PipelineExecutor.h"
 #include "gtest/gtest.h"
 
@@ -58,12 +59,12 @@ TEST_P(HtInsertTest, insert_trigger_resize) {
    // Morsel with 32 keys should trigger a first resize to 64 elements.
    prepareMorsel(ctx, 32, 0);
    exec.runMorsel(0);
-   // Morsel with 1024 keys should trigger multiple additional resizes.
-   prepareMorsel(ctx, 1024, 32);
+   // Morsel with DEFAULT_CHUNK_SIZE keys should trigger multiple additional resizes.
+   prepareMorsel(ctx, DEFAULT_CHUNK_SIZE, 32);
    exec.runMorsel(0);
    // Now we need to check that we have everything we need.
-   EXPECT_EQ(ht.size(), 1024 + 32);
-   for (uint32_t key = 0; key < 1024 + 32; ++key) {
+   EXPECT_EQ(ht.size(), DEFAULT_CHUNK_SIZE + 32);
+   for (uint32_t key = 0; key < DEFAULT_CHUNK_SIZE + 32; ++key) {
       auto res = reinterpret_cast<uint32_t*>(ht.lookup(reinterpret_cast<char*>(&key)));
       ASSERT_NE(res, nullptr);
       EXPECT_EQ(*res, key);

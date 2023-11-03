@@ -58,8 +58,8 @@ extern "C" void HashTableRuntime::ht_dl_it_advance(void* table, char** it_data, 
 }
 
 // Atomic hash table.
-extern "C" uint64_t HashTableRuntime::ht_at_sk_compute_hash(void* table, char* key) {
-   return reinterpret_cast<AtomicHashTable<SimpleKeyComparator>*>(table)->compute_hash(key);
+extern "C" uint64_t HashTableRuntime::ht_at_sk_compute_hash_and_prefetch(void* table, char* key) {
+   return reinterpret_cast<AtomicHashTable<SimpleKeyComparator>*>(table)->compute_hash_and_prefetch(key);
 }
 
 extern "C" void HashTableRuntime::ht_at_sk_slot_prefetch(void* table, uint64_t hash) {
@@ -74,8 +74,8 @@ extern "C" char* HashTableRuntime::ht_at_sk_lookup_with_hash_disable(void* table
    return reinterpret_cast<AtomicHashTable<SimpleKeyComparator>*>(table)->lookupDisable(key, hash);
 }
 
-extern "C" uint64_t HashTableRuntime::ht_at_ck_compute_hash(void* table, char* key) {
-   return reinterpret_cast<AtomicHashTable<ComplexKeyComparator>*>(table)->compute_hash(key);
+extern "C" uint64_t HashTableRuntime::ht_at_ck_compute_hash_and_prefetch(void* table, char* key) {
+   return reinterpret_cast<AtomicHashTable<ComplexKeyComparator>*>(table)->compute_hash_and_prefetch(key);
 }
 
 extern "C" void HashTableRuntime::ht_at_ck_slot_prefetch(void* table, uint64_t hash) {
@@ -172,7 +172,7 @@ void HashTableRuntime::registerRuntime() {
       .addArg("table", IR::Pointer::build(IR::Void::build()))
       .addArg("key", IR::Pointer::build(IR::Char::build()), true);
 
-   RuntimeFunctionBuilder("ht_at_sk_compute_hash", IR::UnsignedInt::build(8))
+   RuntimeFunctionBuilder("ht_at_sk_compute_hash_and_prefetch", IR::UnsignedInt::build(8))
       .addArg("table", IR::Pointer::build(IR::Void::build()))
       .addArg("key", IR::Pointer::build(IR::Char::build()), true);
 
@@ -190,7 +190,7 @@ void HashTableRuntime::registerRuntime() {
       .addArg("key", IR::Pointer::build(IR::Char::build()))
       .addArg("hash", IR::UnsignedInt::build(8), true);
 
-   RuntimeFunctionBuilder("ht_at_ck_compute_hash", IR::UnsignedInt::build(8))
+   RuntimeFunctionBuilder("ht_at_ck_compute_hash_and_prefetch", IR::UnsignedInt::build(8))
       .addArg("table", IR::Pointer::build(IR::Void::build()))
       .addArg("key", IR::Pointer::build(IR::Char::build()), true);
 

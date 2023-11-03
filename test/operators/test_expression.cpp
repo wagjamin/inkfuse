@@ -4,6 +4,7 @@
 #include "algebra/RelAlgOp.h"
 #include "codegen/Value.h"
 #include "codegen/backend_c/BackendC.h"
+#include "exec/FuseChunk.h"
 #include "exec/PipelineExecutor.h"
 #include <gtest/gtest.h>
 
@@ -167,8 +168,8 @@ TEST_P(ExpressionTParametrized, hash) {
    auto& ctx = exec.getExecutionContext();
    auto& c_in1 = ctx.getColumn(source, 0);
 
-   c_in1.size = 1000;
-   for (uint16_t k = 0; k < 1000; ++k) {
+   c_in1.size = DEFAULT_CHUNK_SIZE;
+   for (uint16_t k = 0; k < DEFAULT_CHUNK_SIZE; ++k) {
       reinterpret_cast<uint64_t*>(c_in1.raw_data)[k] = k;
    }
 
@@ -180,7 +181,7 @@ TEST_P(ExpressionTParametrized, hash) {
    std::unordered_set<uint64_t> seen;
    // This set should have no hash collisions.
    auto& hash_col = ctx.getColumn(hash_iu, 0);
-   for (uint16_t k = 0; k < 1000; ++k) {
+   for (uint16_t k = 0; k < DEFAULT_CHUNK_SIZE; ++k) {
       auto elem = reinterpret_cast<uint64_t*>(hash_col.raw_data)[k];
       EXPECT_EQ(seen.count(elem), 0);
       seen.insert(elem);

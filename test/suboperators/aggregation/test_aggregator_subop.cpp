@@ -2,6 +2,7 @@
 #include "algebra/suboperators/aggregation/AggStateCount.h"
 #include "algebra/suboperators/aggregation/AggregatorSubop.h"
 #include "codegen/Type.h"
+#include "exec/FuseChunk.h"
 #include "exec/PipelineExecutor.h"
 #include "gtest/gtest.h"
 #include <random>
@@ -11,7 +12,7 @@ namespace inkfuse {
 
 namespace {
 
-const size_t block_size = 1000;
+const size_t block_size = DEFAULT_CHUNK_SIZE;
 
 /// Test the aggregator sub-operator. Takes input columns [Ptr<Char> (agg_state), Bool (not_init), I4, U8, F8].
 /// The pointers are the aggregation state target. Agg state size 32 bytes.
@@ -32,7 +33,7 @@ struct AggregatorSubopTest {
       cols.resize(5);
       for (const auto iu : target_iu_idxs) {
          auto& col = ctx.getColumn(src_ius[iu], 0);
-         col.size = 1000;
+         col.size = block_size;
          cols[iu] = &col;
       }
       for (size_t k = 0; k < block_size; ++k) {

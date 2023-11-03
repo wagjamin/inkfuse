@@ -1,6 +1,7 @@
 #include "algebra/Pipeline.h"
 #include "algebra/suboperators/expressions/RuntimeKeyExpressionSubop.h"
 #include "codegen/Type.h"
+#include "exec/FuseChunk.h"
 #include "exec/PipelineExecutor.h"
 #include "gtest/gtest.h"
 
@@ -34,9 +35,9 @@ struct RuntimeKeyExpressionTest : public ::testing::TestWithParam<std::tuple<siz
       auto& ctx = exec->getExecutionContext();
       auto& pointers = ctx.getColumn(ptr_iu, 0);
       auto& input_data = ctx.getColumn(src_iu, 0);
-      raw_data = std::make_unique<char[]>(12 * 1000);
+      raw_data = std::make_unique<char[]>(12 * DEFAULT_CHUNK_SIZE);
       uint32_t key = 1;
-      for (uint64_t k = 0; k < 1000; ++k) {
+      for (uint64_t k = 0; k < DEFAULT_CHUNK_SIZE; ++k) {
          reinterpret_cast<void**>(pointers.raw_data)[k] = &raw_data[12 * k];
          if (k % 2 == 0) {
             // Keq equals.
@@ -49,8 +50,8 @@ struct RuntimeKeyExpressionTest : public ::testing::TestWithParam<std::tuple<siz
          }
          key += 132;
       }
-      pointers.size = 1000;
-      input_data.size = 1000;
+      pointers.size = DEFAULT_CHUNK_SIZE;
+      input_data.size = DEFAULT_CHUNK_SIZE;
    };
 
    /// The provided boolean IU containing whether the keys are equal.
@@ -73,7 +74,7 @@ TEST_P(RuntimeKeyExpressionTest, test_on_offset) {
    // Make sure every second row is true.
    auto& ctx = exec->getExecutionContext();
    auto& out = ctx.getColumn(provided_iu, 0);
-   for (uint64_t k = 0; k < 1000; ++k) {
+   for (uint64_t k = 0; k < DEFAULT_CHUNK_SIZE; ++k) {
       EXPECT_EQ(reinterpret_cast<bool*>(out.raw_data)[k], k % 2 == 0);
    }
 }

@@ -43,8 +43,8 @@ struct AtomicHashTable {
 
    AtomicHashTable(Comparator comp_, uint16_t total_slot_size_, size_t num_slots_);
 
-   /// Compute the hash for a given key.
-   uint64_t compute_hash(const char* key) const;
+   /// Compute the hash for a given key and prefetch the corresponding hash table slot.
+   uint64_t compute_hash_and_prefetch(const char* key) const;
    /// Prefetch the tag and data slots for a specific hash.
    void slot_prefetch(uint64_t hash) const;
    /// Get the pointer to a given key, or nullptr if the group does not exist.

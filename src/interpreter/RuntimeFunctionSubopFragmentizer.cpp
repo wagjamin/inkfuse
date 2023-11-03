@@ -40,11 +40,11 @@ RuntimeFunctionSubopFragmentizer::RuntimeFunctionSubopFragmentizer() {
 
       // Fragmentize Vectorized Hash Table Primitives
       {
-         // Hash:
+         // Hash and prefetch:
          auto& [name, pipe] = pipes.emplace_back();
          const auto& key = generated_ius.emplace_back(in_type);
          const auto& hash = generated_ius.emplace_back(IR::UnsignedInt::build(8));
-         const auto& op = pipe.attachSuboperator(RuntimeFunctionSubop::htHash<AtomicHashTable<SimpleKeyComparator>>(nullptr, hash, key, {}));
+         const auto& op = pipe.attachSuboperator(RuntimeFunctionSubop::htHashAndPrefetch<AtomicHashTable<SimpleKeyComparator>>(nullptr, hash, key, {}));
          name = op.id();
       }
       {
@@ -104,14 +104,6 @@ RuntimeFunctionSubopFragmentizer::RuntimeFunctionSubopFragmentizer() {
             name = op.id();
          }
       }
-   }
-
-   // Fragmentize Prefetch.
-   {
-      auto& [name, pipe] = pipes.emplace_back();
-      const auto& hash = generated_ius.emplace_back(IR::UnsignedInt::build(8));
-      const auto& op = pipe.attachSuboperator(RuntimeFunctionSubop::htPrefetch<AtomicHashTable<SimpleKeyComparator>>(nullptr, nullptr, hash));
-      name = op.id();
    }
 
    // Fragmentize tuple materialization.
