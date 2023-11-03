@@ -25,7 +25,7 @@ unmute - do show query text
 threads <K> - set number of worker threads to k, default 1  
 mode <ExecMode> - change default execution mode  
 run q<N> [mode <ExecMode>] - run TPC-H query <N> on the loaded sf<X>
-                             optional ExecMode in {Compiled, Interpreted, Hybrid}
+                             optional ExecMode in {Compiled, Interpreted, Hybrid, ROF}
                              default Hybrid.
 )";
 
@@ -91,6 +91,8 @@ int main(int argc, char* argv[]) {
          return PipelineExecutor::ExecutionMode::Interpreted;
       } else if (str == "Hybrid") {
          return PipelineExecutor::ExecutionMode::Hybrid;
+      } else if (str == "ROF") {
+         return PipelineExecutor::ExecutionMode::ROF;
       } else {
          return std::nullopt;
       }
@@ -141,7 +143,7 @@ int main(int argc, char* argv[]) {
             }
          } else if (split[0] == "mode") {
             if (split.size() < 2) {
-               std::cout << "invoke 'mode' as 'mode <ExecMode>' where <ExecMode> in {Compiled|Interpreted|Hybrid}\n"
+               std::cout << "invoke 'mode' as 'mode <ExecMode>' where <ExecMode> in {Compiled|Interpreted|Hybrid|ROF}\n"
                          << std::endl;
             } else {
                std::optional<PipelineExecutor::ExecutionMode> res = parse_mode(split[1]);
@@ -149,7 +151,7 @@ int main(int argc, char* argv[]) {
                   std::cout << "Setting default mode to " << split[1] << std::endl;
                   default_mode = *res;
                } else {
-                  std::cout << "Unrecognized execution mode - we only support {Compiled|Interpreted|Hybrid}\n"
+                  std::cout << "Unrecognized execution mode - we only support {Compiled|Interpreted|Hybrid|ROF}\n"
                             << std::endl;
                   continue;
                }
@@ -166,7 +168,7 @@ int main(int argc, char* argv[]) {
                if (split.size() > 2 && split[2] == "mode") {
                   std::optional<PipelineExecutor::ExecutionMode> res = parse_mode(split[3]);
                   if (!res) {
-                     std::cout << "Unrecognized execution mode - we only support {Compiled|Interpreted|Hybrid}\n"
+                     std::cout << "Unrecognized execution mode - we only support {Compiled|Interpreted|Hybrid|ROF}\n"
                                << std::endl;
                      continue;
                   }
