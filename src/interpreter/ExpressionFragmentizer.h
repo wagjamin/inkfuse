@@ -14,8 +14,6 @@ struct ExpressionFragmentizer: public Fragmentizer {
    void fragmentizeCasts();
    /// Fragmentize all binary expressions.
    void fragmentizeBinary();
-   /// Fragmentize all hash expressions.
-   void fragmentizeHashes();
    /// Fragmentize more complex functions such as strcmp.
    void fragmentizeFunctions();
 

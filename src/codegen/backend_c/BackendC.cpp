@@ -551,5 +551,4 @@ void BackendC::compileValue(const IR::Value& value, ScopedWriter::Statement& str
 }
 
 #undef INKFUSE_OBJECT_DEPENDENCIES
-
 }

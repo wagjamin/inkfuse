@@ -59,16 +59,12 @@ include_directories(
 # ---------------------------------------------------------------------------
 
 # Runtime System C++ Files - directly linked against the generated code.
-set(RUNTIME_INCLUDE_C
-        "${CMAKE_SOURCE_DIR}/src/runtime/ExternHashTableRuntime.h"
-        "${CMAKE_SOURCE_DIR}/src/runtime/HashTables.h"
-        "${CMAKE_SOURCE_DIR}/src/runtime/NewHashTables.h"
-    )
-
 set(RUNTIME_SRC_CC
-        "${CMAKE_SOURCE_DIR}/src/runtime/ExternHashTableRuntime.cpp"
+        "${CMAKE_SOURCE_DIR}/src/runtime/ExternRuntime.cpp"
         "${CMAKE_SOURCE_DIR}/src/runtime/HashTables.cpp"
         "${CMAKE_SOURCE_DIR}/src/runtime/NewHashTables.cpp"
+        "${CMAKE_SOURCE_DIR}/src/runtime/MemoryRuntime.cpp"
+        "${CMAKE_SOURCE_DIR}/src/runtime/TupleMaterializer.cpp"
     )
 
 # Inkfuse C++ Files - the actual database system: executors, code generation logic, ...
@@ -146,10 +142,7 @@ set(SRC_CC
         "${CMAKE_SOURCE_DIR}/src/interpreter/TScanFragmentizer.cpp"
         "${CMAKE_SOURCE_DIR}/src/interpreter/CopyFragmentizer.cpp"
         "${CMAKE_SOURCE_DIR}/src/interpreter/KeyPackingFragmentizer.cpp"
-        "${CMAKE_SOURCE_DIR}/src/runtime/HashRuntime.cpp"
         "${CMAKE_SOURCE_DIR}/src/runtime/HashTableRuntime.cpp"
-        "${CMAKE_SOURCE_DIR}/src/runtime/MemoryRuntime.cpp"
-        "${CMAKE_SOURCE_DIR}/src/runtime/TupleMaterializer.cpp"
         )
 
 set(TEST_CC
@@ -235,9 +228,12 @@ add_custom_target(inkfuse_install_runtime
 # when generating code for the interpreter.
 ADD_DEFINITIONS( "-D_INKFUSE_OBJECT_DEPENDENCIES=\" \
       /tmp/xxhash_static.o  \
-      /tmp/ExternHashTableRuntime.cpp.o  \
+      /tmp/ExternRuntime.cpp.o  \
       /tmp/HashTables.cpp.o  \
-      /tmp/NewHashTables.cpp.o\"")
+      /tmp/MemoryRuntime.cpp.o  \
+      /tmp/NewHashTables.cpp.o \
+      /tmp/TupleMaterializer.cpp.o \
+      \"")
 
 # Core inkfuse library, we have to declare it as a shared library
 # in order to make runtime symbols visible during dlopen.

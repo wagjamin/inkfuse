@@ -9,7 +9,16 @@ namespace inkfuse {
 /// Inkfuse makes this possible by exposing a HashTableRuntime to the generated code.
 namespace HashTableRuntime {
 void registerRuntime();
-};
-}
+} // namespace HashTableRuntime
+
+namespace TupleMaterializerRuntime {
+void registerRuntime();
+} // namespace TupleMaterializerRuntime
+
+namespace MemoryRuntime {
+void registerRuntime();
+} // namespace MemoryRuntime
+
+} // namespace inkfuse
 
 #endif //INKFUSE_HASHTABLERUNTIME_H

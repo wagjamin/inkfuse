@@ -34,7 +34,6 @@ struct ExpressionOp : public RelAlgOp {
       enum class Type {
          Add,
          Cast,
-         Hash,
          Subtract,
          Multiply,
          Divide,

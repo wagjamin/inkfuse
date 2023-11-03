@@ -1,6 +1,5 @@
 #include "runtime/MemoryRuntime.h"
 #include "runtime/Runtime.h"
-#include "exec/ExecutionContext.h"
 #include <cassert>
 
 namespace inkfuse::MemoryRuntime {
@@ -30,16 +29,6 @@ void* MemoryRegion::alloc(uint64_t size) {
    // Apply the slot offset so that next allocation comes after this one.
    region_offset += slots;
    return result;
-}
-
-extern "C" void* inkfuse_malloc(uint64_t size) {
-   auto& context = ExecutionContext::getInstalledMemoryContext();
-   return context.alloc(size);
-}
-
-void registerRuntime() {
-   RuntimeFunctionBuilder("inkfuse_malloc", IR::Pointer::build(IR::Void::build()))
-      .addArg("size", IR::UnsignedInt::build(8));
 }
 
 } // namespace inkfuse::MemoryRuntime

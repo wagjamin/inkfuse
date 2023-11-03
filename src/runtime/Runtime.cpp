@@ -7,10 +7,8 @@
 #include "algebra/suboperators/sinks/CountingSink.h"
 #include "algebra/suboperators/sinks/FuseChunkSink.h"
 #include "algebra/suboperators/sources/HashTableSource.h"
-#include "runtime/HashRuntime.h"
 #include "runtime/HashTableRuntime.h"
 #include "runtime/MemoryRuntime.h"
-#include "runtime/TupleMaterializer.h"
 
 namespace inkfuse {
 
@@ -27,7 +25,6 @@ GlobalRuntime::GlobalRuntime() : program(std::make_unique<IR::Program>("global_r
    RuntimeExpressionSubop::registerRuntime();
    RuntimeFunctionSubop::registerRuntime();
    // Register the actual inkfuse runtime functions.
-   HashRuntime::registerRuntime();
    HashTableRuntime::registerRuntime();
    MemoryRuntime::registerRuntime();
    HashTableSourceState::registerRuntime();

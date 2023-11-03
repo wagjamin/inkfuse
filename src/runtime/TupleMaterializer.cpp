@@ -1,5 +1,5 @@
 #include "runtime/TupleMaterializer.h"
-#include "runtime/Runtime.h"
+#include <cassert>
 #include <cstring>
 
 namespace inkfuse {
@@ -59,18 +59,5 @@ void TupleMaterializer::allocNewChunk() {
    curr_chunk_end_ptr_ptr = &chunk.end_ptr;
    curr_chunk_end = as_char + REGION_SIZE;
 }
-
-namespace TupleMaterializerRuntime {
-
-extern "C" char* materialize_tuple(void* materializer) {
-   return reinterpret_cast<TupleMaterializer*>(materializer)->materialize();
-}
-
-void registerRuntime() {
-   RuntimeFunctionBuilder("materialize_tuple", IR::Pointer::build(IR::Char::build()))
-      .addArg("table", IR::Pointer::build(IR::Void::build()));
-}
-
-} // namespace TupleMaterializerRuntime
 
 } // namespace inkfuse

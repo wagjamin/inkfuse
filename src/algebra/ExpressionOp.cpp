@@ -23,9 +23,6 @@ IR::TypeArc ExpressionOp::derive(ComputeNode::Type code, const std::vector<IR::T
       ComputeNode::Type::Greater, ComputeNode::Type::GreaterEqual,
       ComputeNode::Type::StrEquals, ComputeNode::Type::And,
       ComputeNode::Type::Or};
-   if (code == ComputeNode::Type::Hash) {
-      return IR::UnsignedInt::build(8);
-   }
    if (bool_returning.contains(code)) {
       return IR::Bool::build();
    }
@@ -61,7 +58,7 @@ ExpressionOp::ComputeNode::ComputeNode(IR::TypeArc casted, Node* child)
 
 ExpressionOp::ComputeNode::ComputeNode(Type code_, IR::ValuePtr arg_1, Node* arg_2)
    : Node(derive(code_, {arg_2})), code(code_), out(output_type), children({arg_2}), opt_runtime_param(std::move(arg_1)) {
-   assert(code != Type::Hash && code != Type::Cast);
+   assert(code != Type::Cast);
 }
 
 void ExpressionOp::decay(PipelineDAG& dag) const {

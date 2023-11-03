@@ -64,12 +64,6 @@ struct TupleMaterializer {
    friend class ReadHandle;
 };
 
-namespace TupleMaterializerRuntime {
-extern "C" char* materialize_tuple(void* materializer);
-
-void registerRuntime();
-}
-
 } // namespace inkfuse
 
 #endif // INKFUSE_TUPLEMATERIALIZER_H

@@ -33,8 +33,6 @@ struct alignas(64) MemoryRegion {
 // Always 8-byte aligned.
 extern "C" void* inkfuse_malloc(uint64_t size);
 
-void registerRuntime();
-
 } // namespace inkfuse::MemoryRuntime
 
 #endif //INKFUSE_MEMORYRUNTIME_H
