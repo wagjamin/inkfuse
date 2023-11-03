@@ -42,9 +42,9 @@ InterpretedRunner::~InterpretedRunner() {
 
 Suboperator::PickMorselResult InterpretedRunner::pickMorsel(size_t thread_id) {
    if (mode == ExecutionMode::ZeroCopyScan && !pick_from_source_table) {
-       // If this is a suboperator interpreting a table scan, but not the first one,
-       // then we should not pick from the table scan. We need to bind to the original
-       // morsel of the first interpreter instead.
+      // If this is a suboperator interpreting a table scan, but not the first one,
+      // then we should not pick from the table scan. We need to bind to the original
+      // morsel of the first interpreter instead.
       return Suboperator::PickedMorsel{
          .morsel_size = 1,
       };

@@ -9,7 +9,7 @@ namespace inkfuse {
 
 namespace {
 
-static constexpr bool debug_mode = true;
+static constexpr bool debug_mode = false;
 
 /// Generate the path for the c program.
 std::string path(std::string_view program_name) {

@@ -18,7 +18,6 @@ namespace inkfuse {
 
 /// Scoping operator building the if statement needed in a filter.
 struct ColumnFilterScope : public TemplatedSuboperator<EmptyState> {
-
    /// Set up a ColumnFilterScope that consumes the filter IU and defines a new pseudo IU.
    static SuboperatorArc build(const RelAlgOp* source_, const IU& filter_iu_, const IU& pseudo);
 
@@ -30,6 +29,11 @@ struct ColumnFilterScope : public TemplatedSuboperator<EmptyState> {
    void consumeAllChildren(CompilationContext& context) override;
    /// On close we can terminate the if block we have created for downstream consumers.
    void close(CompilationContext& context) override;
+   /// On open we request the filter iu, but also all dependent IUs from ColumnFilterLogic.
+   void open(CompilationContext& context) override;
+
+   /// Attach a dependency of a future ColumnFilterLogic.
+   void attachFilterLogicDependency(Suboperator& subop, const IU& iu);
 
    std::string id() const override;
 
@@ -38,11 +42,14 @@ struct ColumnFilterScope : public TemplatedSuboperator<EmptyState> {
 
    /// In-flight if statement being generated.
    std::optional<IR::If> opt_if;
+   /// The `ColumnFilterScope` requests the input IUs for the `ColumnFilterLogic`.
+   /// This is done to make sure that their iterators are generated outside of the
+   /// nested scope created by the `if`.
+   std::vector<std::pair<Suboperator*, const IU*>> filter_logic_dependencies;
 };
 
 /// Logic operator redefining the IU as a copy of the old one.
 struct ColumnFilterLogic : public TemplatedSuboperator<EmptyState> {
-
    /// Set up a ColumnFilterLogic that consumes the ColumnFilterScope pseudo IU and redefines the incoming one.
    static SuboperatorArc build(const RelAlgOp* source_, const IU& pseudo, const IU& incoming, const IU& redefined, IR::TypeArc filter_type_ = IR::Bool::build(), bool filters_itself = false);
 
@@ -65,9 +72,7 @@ struct ColumnFilterLogic : public TemplatedSuboperator<EmptyState> {
    /// Does this filter filter itself? I.e. the filter IU is the same one as the
    /// incoming one that gets redefined?
    bool filters_itself;
-
 };
-
 }
 
 #endif //INKFUSE_COLUMNCOMPACTOR_H
