@@ -2,6 +2,7 @@
 #include "algebra/suboperators/aggregation/AggComputeUnpack.h"
 #include "algebra/suboperators/aggregation/AggReaderSubop.h"
 #include "codegen/Type.h"
+#include "exec/FuseChunk.h"
 #include "exec/PipelineExecutor.h"
 #include "gtest/gtest.h"
 
@@ -9,7 +10,7 @@ namespace inkfuse {
 
 namespace {
 
-const size_t block_size = 1000;
+const size_t block_size = DEFAULT_CHUNK_SIZE;
 
 /// Test the aggregate state reader. Takes input column [Ptr<char>]
 /// containing serialized aggregation state and produces aggregation result.

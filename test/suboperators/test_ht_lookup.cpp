@@ -1,6 +1,7 @@
 #include "algebra/Pipeline.h"
 #include "algebra/suboperators/RuntimeFunctionSubop.h"
 #include "codegen/Type.h"
+#include "exec/FuseChunk.h"
 #include "exec/PipelineExecutor.h"
 #include "gtest/gtest.h"
 #include "xxhash.h"
@@ -48,16 +49,16 @@ TEST_P(HtLookupSubopTest, lookup_existing) {
    // Prepare input chunk.
    auto& ctx = exec->getExecutionContext();
    auto& keys = ctx.getColumn(key_iu, 0);
-   for (uint64_t k = 0; k < 1000; ++k) {
+   for (uint64_t k = 0; k < DEFAULT_CHUNK_SIZE; ++k) {
       reinterpret_cast<uint64_t*>(keys.raw_data)[k] = k;
    }
-   keys.size = 1000;
+   keys.size = DEFAULT_CHUNK_SIZE;
 
    // Run the morsel doing the has table lookups.
    exec->runMorsel(0);
 
    auto& pointers = ctx.getColumn(ptr_iu, 0);
-   for (uint64_t k = 0; k < 1000; ++k) {
+   for (uint64_t k = 0; k < DEFAULT_CHUNK_SIZE; ++k) {
       // Check that the output pointers are valid.
       char* ptr = table.lookup(reinterpret_cast<char*>(&k));
       EXPECT_EQ(ptr, reinterpret_cast<char**>(pointers.raw_data)[k]);
@@ -70,17 +71,17 @@ TEST_P(HtLookupSubopTest, lookup_nonexisting) {
    // Prepare input chunk.
    auto& ctx = exec->getExecutionContext();
    auto& keys = ctx.getColumn(key_iu, 0);
-   for (uint64_t k = 0; k < 1000; ++k) {
+   for (uint64_t k = 0; k < DEFAULT_CHUNK_SIZE; ++k) {
       uint64_t nonexitant = 20000 + k;
       reinterpret_cast<uint64_t*>(keys.raw_data)[k] = nonexitant;
    }
-   keys.size = 1000;
+   keys.size = DEFAULT_CHUNK_SIZE;
 
    // Run the morsel doing the has table lookups.
    exec->runMorsel(0);
 
    auto& pointers = ctx.getColumn(ptr_iu, 0);
-   for (uint64_t k = 0; k < 1000; ++k) {
+   for (uint64_t k = 0; k < DEFAULT_CHUNK_SIZE; ++k) {
       // All the outputs should be nullptrs.
       EXPECT_EQ(nullptr, reinterpret_cast<char**>(pointers.raw_data)[k]);
    }

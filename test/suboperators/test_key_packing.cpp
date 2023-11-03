@@ -2,6 +2,7 @@
 #include "algebra/suboperators/row_layout/KeyPackerSubop.h"
 #include "algebra/suboperators/row_layout/KeyUnpackerSubop.h"
 #include "codegen/Type.h"
+#include "exec/FuseChunk.h"
 #include "exec/PipelineExecutor.h"
 #include "gtest/gtest.h"
 #include <cstring>
@@ -51,7 +52,7 @@ struct KeyPackingTest : public ::testing::TestWithParam<PipelineExecutor::Execut
       auto& ctx_unpack = exec_unpack->getExecutionContext();
       auto& ptrs_pack = ctx_pack.getColumn(ptr_iu, 0);
       auto& ptrs_unpack = ctx_unpack.getColumn(ptr_iu, 0);
-      const size_t num_rows = 1000;
+      const size_t num_rows = DEFAULT_CHUNK_SIZE;
       ptrs_unpack.size = num_rows;
       ptrs_pack.size = num_rows;
       // 13 bytes state on the compound key.
@@ -104,12 +105,12 @@ TEST_P(KeyPackingTest, test_pack_unpack) {
    // Pointers should be the same.
    const auto& ptrs_pack = ctx_pack.getColumn(ptr_iu, 0);
    const auto& ptrs_unpack = ctx_unpack.getColumn(ptr_iu, 0);
-   EXPECT_EQ(0, std::memcmp(ptrs_pack.raw_data, ptrs_unpack.raw_data, 1000 * sizeof(char*)));
+   EXPECT_EQ(0, std::memcmp(ptrs_pack.raw_data, ptrs_unpack.raw_data, DEFAULT_CHUNK_SIZE * sizeof(char*)));
    for (uint64_t k = 0; k < 3; ++k) {
       const auto& source = ctx_pack.getColumn(src_ius[k], 0);
       const auto& target = ctx_unpack.getColumn(out_ius[k], 0);
       // Input and output column should be the same.
-      EXPECT_EQ(0, std::memcmp(source.raw_data, target.raw_data, 1000 * bytes[k]));
+      EXPECT_EQ(0, std::memcmp(source.raw_data, target.raw_data, DEFAULT_CHUNK_SIZE * bytes[k]));
    }
 }
 

@@ -30,10 +30,10 @@ struct RuntimeFunctionSubop : public TemplatedSuboperator<RuntimeFunctionSubopSt
    /// Build an insert function for a hash table.
    static std::unique_ptr<RuntimeFunctionSubop> htInsert(const RelAlgOp* source, const IU* pointers_, const IU& key_, std::vector<const IU*> pseudo_ius_, DefferredStateInitializer* state_init_ = nullptr);
 
-   /// Hash a key with the hash table's hash function.
+   /// Hash a key with the hash table's hash function and prefetch the corresponding slot.
    template <class HashTable>
-   static std::unique_ptr<RuntimeFunctionSubop> htHash(const RelAlgOp* source, const IU& hash_, const IU& key_, std::vector<const IU*> pseudo_ius_, DefferredStateInitializer* state_init_ = nullptr) {
-      std::string fct_name = "ht_" + HashTable::ID + "_compute_hash";
+   static std::unique_ptr<RuntimeFunctionSubop> htHashAndPrefetch(const RelAlgOp* source, const IU& hash_, const IU& key_, std::vector<const IU*> pseudo_ius_, DefferredStateInitializer* state_init_ = nullptr) {
+      std::string fct_name = "ht_" + HashTable::ID + "_compute_hash_and_prefetch";
       std::vector<const IU*> in_ius{&key_};
       for (auto pseudo : pseudo_ius_) {
          // Pseudo IUs are used as input IUs in the backing graph, but do not influence arguments.
@@ -53,34 +53,6 @@ struct RuntimeFunctionSubop : public TemplatedSuboperator<RuntimeFunctionSubopSt
             std::move(args),
             std::move(ref),
             out));
-   }
-
-   /// Hash a key with the hash table's hash function.
-   template <class HashTable>
-   static std::unique_ptr<RuntimeFunctionSubop> htPrefetch(const RelAlgOp* source, const IU* prefetch_pseudo, const IU& hash_, DefferredStateInitializer* state_init_ = nullptr) {
-      std::string fct_name = "ht_" + HashTable::ID + "_slot_prefetch";
-      std::vector<const IU*> in_ius{&hash_};
-      std::vector<bool> ref{false};
-      std::vector<const IU*> out_ius_{};
-      if (prefetch_pseudo) {
-         out_ius_.push_back(prefetch_pseudo);
-      }
-      std::vector<const IU*> args{&hash_};
-      std::unique_ptr<RuntimeFunctionSubop> result_subop{new RuntimeFunctionSubop(
-         source,
-         state_init_,
-         std::move(fct_name),
-         std::move(in_ius),
-         std::move(out_ius_),
-         std::move(args),
-         std::move(ref),
-         /* out = */ nullptr)};
-      // Prefetch instructions should never be generated in the operator-fusing code.
-      // When performing operator-fusing code generation, we are going through
-      // the code tuple-at-a time. As a result, the followup superator (e.g. HT lookup)
-      // will directly cause the cache miss anyways.
-      result_subop->optimization_properties.ct_only_vectorized = true;
-      return result_subop;
    }
 
    /// Build a hash table lookup function.

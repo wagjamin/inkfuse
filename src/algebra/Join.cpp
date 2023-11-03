@@ -54,11 +54,8 @@ void materializedTupleToHashTable(
             size_t curr_batch_size = std::min(batch_size, (chunk->end_ptr - curr_tuple) / slot_size);
             const char* curr_tuple_hash_it = curr_tuple;
             for (size_t batch_idx = 0; batch_idx < curr_batch_size; ++batch_idx) {
-               hashes[batch_idx] = ht_state.hash_table->compute_hash(curr_tuple_hash_it);
+               hashes[batch_idx] = ht_state.hash_table->compute_hash_and_prefetch(curr_tuple_hash_it);
                curr_tuple_hash_it += slot_size;
-            }
-            for (size_t batch_idx = 0; batch_idx < curr_batch_size; ++batch_idx) {
-               ht_state.hash_table->slot_prefetch(hashes[batch_idx]);
             }
             for (size_t batch_idx = 0; batch_idx < curr_batch_size; ++batch_idx) {
                ht_state.hash_table->insert<false>(curr_tuple, hashes[batch_idx]);
@@ -269,19 +266,16 @@ void Join::decayPkJoin(inkfuse::PipelineDAG& dag) const {
                pseudo.push_back(&pseudo_iu);
             }
 
-            // 2.2.1 Compute the hash.
-            probe_pipe.attachSuboperator(RuntimeFunctionSubop::htHash<AtomicHashTable<SimpleKeyComparator>>(this, *hash_right, *scratch_pad_right, std::move(pseudo), &ht_state));
+            // 2.2.1 Compute the hash and prefetch the slot.
+            probe_pipe.attachSuboperator(RuntimeFunctionSubop::htHashAndPrefetch<AtomicHashTable<SimpleKeyComparator>>(this, *hash_right, *scratch_pad_right, std::move(pseudo), &ht_state));
 
-            // 2.2.2 Prefetch the slot.
-            probe_pipe.attachSuboperator(RuntimeFunctionSubop::htPrefetch<AtomicHashTable<SimpleKeyComparator>>(this, &*prefetch_pseudo, *hash_right, &ht_state));
-
-            // 2.2.3 Perfom the lookup.
+            // 2.2.2 Perfom the lookup.
             if (type == JoinType::LeftSemi) {
                // Lookup on a slot disables the slot, giving semi-join behaviour.
-               probe_pipe.attachSuboperator(RuntimeFunctionSubop::htLookupWithHash<AtomicHashTable<SimpleKeyComparator>, true>(this, *lookup_right, *scratch_pad_right, *hash_right, &*prefetch_pseudo, &ht_state));
+               probe_pipe.attachSuboperator(RuntimeFunctionSubop::htLookupWithHash<AtomicHashTable<SimpleKeyComparator>, true>(this, *lookup_right, *scratch_pad_right, *hash_right, /* prefetch_pseudo = */ nullptr, &ht_state));
             } else {
                // Regular lookup that does not disable slots.
-               probe_pipe.attachSuboperator(RuntimeFunctionSubop::htLookupWithHash<AtomicHashTable<SimpleKeyComparator>, false>(this, *lookup_right, *scratch_pad_right, *hash_right, &*prefetch_pseudo, &ht_state));
+               probe_pipe.attachSuboperator(RuntimeFunctionSubop::htLookupWithHash<AtomicHashTable<SimpleKeyComparator>, false>(this, *lookup_right, *scratch_pad_right, *hash_right, /* prefetch_pseudo = */ nullptr, &ht_state));
             }
          }
 
