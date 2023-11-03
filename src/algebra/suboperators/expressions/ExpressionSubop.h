@@ -26,9 +26,6 @@ struct ExpressionSubop : public TemplatedSuboperator<EmptyState> {
    private:
    /// Which expression type to evaluate.
    ExpressionOp::ComputeNode::Type type;
-
-   /// Build a hashing expression calling into the runtime system.
-   void buildHashingExpression(CompilationContext& context, IR::FunctionBuilder& builder, const IR::Stmt& declaration) const;
 };
 
 }

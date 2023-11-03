@@ -1,6 +1,8 @@
-#include "runtime/ExternHashTableRuntime.h"
+#include "runtime/ExternRuntime.h"
+#include "exec/ExecutionContext.h"
 #include "runtime/HashTables.h"
 #include "runtime/NewHashTables.h"
+#include "runtime/TupleMaterializer.h"
 #include "xxhash.h"
 
 namespace inkfuse {
@@ -114,5 +116,13 @@ extern "C" char* HashTableRuntime::ht_at_ck_lookup(void* table, char* key) {
    return reinterpret_cast<AtomicHashTable<ComplexKeyComparator>*>(table)->lookup(key);
 }
 
+extern "C" char* TupleMaterializerRuntime::materialize_tuple(void* materializer) {
+   return reinterpret_cast<TupleMaterializer*>(materializer)->materialize();
+}
 
-} // namespace infkuse::HashTableRuntime
+extern "C" void* MemoryRuntime::inkfuse_malloc(uint64_t size) {
+   auto& context = ExecutionContext::getInstalledMemoryContext();
+   return context.alloc(size);
+}
+
+} // namespace infkuse

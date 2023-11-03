@@ -20,7 +20,7 @@ SuboperatorArc RuntimeExpressionSubop::build(const RelAlgOp* source_, std::vecto
 
 RuntimeExpressionSubop::RuntimeExpressionSubop(const RelAlgOp* source_, std::vector<const IU*> provided_ius_, std::vector<const IU*> source_ius_, ExpressionOp::ComputeNode::Type type_, IR::TypeArc runtime_expression_type_)
    : TemplatedSuboperator<RuntimeExpressionState>(source_, std::move(provided_ius_), std::move(source_ius_)), runtime_param_type(std::move(runtime_expression_type_)), type(type_) {
-   if (type == Type::Hash || type == Type::Cast) {
+   if (type == Type::Cast) {
       throw std::runtime_error("RuntimeExpressionSubop only supports binary operands.");
    }
 }

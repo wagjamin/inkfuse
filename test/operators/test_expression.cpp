@@ -131,63 +131,6 @@ TEST_P(ExpressionTParametrized, exec) {
    }
 }
 
-// Test hashing expressions to make sure they work.
-TEST_P(ExpressionTParametrized, hash) {
-   // Custom setup going over a different expression tree.
-   nodes.clear();
-   IU source(IR::UnsignedInt::build(8));
-   auto ref = nodes.emplace_back(std::make_unique<ExpressionOp::IURefNode>(&source)).get();
-   auto hash = nodes.emplace_back(
-                       std::make_unique<ExpressionOp::ComputeNode>(
-                          ExpressionOp::ComputeNode::Type::Hash,
-                          std::vector<ExpressionOp::Node*>{ref}))
-                  .get();
-   op.emplace(
-      std::vector<std::unique_ptr<RelAlgOp>>{},
-      "expression_1",
-      std::vector<ExpressionOp::Node*>{hash},
-      std::move(nodes));
-
-   PipelineDAG dag;
-   dag.buildNewPipeline();
-   op->decay(dag);
-
-   auto& pipe = dag.getCurrentPipeline();
-   // Repipe to add fuse chunk sinks and sources.
-   auto repiped = pipe.repipeAll(0, pipe.getSubops().size());
-
-   // Repiping should have added 1 driver, 1 iu input and 1 output op.
-   auto& ops = repiped->getSubops();
-   EXPECT_EQ(ops.size(), 4);
-
-   // Get ready for compiled execution.
-   auto mode = GetParam();
-   PipelineExecutor exec(*repiped, 1, mode, "ExpressionT_hash");
-
-   // Prepare input chunk.
-   auto& ctx = exec.getExecutionContext();
-   auto& c_in1 = ctx.getColumn(source, 0);
-
-   c_in1.size = DEFAULT_CHUNK_SIZE;
-   for (uint16_t k = 0; k < DEFAULT_CHUNK_SIZE; ++k) {
-      reinterpret_cast<uint64_t*>(c_in1.raw_data)[k] = k;
-   }
-
-   // And run a single morsel.
-   EXPECT_NO_THROW(exec.runMorsel(0));
-
-   // Check results.
-   const IU& hash_iu = **ops[2]->getIUs().begin();
-   std::unordered_set<uint64_t> seen;
-   // This set should have no hash collisions.
-   auto& hash_col = ctx.getColumn(hash_iu, 0);
-   for (uint16_t k = 0; k < DEFAULT_CHUNK_SIZE; ++k) {
-      auto elem = reinterpret_cast<uint64_t*>(hash_col.raw_data)[k];
-      EXPECT_EQ(seen.count(elem), 0);
-      seen.insert(elem);
-   }
-}
-
 INSTANTIATE_TEST_CASE_P(
    ExpressionExecution,
    ExpressionTParametrized,

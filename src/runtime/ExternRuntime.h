@@ -5,7 +5,9 @@
 
 /// Exported symbols from the InkFuse runtime relating to hash tables.
 
-namespace inkfuse::HashTableRuntime {
+namespace inkfuse {
+
+namespace HashTableRuntime {
 
 /// Pure hashing functions.
 extern "C" uint64_t hash(void* in, uint64_t len);
@@ -44,7 +46,18 @@ extern "C" char* ht_at_ck_lookup_with_hash_disable(void* table, char* key, uint6
 
 /// Special lookup function if we know we have a 0-byte key.
 extern "C" char* ht_nk_lookup(void* table);
+} // namespace HashTableRuntime
 
-} // namespace inkfuse::HashTableRuntime
+namespace TupleMaterializerRuntime {
+
+extern "C" char* materialize_tuple(void* materializer);
+
+}
+
+namespace MemoryRuntime {
+extern "C" void* inkfuse_malloc(uint64_t size);
+} // namespace MemroyRuntime
+
+} // namespace inkfuse
 
 #endif // INKFUSE_EXTSHTABLERUNTIME_H

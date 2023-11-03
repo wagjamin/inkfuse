@@ -112,4 +112,18 @@ void HashTableRuntime::registerRuntime() {
       .addArg("hash", IR::UnsignedInt::build(8), true);
 }
 
-}  // namespace inkfuse
+namespace TupleMaterializerRuntime {
+void registerRuntime() {
+   RuntimeFunctionBuilder("materialize_tuple", IR::Pointer::build(IR::Char::build()))
+      .addArg("table", IR::Pointer::build(IR::Void::build()));
+}
+}
+
+namespace MemoryRuntime {
+void registerRuntime() {
+   RuntimeFunctionBuilder("inkfuse_malloc", IR::Pointer::build(IR::Void::build()))
+      .addArg("size", IR::UnsignedInt::build(8));
+}
+}
+
+} // namespace inkfuse

@@ -45,10 +45,6 @@ void ExpressionSubop::consumeAllChildren(CompilationContext& context) {
             IR::CastExpr::build(
                IR::VarRefExpr::build(*children[0]),
                out->type)));
-   } else if (type == Type::Hash) {
-      assert(children.size() == 1);
-      // Hash Op. Call into hashing runtime.
-      buildHashingExpression(context, builder, declare);
    } else {
       // Binary Arithmetic Op.
       assert(children.size() == 2);
@@ -75,32 +71,4 @@ std::string ExpressionSubop::id() const {
    }
    return res.str();
 }
-
-void ExpressionSubop::buildHashingExpression(CompilationContext& context, IR::FunctionBuilder& builder, const IR::Stmt& declare) const {
-   const IR::Function* hash_fct;
-   std::vector<IR::ExprPtr> args;
-   // First argument is a pointer to the data.
-   args.push_back(IR::RefExpr::build(IR::VarRefExpr::build(context.getIUDeclaration(*source_ius[0]))));
-   const IU& iu = *source_ius[0];
-   // Very simple hashing logic for now - this needs to be updated once we have string support.
-   if (iu.type->numBytes() == 4) {
-      // Call into specialized 4 byte runtime.
-      hash_fct = context.getRuntimeFunction("hash4").get();
-   } else if (iu.type->numBytes() == 8) {
-      // Call into specialized 8 byte runtime.
-      hash_fct = context.getRuntimeFunction("hash8").get();
-   } else {
-      // Call into general purpose runtime.
-      hash_fct = context.getRuntimeFunction("hash").get();
-      // This one takes the size as a second argument.
-      args.push_back(IR::ConstExpr::build(IR::UI<8>::build(iu.type->numBytes())));
-   }
-   IR::ExprPtr hashed_expr =
-      IR::InvokeFctExpr::build(*hash_fct, std::move(args));
-   // And build the assignment into the output IU.
-   builder.appendStmt(
-      IR::AssignmentStmt::build(
-         declare, std::move(hashed_expr)));
-}
-
 }

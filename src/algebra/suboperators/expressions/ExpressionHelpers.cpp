@@ -9,7 +9,6 @@ const std::unordered_map<Type, std::string> expr_names{
    {Type::Cast, "cast"},
    {Type::Subtract, "sub"},
    {Type::Multiply, "mul"},
-   {Type::Hash, "hash"},
    {Type::Divide, "div"},
    {Type::Greater, "gt"},
    {Type::GreaterEqual, "ge"},
@@ -19,8 +18,7 @@ const std::unordered_map<Type, std::string> expr_names{
    {Type::Or, "or"},
    {Type::Eq, "eq"},
    {Type::Neq, "neq"},
-   {Type::StrEquals, "streq"}
-};
+   {Type::StrEquals, "streq"}};
 
 /// Map from algebra expression types to IR expressions in the jitted code.
 const std::unordered_map<Type, IR::ArithmeticExpr::Opcode> code_map{
