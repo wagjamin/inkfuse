@@ -201,8 +201,6 @@ PipelineExecutor::PipelineStats PipelineExecutor::runPipeline() {
       // Store how long we were stalled waiting for compilation to finish.
       result.codegen_microseconds = std::chrono::duration_cast<std::chrono::microseconds>(compilation_done_ts - start_execution_ts).count();
 
-      std::cout << "Found " << compilation_jobs.size() << " JIT fragments \n";
-
       for (auto& compiled_fragment : compile_state) {
          assert(compiled_fragment->compiled);
          compiled_fragment->compiled->setUpState();
@@ -294,7 +292,6 @@ void PipelineExecutor::setUpInterpreted() {
 std::vector<std::thread> PipelineExecutor::setUpFusedAsync(ExecutionMode mode) {
    // Create a compile state for the respective JIT interval.
    auto attach_compile_state = [&](size_t start, size_t end) {
-      std::cout << "Attaching compile state " << start << ", " << end << std::endl;
       auto repiped = pipe.repipeRequired(start, end);
       std::pair<size_t, size_t> jit_interval{start, end};
       // Create a fragment name that will be unique across different ROF intervals in the pipeline.

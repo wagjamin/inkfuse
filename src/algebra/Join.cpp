@@ -286,14 +286,17 @@ void Join::decayPkJoin(inkfuse::PipelineDAG& dag) const {
          }
 
          // 2.3 Filter on probe matches.
-         probe_pipe.attachSuboperator(ColumnFilterScope::build(this, *lookup_right, *filter_pseudo_iu));
+         auto& filter_scope_subop = probe_pipe.attachSuboperator(ColumnFilterScope::build(this, *lookup_right, *filter_pseudo_iu));
+         auto& filter_scope = reinterpret_cast<ColumnFilterScope&>(filter_scope_subop);
          // The filter on the build site filters "itself". This has some repercussions on the repiping
          // behaviour of the suboperator and needs to be passed explicitly.
-         probe_pipe.attachSuboperator(ColumnFilterLogic::build(this, *filter_pseudo_iu, *lookup_right, *filtered_build, /* filter_type= */ lookup_right->type, /* filters_itself= */ true));
+         auto& filter_1 = probe_pipe.attachSuboperator(ColumnFilterLogic::build(this, *filter_pseudo_iu, *lookup_right, *filtered_build, /* filter_type= */ lookup_right->type, /* filters_itself= */ true));
+         filter_scope.attachFilterLogicDependency(filter_1, *lookup_right);
          if (type != JoinType::LeftSemi) {
             // If we need to produce columns on the probe side, we also have to filter the probe result.
             // Note: the filtered ByteArray from the probe side becomes a Char* after filtering.
-            probe_pipe.attachSuboperator(ColumnFilterLogic::build(this, *filter_pseudo_iu, *scratch_pad_right, *filtered_probe, /* filter_type_= */ lookup_right->type));
+            auto& filter_2 = probe_pipe.attachSuboperator(ColumnFilterLogic::build(this, *filter_pseudo_iu, *scratch_pad_right, *filtered_probe, /* filter_type_= */ lookup_right->type));
+            filter_scope.attachFilterLogicDependency(filter_2, *scratch_pad_right);
          }
 
          // 2.4 Unpack everything.

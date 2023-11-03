@@ -5,18 +5,35 @@
 
 namespace inkfuse {
 
-SuboperatorArc ColumnFilterScope::build(const RelAlgOp* source_, const IU& filter_iu_, const IU& pseudo)
-{
+SuboperatorArc ColumnFilterScope::build(const RelAlgOp* source_, const IU& filter_iu_, const IU& pseudo) {
    return SuboperatorArc{new ColumnFilterScope(source_, filter_iu_, pseudo)};
 }
 
 ColumnFilterScope::ColumnFilterScope(const RelAlgOp* source_, const IU& filter_iu_, const IU& pseudo)
-: TemplatedSuboperator<EmptyState>(source_, std::vector<const IU*>{&pseudo}, std::vector<const IU*>{&filter_iu_})
-{
+   : TemplatedSuboperator<EmptyState>(source_, std::vector<const IU*>{&pseudo}, std::vector<const IU*>{&filter_iu_}) {
 }
 
-void ColumnFilterScope::consumeAllChildren(CompilationContext& context)
-{
+void ColumnFilterScope::open(CompilationContext& context) {
+   if (filter_logic_dependencies.empty()) {
+      throw std::runtime_error("ColumnFilterScope must be provided with all filter dependencies.");
+   }
+   // We first request all dependencies that the following `ColumnFilterLogics` will have.
+   // This ensures that their iterators are generated in the outer scope.
+   for (auto& [op, iu] : filter_logic_dependencies) {
+      context.requestIU(*op, *iu);
+   }
+   // No we request our actual filter IU. Once that code was generated we enter `consumeAllChildren`.
+   for (const IU* in : source_ius) {
+      context.requestIU(*this, *in);
+   }
+}
+
+void ColumnFilterScope::attachFilterLogicDependency(Suboperator& subop, const IU& iu) {
+   assert(dynamic_cast<ColumnFilterLogic*>(&subop));
+   filter_logic_dependencies.push_back({&subop, &iu});
+}
+
+void ColumnFilterScope::consumeAllChildren(CompilationContext& context) {
    auto& builder = context.getFctBuilder();
    const auto& program = context.getProgram();
 
@@ -33,8 +50,7 @@ void ColumnFilterScope::consumeAllChildren(CompilationContext& context)
    }
 }
 
-void ColumnFilterScope::close(CompilationContext& context)
-{
+void ColumnFilterScope::close(CompilationContext& context) {
    // We can now close the sub-operator, this will terminate the if statement
    // and reinstall the original block.
    opt_if->End();
@@ -42,19 +58,16 @@ void ColumnFilterScope::close(CompilationContext& context)
    context.notifyOpClosed(*this);
 }
 
-std::string ColumnFilterScope::id() const
-{
+std::string ColumnFilterScope::id() const {
    return "ColumnFilterScope";
 }
 
-SuboperatorArc ColumnFilterLogic::build(const RelAlgOp* source_, const IU& pseudo, const IU& incoming_, const IU& redefined, IR::TypeArc filter_type_, bool filters_itself_)
-{
+SuboperatorArc ColumnFilterLogic::build(const RelAlgOp* source_, const IU& pseudo, const IU& incoming_, const IU& redefined, IR::TypeArc filter_type_, bool filters_itself_) {
    return SuboperatorArc{new ColumnFilterLogic(source_, pseudo, incoming_, redefined, std::move(filter_type_), filters_itself_)};
 }
 
 ColumnFilterLogic::ColumnFilterLogic(const RelAlgOp* source_, const IU& pseudo, const IU& incoming, const IU& redefined, IR::TypeArc filter_type_, bool filters_itself_)
-   : TemplatedSuboperator<EmptyState>(source_, std::vector<const IU*>{&redefined}, std::vector<const IU*>{&pseudo, &incoming}), filter_type(std::move(filter_type_)), filters_itself(filters_itself_)
-{
+   : TemplatedSuboperator<EmptyState>(source_, std::vector<const IU*>{&redefined}, std::vector<const IU*>{&pseudo, &incoming}), filter_type(std::move(filter_type_)), filters_itself(filters_itself_) {
    // When filtering a ByteArray something subtle happens:
    // The result column becomes a char*. This way we don't have to copy the entire byte array, but rather
    // just pointers. An alternative implementation would be to have variable size sinks and to do
@@ -66,18 +79,16 @@ ColumnFilterLogic::ColumnFilterLogic(const RelAlgOp* source_, const IU& pseudo, 
    }
 }
 
-void ColumnFilterLogic::open(CompilationContext& context)
-{
-   // First request the incoming IU that gets filtered. This is extremely important as their iterator
+void ColumnFilterLogic::open(CompilationContext& context) {
+   // We do not request incoming IU that gets filtered. This is extremely important as their iterator
    // should be generated outside of the `if`. If we don't descend the DAG this way, then we might generate
    // the variable-size state iterator inside the nested control flow.
-   context.requestIU(*this, *source_ius[1]);
-   // Only now request generation of the `if`. We know that the variable-sized iterators are outside the `if`.
+
+   // Only request generation of the `if`. The ColumnFilterScope will generate the input IU that will be filtered.
    context.requestIU(*this, *source_ius[0]);
 }
 
-void ColumnFilterLogic::consumeAllChildren(CompilationContext& context)
-{
+void ColumnFilterLogic::consumeAllChildren(CompilationContext& context) {
    auto& builder = context.getFctBuilder();
 
    // Get the definition of the filter IU - this is the second source IU.
@@ -97,8 +108,7 @@ void ColumnFilterLogic::consumeAllChildren(CompilationContext& context)
    context.notifyIUsReady(*this);
 }
 
-std::string ColumnFilterLogic::id() const
-{
+std::string ColumnFilterLogic::id() const {
    if (filters_itself) {
       return "ColumnSelfFilterLogic_" + filter_type->id() + "_" + source_ius[1]->type->id();
    } else {

@@ -32,13 +32,16 @@ void Filter::decay(PipelineDAG& dag) const
    children[0]->decay(dag);
    auto& pipe = dag.getCurrentPipeline();
    // Attach the control flow sub-operator.
-   auto scope = ColumnFilterScope::build(this, filter_iu, pseudo_iu);
-   pipe.attachSuboperator(std::move(scope));
+   auto& scope_supop = pipe.attachSuboperator(ColumnFilterScope::build(this, filter_iu, pseudo_iu));
+   auto& scope = reinterpret_cast<ColumnFilterScope&>(scope_supop);
    // Attach the logic operators performing the copies.
    for (size_t k = 0; k < redefined.size(); ++k) {
       const IU& old_iu = *to_redefine[k];
       const IU& new_iu = redefined[k];
       auto logic = ColumnFilterLogic::build(this, pseudo_iu, old_iu, new_iu);
+      // Attach filter dependency to the scope suboperator. This makes sure the source IUs
+      // are generated before the filter.
+      scope.attachFilterLogicDependency(*logic, old_iu);
       pipe.attachSuboperator(std::move(logic));
    }
 }

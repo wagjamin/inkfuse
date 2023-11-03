@@ -52,7 +52,6 @@ const std::vector<std::pair<std::string, PipelineExecutor::ExecutionMode>> backe
    {"fused", PipelineExecutor::ExecutionMode::Fused},
    {"rof", PipelineExecutor::ExecutionMode::ROF},
 };
-
 }
 
 int main(int argc, char* argv[]) {
