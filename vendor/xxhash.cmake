@@ -9,7 +9,10 @@ ExternalProject_Add(
         INSTALL_DIR "vendor/xxhash/src/xxhash_src"
         BINARY_DIR "vendor/xxhash/src/xxhash_src"
         CONFIGURE_COMMAND ""
-        BUILD_COMMAND "$(MAKE)"
+        # Force inlinig - we have specializations for fixed-width keys where
+        # this significantly improves performance.
+        # xxhash has a custom XXH_INLINE_ALL option, but that didn't work.
+        BUILD_COMMAND $(MAKE) all CC=clang-14 MOREFLAGS="-flto"
         INSTALL_COMMAND ""
         GIT_TAG v0.8.1
         TIMEOUT 10
