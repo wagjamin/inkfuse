@@ -15,8 +15,8 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # Generate DWARF 4 in debug to work on older GDB versions
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++ -gdwarf-4")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g -O0 -fsanitize=address")
-set(CMAKE_CXX_FLAGS_RELEASE "-O3")
-set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-g -O3")
+set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -g -O3")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
 
 # ---------------------------------------------------------------------------
 # Dependencies
@@ -207,7 +207,7 @@ add_library(inkfuse_runtime OBJECT ${RUNTIME_SRC_CC})
 # these object files before generating the shared query object.
 # This allows us to inline runtime C++ code into the generated C code.
 add_library(inkfuse_runtime_static STATIC ${RUNTIME_SRC_CC})
-target_compile_options(inkfuse_runtime_static PUBLIC -flto -fPIC)
+target_compile_options(inkfuse_runtime_static PRIVATE -flto -fPIC)
 
 # Install 
 add_custom_target(inkfuse_install_runtime
