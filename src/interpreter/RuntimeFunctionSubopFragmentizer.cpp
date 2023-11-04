@@ -44,7 +44,23 @@ RuntimeFunctionSubopFragmentizer::RuntimeFunctionSubopFragmentizer() {
          auto& [name, pipe] = pipes.emplace_back();
          const auto& key = generated_ius.emplace_back(in_type);
          const auto& hash = generated_ius.emplace_back(IR::UnsignedInt::build(8));
-         const auto& op = pipe.attachSuboperator(RuntimeFunctionSubop::htHashAndPrefetch<AtomicHashTable<SimpleKeyComparator>>(nullptr, hash, key, {}));
+         const auto& op = pipe.attachSuboperator(RuntimeFunctionSubop::htHashAndPrefetch<AtomicHashTable<SimpleKeyComparator>>(nullptr, hash, key, {}, /* key_width = */ {}));
+         name = op.id();
+      }
+      {
+         // Hash and prefetch fixed width 4:
+         auto& [name, pipe] = pipes.emplace_back();
+         const auto& key = generated_ius.emplace_back(in_type);
+         const auto& hash = generated_ius.emplace_back(IR::UnsignedInt::build(8));
+         const auto& op = pipe.attachSuboperator(RuntimeFunctionSubop::htHashAndPrefetch<AtomicHashTable<SimpleKeyComparator>>(nullptr, hash, key, {}, /* key_width = */ 4));
+         name = op.id();
+      }
+      {
+         // Hash and prefetch fixed width 8:
+         auto& [name, pipe] = pipes.emplace_back();
+         const auto& key = generated_ius.emplace_back(in_type);
+         const auto& hash = generated_ius.emplace_back(IR::UnsignedInt::build(8));
+         const auto& op = pipe.attachSuboperator(RuntimeFunctionSubop::htHashAndPrefetch<AtomicHashTable<SimpleKeyComparator>>(nullptr, hash, key, {}, /* key_width = */ 8));
          name = op.id();
       }
       {

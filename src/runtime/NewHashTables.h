@@ -45,6 +45,12 @@ struct AtomicHashTable {
 
    /// Compute the hash for a given key and prefetch the corresponding hash table slot.
    uint64_t compute_hash_and_prefetch(const char* key) const;
+
+   /// Specialization when we use a specific hash width
+   /// Specializations exist for 4 and 8 bytes.
+   template <uint64_t key_width>
+   uint64_t compute_hash_and_prefetch_fixed(const char* key) const;
+
    /// Prefetch the tag and data slots for a specific hash.
    void slot_prefetch(uint64_t hash) const;
    /// Get the pointer to a given key, or nullptr if the group does not exist.
