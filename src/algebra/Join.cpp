@@ -330,5 +330,4 @@ void Join::decayPkJoin(inkfuse::PipelineDAG& dag) const {
       // End vectorized Block.
    }
 }
-
 }

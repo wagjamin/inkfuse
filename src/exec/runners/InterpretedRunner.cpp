@@ -1,5 +1,4 @@
 #include "InterpretedRunner.h"
-#include "algebra/suboperators/row_layout/KeyPackerSubop.h"
 #include "algebra/suboperators/sources/TableScanSource.h"
 #include "interpreter/FragmentCache.h"
 
@@ -26,6 +25,14 @@ InterpretedRunner::InterpretedRunner(const Pipeline& backing_pipeline, size_t id
          .type_width = op.get()->getIUs().at(0)->type->numBytes(),
          .fuse_chunk_ptrs{original_context.getNumThreads()},
       };
+   }
+
+   // Extract all key packer IUs as these need special treatment during interpretation.
+   for (const auto& subop : pipe->getSubops()) {
+      if (auto* as_key_packer = dynamic_cast<KeyPackerSubop*>(subop.get())) {
+         assert(as_key_packer->getSourceIUs().size() == 2);
+         key_packer_ius.push_back(as_key_packer->getSourceIUs()[1]);
+      }
    }
 }
 
@@ -58,12 +65,8 @@ Suboperator::PickMorselResult InterpretedRunner::pickMorsel(size_t thread_id) {
       // It could be that we require scratch pad IUs within this pipeline.
       // As these are never officially produced by an expression, we need
       // to make sure their sizes are set up properly.
-      for (const auto& subop : pipe->getSubops()) {
-         if (dynamic_cast<KeyPackerSubop*>(subop.get())) {
-            assert(subop->getSourceIUs().size() == 2);
-            const IU* scratch_pad_iu = subop->getSourceIUs()[1];
-            context.getColumn(*scratch_pad_iu, thread_id).size = picked->morsel_size;
-         }
+      for (const IU* key_packer_iu : key_packer_ius) {
+         context.getColumn(*key_packer_iu, thread_id).size = picked->morsel_size;
       }
    }
 
@@ -99,10 +102,8 @@ void InterpretedRunner::runZeroCopyScan(size_t thread_id) {
       zero_copy_state->fuse_chunk_ptrs[thread_id] = context.getColumn(*zero_copy_state->output_iu, thread_id).raw_data;
    }
    // Get the state of the picked morsel.
-   TScanDriver* driver = dynamic_cast<TScanDriver*>(pipe->suboperators[0].get());
-   TScanIUProvider* provider = dynamic_cast<TScanIUProvider*>(pipe->suboperators[1].get());
-   assert(driver);
-   assert(provider);
+   TScanDriver* driver = reinterpret_cast<TScanDriver*>(pipe->suboperators[0].get());
+   TScanIUProvider* provider = reinterpret_cast<TScanIUProvider*>(pipe->suboperators[1].get());
    const auto driver_state = reinterpret_cast<LoopDriverState*>(driver->accessState(thread_id));
    const auto provider_state = reinterpret_cast<IndexedIUProviderState*>(provider->accessState(thread_id));
    // And directly update the target fuse chunk column.

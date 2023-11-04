@@ -2,6 +2,7 @@
 #define INKFUSE_PIPELINEINTERPRETER_H
 
 #include "PipelineRunner.h"
+#include "algebra/suboperators/row_layout/KeyPackerSubop.h"
 #include <functional>
 #include <map>
 #include <string>
@@ -52,6 +53,8 @@ struct InterpretedRunner final : public PipelineRunner {
       std::vector<char*> fuse_chunk_ptrs;
    };
    std::optional<ZeroCopyScanState> zero_copy_state;
+   /// Key packing suboperators IUs in the interpreted graph.
+   std::vector<const IU*> key_packer_ius;
    /// Custom interpreter for a zero copy scan.
    void runZeroCopyScan(size_t thread_id);
 };
