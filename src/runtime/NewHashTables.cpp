@@ -94,6 +94,26 @@ uint64_t AtomicHashTable<Comparator>::compute_hash_and_prefetch(const char* key)
 }
 
 template <class Comparator>
+template <uint64_t key_width>
+uint64_t AtomicHashTable<Comparator>::compute_hash_and_prefetch_fixed(const char* key) const {
+   static_assert(std::is_same_v<Comparator, SimpleKeyComparator>);
+   uint64_t hash;
+   // Overly verbose, but makes it very clear that we benefit from having static args here.
+   static_assert(key_width == 4 || key_width == 8);
+   if constexpr (key_width == 4) {
+      hash = XXH3_64bits(key, 4);
+   } else if constexpr (key_width == 8) {
+      hash = XXH3_64bits(key, 8);
+   }
+   const uint64_t slot_id = hash & mod_mask;
+   // Prefetch the actual data array.
+   __builtin_prefetch(&data[slot_id * total_slot_size]);
+   // Prefetch the bitmask slot.
+   __builtin_prefetch(&tags[slot_id]);
+   return hash;
+}
+
+template <class Comparator>
 void AtomicHashTable<Comparator>::slot_prefetch(uint64_t hash) const {
    const uint64_t slot_id = hash & mod_mask;
    // Prefetch the actual data array.
@@ -278,6 +298,9 @@ template char* AtomicHashTable<ComplexKeyComparator>::insert<false>(const char* 
 
 template char* AtomicHashTable<ComplexKeyComparator>::insert<true>(const char* key, uint64_t hash);
 template char* AtomicHashTable<ComplexKeyComparator>::insert<false>(const char* key, uint64_t hash);
+
+template uint64_t AtomicHashTable<SimpleKeyComparator>::compute_hash_and_prefetch_fixed<4>(const char* key) const;
+template uint64_t AtomicHashTable<SimpleKeyComparator>::compute_hash_and_prefetch_fixed<8>(const char* key) const;
 
 template class ExclusiveHashTable<SimpleKeyComparator>;
 template class ExclusiveHashTable<ComplexKeyComparator>;

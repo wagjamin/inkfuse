@@ -79,6 +79,14 @@ void HashTableRuntime::registerRuntime() {
       .addArg("table", IR::Pointer::build(IR::Void::build()))
       .addArg("key", IR::Pointer::build(IR::Char::build()), true);
 
+   RuntimeFunctionBuilder("ht_at_sk_compute_hash_and_prefetch_fixed_4", IR::UnsignedInt::build(8))
+      .addArg("table", IR::Pointer::build(IR::Void::build()))
+      .addArg("key", IR::Pointer::build(IR::Char::build()), true);
+
+   RuntimeFunctionBuilder("ht_at_sk_compute_hash_and_prefetch_fixed_8", IR::UnsignedInt::build(8))
+      .addArg("table", IR::Pointer::build(IR::Void::build()))
+      .addArg("key", IR::Pointer::build(IR::Char::build()), true);
+
    RuntimeFunctionBuilder("ht_at_sk_slot_prefetch", IR::Void::build())
       .addArg("table", IR::Pointer::build(IR::Void::build()))
       .addArg("hash", IR::UnsignedInt::build(8), true);

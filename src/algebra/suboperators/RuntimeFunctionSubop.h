@@ -32,8 +32,15 @@ struct RuntimeFunctionSubop : public TemplatedSuboperator<RuntimeFunctionSubopSt
 
    /// Hash a key with the hash table's hash function and prefetch the corresponding slot.
    template <class HashTable>
-   static std::unique_ptr<RuntimeFunctionSubop> htHashAndPrefetch(const RelAlgOp* source, const IU& hash_, const IU& key_, std::vector<const IU*> pseudo_ius_, DefferredStateInitializer* state_init_ = nullptr) {
+   static std::unique_ptr<RuntimeFunctionSubop> htHashAndPrefetch(const RelAlgOp* source, const IU& hash_, const IU& key_, std::vector<const IU*> pseudo_ius_, std::optional<size_t> key_width, DefferredStateInitializer* state_init_ = nullptr) {
       std::string fct_name = "ht_" + HashTable::ID + "_compute_hash_and_prefetch";
+      if (key_width && *key_width == 4) {
+         // Call into four byte specialization.
+         fct_name += "_fixed_4";
+      } else if (key_width && *key_width == 8) {
+         // Call into eight byte specialization.
+         fct_name += "_fixed_8";
+      }
       std::vector<const IU*> in_ius{&key_};
       for (auto pseudo : pseudo_ius_) {
          // Pseudo IUs are used as input IUs in the backing graph, but do not influence arguments.

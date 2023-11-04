@@ -34,7 +34,11 @@ extern "C" char* ht_at_sk_lookup(void* table, char* key);
 extern "C" char* ht_at_sk_lookup_disable(void* table, char* key);
 extern "C" char* ht_at_ck_lookup(void* table, char* key);
 
+/// Hash/prefetch instructions, fixed width specializations exist.
 extern "C" uint64_t ht_at_sk_compute_hash_and_prefetch(void* table, char* key);
+extern "C" uint64_t ht_at_sk_compute_hash_and_prefetch_fixed_4(void* table, char* key);
+extern "C" uint64_t ht_at_sk_compute_hash_and_prefetch_fixed_8(void* table, char* key);
+
 extern "C" void ht_at_sk_slot_prefetch(void* table, uint64_t hash);
 extern "C" char* ht_at_sk_lookup_with_hash(void* table, char* key, uint64_t hash);
 extern "C" char* ht_at_sk_lookup_with_hash_disable(void* table, char* key, uint64_t hash);

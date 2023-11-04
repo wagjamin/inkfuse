@@ -267,7 +267,7 @@ void Join::decayPkJoin(inkfuse::PipelineDAG& dag) const {
             }
 
             // 2.2.1 Compute the hash and prefetch the slot.
-            probe_pipe.attachSuboperator(RuntimeFunctionSubop::htHashAndPrefetch<AtomicHashTable<SimpleKeyComparator>>(this, *hash_right, *scratch_pad_right, std::move(pseudo), &ht_state));
+            probe_pipe.attachSuboperator(RuntimeFunctionSubop::htHashAndPrefetch<AtomicHashTable<SimpleKeyComparator>>(this, *hash_right, *scratch_pad_right, std::move(pseudo), key_size_left, &ht_state));
 
             // 2.2.2 Perfom the lookup.
             if (type == JoinType::LeftSemi) {
