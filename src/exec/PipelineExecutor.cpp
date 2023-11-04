@@ -7,9 +7,31 @@
 #include "runtime/MemoryRuntime.h"
 
 #include <chrono>
-#include <iostream>
 
 namespace inkfuse {
+
+namespace {
+/// Return <compile_trials, interpret_trials> for adaptive switching in the hybrid backend.
+std::pair<size_t, size_t> computeTrials(double interpreted_throughput, double compiled_throughput) {
+   size_t compile_trials;
+   size_t interpret_trials;
+   // If the winner is very clear cut, prefer the faster backend.
+   if (compiled_throughput > 1.66 * interpreted_throughput) {
+      return {4, 1};
+   }
+   if (compiled_throughput > 1.33 * interpreted_throughput) {
+      return {4, 2};
+   }
+   if (interpreted_throughput > 1.66 * compiled_throughput) {
+      return {1, 4};
+   }
+   if (interpreted_throughput > 1.33 * compiled_throughput) {
+      return {2, 4};
+   }
+   // Otherwise try out both 10% of the time.
+   return {4, 4};
+}
+};
 
 using ROFStrategy = Suboperator::OptimizationProperties::ROFStrategy;
 
@@ -71,9 +93,17 @@ void PipelineExecutor::threadSwimlane(size_t thread_id, OnceBarrier& compile_pre
       // Dynamically switch between vectorization and compilation depending on the performance.
 
       // Last measured pipeline throughput.
-      // TODO(benjamin): More robust as exponential decaying average.
       double compiled_throughput = 0.0;
       double interpreted_throughput = 0.0;
+
+      // Expontentially decaying average.
+      auto decay = [](double& old_val, double new_val) {
+         if (old_val == 0.0) {
+            old_val = new_val;
+         } else {
+            old_val = 0.8 * old_val + 0.2 * new_val;
+         }
+      };
 
       bool fused_ready = false;
       bool terminate = false;
@@ -84,7 +114,7 @@ void PipelineExecutor::threadSwimlane(size_t thread_id, OnceBarrier& compile_pre
          const auto stop = std::chrono::steady_clock::now();
          const auto nanos = std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start).count();
          if (auto picked = std::get_if<Suboperator::PickedMorsel>(&morsel)) {
-            interpreted_throughput = static_cast<double>(picked->morsel_size) / nanos;
+            decay(interpreted_throughput, static_cast<double>(picked->morsel_size) / nanos);
          }
          return std::holds_alternative<Suboperator::NoMoreMorsels>(morsel);
       };
@@ -95,7 +125,7 @@ void PipelineExecutor::threadSwimlane(size_t thread_id, OnceBarrier& compile_pre
          const auto stop = std::chrono::steady_clock::now();
          const auto nanos = std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start).count();
          if (auto picked = std::get_if<Suboperator::PickedMorsel>(&morsel)) {
-            compiled_throughput = static_cast<double>(picked->morsel_size) / nanos;
+            decay(compiled_throughput, static_cast<double>(picked->morsel_size) / nanos);
          }
          return std::holds_alternative<Suboperator::NoMoreMorsels>(morsel);
       };
@@ -113,15 +143,30 @@ void PipelineExecutor::threadSwimlane(size_t thread_id, OnceBarrier& compile_pre
       compile_prep_barrier.arriveAndWait();
 
       size_t it_counter = 0;
+      // By default, try 10% of morsels with interpreter/compiler respectively.
+      // This allows dynamic switching.
+      const size_t iteration_size = 40;
+      size_t compile_trials = 4;
+      size_t interpret_trials = 4;
+      // Note: force successive runs of the same morsel when we're collecting data for the
+      // different backends. This ensures that we get nice code locality for the second+ morsel.
       while (!terminate) {
-         // We run 2 out of 25 morsels with the interpreter just to repeatedly check on performance.
-         if ((it_counter % 50 < 2) || compiled_throughput == 0.0 || (compiled_throughput > (0.95 * interpreted_throughput))) {
-            // If the compiled throughput approaches the interpreted one, use the generated code.
+         if (it_counter % iteration_size < compile_trials) {
+            // For `compile_trials` morsels force the compiler
+            terminate = timeAndRunCompiled();
+         } else if (it_counter % iteration_size >= compile_trials &&
+                    it_counter % iteration_size < (compile_trials + interpret_trials)) {
+            // For `interpret_trials` of morsels force the interpreter
+            terminate = timeAndRunInterpreted();
+         } else if (compiled_throughput > interpreted_throughput) {
+            // For the other 8 morsels, run the one with the highest throughput
             terminate = timeAndRunCompiled();
          } else {
-            // But in some cases the vectorized interpreter is better - stick with it.
             terminate = timeAndRunInterpreted();
          }
+         std::pair<size_t, size_t> new_trials = computeTrials(interpreted_throughput, compiled_throughput);
+         compile_trials = new_trials.first;
+         interpret_trials = new_trials.second;
          it_counter++;
       }
    }
