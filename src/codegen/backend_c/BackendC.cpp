@@ -67,12 +67,12 @@ void BackendProgramC::compileJIT(InterruptableJob& interrupt) {
 #endif
    command << path(program_name);
    if constexpr (debug_mode) {
-      command << " -g -O0 -fPIC -gdwarf-4 ";
+      command << " -g -O0 -gdwarf-4 ";
    } else {
-      command << " -O3 -fPIC";
+      command << " -march=native -O3 ";
    }
    // Add flto to generate LLVM bytecode that allows powerful link-time optimizations
-   command << " -shared -o ";
+   command << " -fPIC -shared -o ";
    command << so_path(program_name);
 
    auto command_str = command.str();
@@ -107,11 +107,11 @@ void BackendProgramC::compileInterpreter(InterruptableJob& interrupt) {
       command << env << " ";
 #endif
       // Use link time optimizations.
-      command << " -flto";
+      command << " -flto -fPIC ";
       if constexpr (debug_mode) {
-         command << " -g -O0 -fPIC -gdwarf-4 ";
+         command << " -g -O0 -gdwarf-4 ";
       } else {
-         command << " -O3 -fPIC";
+         command << " -march=native -O3 ";
       }
       command << " -c " << path(program_name);
       // Add flto to generate LLVM bytecode that allows powerful link-time optimizations
@@ -133,9 +133,9 @@ void BackendProgramC::compileInterpreter(InterruptableJob& interrupt) {
       command << env << " ";
 #endif
       if constexpr (debug_mode) {
-         command << " -g -O0  ";
+         command << " -g -O0 -gdwarf-4 ";
       } else {
-         command << " -O3 ";
+         command << " -march=native -O3 ";
       }
       // Use link time optimizations.
       command << " -flto ";

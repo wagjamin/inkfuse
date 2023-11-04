@@ -24,5 +24,5 @@ jobs:
       # Unfortunately we're running into https://github.com/llvm/llvm-project/issues/59432
       # This is some Ubuntu packaging issue that causes alloc/dealloc mismatches when asan
       # is enabled with libc++
-      run: ASAN_OPTIONS=detect_odr_violation=0,alloc_dealloc_mismatch=1 ./tester
+      run: ASAN_OPTIONS=detect_odr_violation=0:alloc_dealloc_mismatch=1 ./tester
       
