@@ -15,7 +15,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # Generate DWARF 4 in debug to work on older GDB versions
 # flto required as xxhash is also built with flto to allow efficient inlining
 # of the hash functions.
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++ -gdwarf-4 -flto")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -gdwarf-4 -stdlib=libc++ -flto")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g -O0 -fsanitize=address")
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -g -O3")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
@@ -292,6 +292,7 @@ if (WITH_BENCH)
         bench/compiler_invoke.cpp 
         bench/ht_benchmark.cpp 
         bench/vectorized_ht.cpp
+        $<TARGET_OBJECTS:inkfuse_runtime>
         )
     target_link_libraries(inkbench PUBLIC benchmark::benchmark inkfuse)
     # Move the testdata into the binary tree for easy ingest tests.

@@ -9,8 +9,8 @@
 
 namespace inkfuse {
 
-/// Default chunk size (8192)
-const uint64_t DEFAULT_CHUNK_SIZE = 1024;
+/// Default chunk size (4096)
+const uint64_t DEFAULT_CHUNK_SIZE = 4096;
 
 /// A column within a FuseChunk.
 struct Column {
