@@ -39,7 +39,7 @@ struct Pipeline {
       }
 
       ~ROFScopeGuard() {
-         if (pipe.getSubops().size() > (size_at_start + 2)) {
+         if (pipe.getSubops().size() > (size_at_start)) {
             // Start vectorized execution at the suboperator after the scope guard was set up.
             pipe.getSubops()[size_at_start]->setROFStrategy(
                Suboperator::OptimizationProperties::ROFStrategy::BeginVectorized);
