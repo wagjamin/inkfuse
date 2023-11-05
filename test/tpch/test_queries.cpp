@@ -33,6 +33,7 @@ const std::unordered_map<std::string, FunctionT> generator_map{
    {"q1", tpch::q1},
    {"q3", tpch::q3},
    {"q4", tpch::q4},
+   {"q5", tpch::q5},
    {"q6", tpch::q6},
    {"q14", tpch::q14},
    {"q18", tpch::q18},
@@ -45,6 +46,8 @@ std::unordered_map<std::string, size_t> expected_rows{
    // Despite LIMIT 10, only 8 rows quality on the tiny SF
    {"q3", 8},
    {"q4", 5},
+   // One result for JAPAN
+   {"q5", 1},
    {"q6", 1},
    {"q14", 1},
    {"q18", 0},
@@ -71,7 +74,7 @@ INSTANTIATE_TEST_CASE_P(
    tpch_queries,
    TPCHQueriesTestT,
    ::testing::Combine(
-      ::testing::Values("q1", "q3", "q4", "q6", "q14", "q18", "l_count", "l_point"),
+      ::testing::Values("q1", "q3", "q4", "q5", "q6", "q14", "q18", "l_count", "l_point"),
       ::testing::Values(
          PipelineExecutor::ExecutionMode::Fused,
          PipelineExecutor::ExecutionMode::Interpreted,
