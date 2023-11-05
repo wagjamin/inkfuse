@@ -22,6 +22,8 @@ std::unique_ptr<Print> q1(const Schema& schema);
 std::unique_ptr<Print> q3(const Schema& schema);
 /// Join (very small build, big probe) ~70x difference
 std::unique_ptr<Print> q4(const Schema& schema);
+/// Join (moderate build, big probe) up to ~100x difference
+std::unique_ptr<Print> q5(const Schema& schema);
 /// Selective filters
 std::unique_ptr<Print> q6(const Schema& schema);
 /// Join (moderate build, moderate probe) ~2x difference
