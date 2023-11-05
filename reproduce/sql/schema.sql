@@ -1,7 +1,9 @@
+-- Align schema to allow for a fair comparison with InkFuse
 -- Decimals are turned into DOUBLE PRECISION
 -- Any VARCHARs/CHARs (apart from char(1)) are turned into TEXT
 -- Removed Primary key so other system's can't use B-Trees.
 -- InkFuse always does full scans.
+
 create table customer (
    c_custkey integer not null,
    c_name text not null,
@@ -49,13 +51,39 @@ create table lineitem (
 
 create table part (
   p_partkey integer not null,
-  p_name varchar(55) not null,
-  p_mfgr char(25) not null,
-  p_brand char(10) not null,
-  p_type varchar(25) not null,
+  p_name text not null,
+  p_mfgr text not null,
+  p_brand text not null,
+  p_type text not null,
   p_size integer not null,
-  p_container char(10) not null,
-  p_retailprice decimal(12,2) not null,
-  p_comment varchar(23) not null
+  p_container text not null,
+  p_retailprice double precision not null,
+  p_comment text not null
   -- primary key (p_partkey)
+);
+
+create table supplier (
+   s_suppkey integer not null,
+   s_name text not null,
+   s_address text not null,
+   s_nationkey integer not null,
+   s_phone text not null,
+   s_acctbal double precision not null,
+   s_comment text not null,
+   -- primary key (s_suppkey)
+);
+
+create table nation (
+   n_nationkey integer not null,
+   n_name text not null,
+   n_regionkey integer not null,
+   n_comment text not null,
+   -- primary key (n_nationkey)
+);
+
+create table region (
+   r_regionkey integer not null,
+   r_name text not null,
+   r_comment text not null,
+   -- primary key (r_regionkey)
 );

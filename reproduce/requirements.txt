@@ -1,4 +1,4 @@
-duckdb==0.7.1
+duckdb==0.9.1
 tableauhyperapi
 numpy
 matplotlib
