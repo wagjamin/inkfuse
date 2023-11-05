@@ -15,13 +15,13 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # Generate DWARF 4 in debug to work on older GDB versions
 # flto required as xxhash is also built with flto to allow efficient inlining
 # of the hash functions.
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -gdwarf-4 -stdlib=libc++ -flto")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -gdwarf-4 -stdlib=libc++")
 # For benchmarks: easier profiling & links against system installed googlebench
 # if that was build with non libcxx.
 # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -gdwarf-4 -flto -fno-omit-frame-pointer")
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g -O0 -fsanitize=address")
-set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -g -O3")
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g -O0 -fsanitize=address -flto=thin")
+set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -g -O3 -flto")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -flto")
 
 # ---------------------------------------------------------------------------
 # Dependencies
@@ -126,6 +126,7 @@ set(SRC_CC
         "${CMAKE_SOURCE_DIR}/src/codegen/Value.cpp"
         "${CMAKE_SOURCE_DIR}/src/codegen/Statement.cpp"
         "${CMAKE_SOURCE_DIR}/src/codegen/backend_c/BackendC.cpp"
+        "${CMAKE_SOURCE_DIR}/src/codegen/backend_c/FunctionsC.cpp"
         "${CMAKE_SOURCE_DIR}/src/codegen/backend_c/ScopedWriter.cpp"
         "${CMAKE_SOURCE_DIR}/src/runtime/Runtime.cpp"
         "${CMAKE_SOURCE_DIR}/src/exec/ExecutionContext.cpp"

@@ -11,6 +11,8 @@ namespace IR {
 /// Value of a certain type
 struct Value {
    virtual TypeArc getType() const = 0;
+
+   virtual bool supportsInlining() const { return true; }
    virtual std::string str() const { return ""; };
 
    virtual std::unique_ptr<Value> copy() = 0;
@@ -184,7 +186,60 @@ struct StringVal : public Value {
    }
 
    private:
-   StringVal(std::string value): value(std::move(value)), value_ptr(this->value.data()) {
+   StringVal(std::string value) : value(std::move(value)), value_ptr(this->value.data()) {
+   }
+};
+
+/// A list of strings.Can be extended to a general-purpose value list in the future.
+struct StringList : public Value {
+   struct StringListView {
+      const char** start;
+      uint64_t size;
+   };
+
+   static ValuePtr build(std::vector<std::string> strings_) {
+      return ValuePtr(new StringList(std::move(strings_)));
+   }
+
+   TypeArc getType() const override {
+      // Pointer behind which the actual `StringListView` hides.
+      return IR::Pointer::build(IR::Char::build());
+   };
+
+   // String list cannot be inlined. It needs to stay an abstract char*.
+   bool supportsInlining() const override { return false; };
+
+   std::string str() const override {
+      throw std::runtime_error("str() on StringList not implemented");
+   };
+
+   std::unique_ptr<Value> copy() override {
+      return StringList::build(strings);
+   };
+
+   void* rawData() override {
+      // Return the raw state that can be interpreted by the runtime.
+      assert(raw_view.size < 1000);
+      assert(erased_view == &raw_view);
+      return &erased_view;
+   }
+
+   std::vector<std::string> strings;
+   std::unique_ptr<const char*[]> raw_chars;
+   StringListView raw_view;
+   void* erased_view;
+
+   private:
+   StringList(std::vector<std::string> strings_) : strings(std::move(strings_)) {
+      raw_chars = std::make_unique<const char*[]>(strings.size());
+      for (size_t k = 0; k < strings.size(); ++k) {
+         raw_chars[k] = strings[k].c_str();
+      }
+      raw_view = StringListView{
+         .start = raw_chars.get(),
+         .size = strings.size(),
+      };
+      erased_view = &raw_view;
    }
 };
 

@@ -195,6 +195,9 @@ int main(int argc, char* argv[]) {
                } else if (split[1] == "q18") {
                   auto q = tpch::q18(*loaded);
                   runQuery("q18", std::move(q), mode, thread_count);
+               } else if (split[1] == "q19") {
+                  auto q = tpch::q19(*loaded);
+                  runQuery("q19", std::move(q), mode, thread_count);
                } else if (split[1] == "l_count") {
                   auto q = tpch::l_count(*loaded);
                   runQuery("l_count", std::move(q), mode, thread_count);
@@ -202,7 +205,7 @@ int main(int argc, char* argv[]) {
                   auto q = tpch::l_point(*loaded);
                   runQuery("l_point", std::move(q), mode, thread_count);
                } else {
-                  std::cout << "Unrecognized query - we only support {q1, q3, q4, q5, q6, q14, q18, l_count, l_point}\n";
+                  std::cout << "Unrecognized query - we only support {q1, q3, q4, q5, q6, q14, q18, q19, l_count, l_point}\n";
                }
             }
          } else {

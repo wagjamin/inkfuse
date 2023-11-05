@@ -43,7 +43,7 @@ namespace inkfuse {
    }                                                                                                               \
                                                                                                                    \
    IR::ExprPtr pname##ResolveErased(const Suboperator& op, const IR::TypeArc& type, CompilationContext& context) const { \
-      if (!pname) {                                                                                                 \
+      if (!pname || !pname->supportsInlining()) {                                                                  \
          const auto& program = context.getProgram();                                                               \
          auto state_expr = context.accessGlobalState(op);                                                          \
          auto casted_state = IR::CastExpr::build(                                                                  \
