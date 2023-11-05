@@ -19,7 +19,7 @@ def set_up_schema(con):
 
 
 def load_data(con):
-    tables = ['lineitem', 'customer', 'orders', 'part']
+    tables = ['lineitem', 'customer', 'orders', 'part', 'supplier', 'nation', 'region']
     for table in tables:
         print(f'Loading {table}')
         con.execute(f"INSERT INTO {table} SELECT * FROM read_csv_auto('data/{table}.tbl', delim='|', header=False)")
