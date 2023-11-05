@@ -60,11 +60,14 @@ struct BackendC : public IR::Backend {
    std::unique_ptr<IR::BackendProgram> generate(const IR::Program& program) override;
 
    private:
+   /// Runtime function implementations that are added to the global runtime implementation.
+   static char* runtime_functions;
+
    /// Compile an included other program.
    void compileInclude(const IR::Program& include, ScopedWriter& writer);
 
    /// Set up the preamble.
-   static void createPreamble(ScopedWriter& writer);
+   static void createPreamble(ScopedWriter& writer, bool is_runtime);
 
    /// Add a type description to the backing string stream.
    static void typeDescription(const IR::Type& type, ScopedWriter::Statement& writer);

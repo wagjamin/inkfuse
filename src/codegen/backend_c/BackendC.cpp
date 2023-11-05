@@ -211,7 +211,7 @@ std::unique_ptr<IR::BackendProgram> BackendC::generate(const IR::Program& progra
    ScopedWriter writer;
 
    // Step 1: Set up the preamble.
-   createPreamble(writer);
+   createPreamble(writer, program.program_name == "global_runtime");
 
    // Step 2: Set up the includes.
    for (const auto& include : program.getIncludes()) {
@@ -231,12 +231,16 @@ std::unique_ptr<IR::BackendProgram> BackendC::generate(const IR::Program& progra
    return std::make_unique<BackendProgramC>(*this, writer.str(), program.program_name);
 }
 
-void BackendC::createPreamble(ScopedWriter& writer) {
+void BackendC::createPreamble(ScopedWriter& writer, bool is_runtime) {
    // Include the integer types needed.
    writer.stmt(false).stream() << "#include <stdint.h>";
    // We need to access strcmp.
    writer.stmt(false).stream() << "#include <string.h>";
    writer.stmt(false).stream() << "#include <stdbool.h>\n";
+
+   if (is_runtime) {
+       writer.stmt(false).stream() << runtime_functions;
+   }
 }
 
 void BackendC::compileInclude(const IR::Program& include, ScopedWriter& writer) {
@@ -493,6 +497,12 @@ void BackendC::compileExpression(const IR::Expr& expr, ScopedWriter::Statement& 
             stmt.stream() << ", ";
             compileExpression(*type.children[1], stmt);
             stmt.stream() << ") == 0)";
+         } else if (type.code == IR::ArithmeticExpr::Opcode::StrInList) {
+             stmt.stream() << "in_strlist(";
+            compileExpression(*type.children[0], stmt);
+            stmt.stream() << ", ";
+            compileExpression(*type.children[1], stmt);
+            stmt.stream() << ")";
          } else {
             // Regular arithmethic operation that's directly supported by C.
             assert(opcode_map.count(type.code));

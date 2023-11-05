@@ -21,6 +21,32 @@ using Node = ExpressionOp::Node;
 using ComputeNode = ExpressionOp::ComputeNode;
 using IURefNode = ExpressionOp::IURefNode;
 
+// Utility to make it easier to build expressions.
+template <ComputeNode::Type type>
+Node* Concatenate(
+   std::vector<ExpressionOp::NodePtr>& pred_nodes,
+   std::vector<Node*>
+      or_nodes) {
+   static_assert(type == ComputeNode::Type::Or || type == ComputeNode::Type::And);
+   assert(or_nodes.size() >= 2);
+   Node* curr_top = pred_nodes.emplace_back(
+                                 std::make_unique<ComputeNode>(
+                                    type,
+                                    std::vector<Node*>{or_nodes[0], or_nodes[1]}))
+                       .get();
+   for (auto node = or_nodes.begin() + 2; node < or_nodes.end(); ++node) {
+      curr_top = pred_nodes.emplace_back(
+                              std::make_unique<ComputeNode>(
+                                 type,
+                                 std::vector<Node*>{curr_top, *node}))
+                    .get();
+   }
+   return curr_top;
+}
+
+constexpr auto Andify = Concatenate<ComputeNode::Type::And>;
+constexpr auto Orify = Concatenate<ComputeNode::Type::Or>;
+
 // Types used throughout TPC-H.
 const auto t_i4 = IR::SignedInt::build(4);
 const auto t_f8 = IR::Float::build(8);
@@ -733,7 +759,7 @@ std::unique_ptr<Print> q5(const Schema& schema) {
       JoinType::Inner,
       true);
    auto& n_c_join_ref = *n_c_join;
-   assert(n_c_join_ref.getOutput().size() == 3);
+   assert(n_c_join_ref.getOutput().size() == 4);
 
    // 6.1 Scan from orders.
    auto& orders_rel = schema.at("orders");
@@ -883,7 +909,7 @@ std::unique_ptr<Print> q5(const Schema& schema) {
       JoinType::Inner,
       true);
    auto& s_l_join_ref = *s_l_join;
-   assert(s_l_join_ref.getOutput().size() == 6);
+   assert(s_l_join_ref.getOutput().size() == 7);
 
    // 12. Aggregate (n_name, sum(l_extendedprice * (1 - l_discount)))
    // 12.1 Expression
@@ -1360,6 +1386,404 @@ std::unique_ptr<Print> q18(const Schema& schema) {
                        std::move(out_ius), std::move(colnames));
 }
 
+std::unique_ptr<Print> q19(const Schema& schema) {
+   // Build a branch for a part condition.
+   auto build_part_branch = [](
+                               std::vector<ExpressionOp::NodePtr>& pred_nodes,
+                               Node* p_brand_ref,
+                               Node* p_size_ref,
+                               Node* p_container_ref,
+                               std::string brand,
+                               std::pair<int32_t, int32_t>
+                                  size_between,
+                               std::vector<std::string>
+                                  container_list) -> Node* {
+      auto p_brand_pred = pred_nodes.emplace_back(
+                                       std::make_unique<ComputeNode>(
+                                          ComputeNode::Type::StrEquals,
+                                          IR::StringVal::build(brand),
+                                          p_brand_ref))
+                             .get();
+      auto p_size_pred_1 = pred_nodes.emplace_back(
+                                        std::make_unique<ComputeNode>(
+                                           ComputeNode::Type::GreaterEqual,
+                                           IR::SI<4>::build(size_between.second),
+                                           p_size_ref))
+                              .get();
+      auto p_size_pred_2 = pred_nodes.emplace_back(
+                                        std::make_unique<ComputeNode>(
+                                           ComputeNode::Type::LessEqual,
+                                           IR::SI<4>::build(size_between.first),
+                                           p_size_ref))
+                              .get();
+
+      auto p_container_pred = pred_nodes.emplace_back(
+                                           std::make_unique<ComputeNode>(
+                                              ComputeNode::Type::InList,
+                                              IR::StringList::build(container_list),
+                                              p_container_ref))
+                                 .get();
+
+      return Andify(pred_nodes,
+                    {p_size_pred_1, p_size_pred_2, p_brand_pred, p_container_pred});
+   };
+
+   // Build a branch for a lineitem condition.
+   auto build_lineitem_branch = [](
+                                   std::vector<ExpressionOp::NodePtr>& pred_nodes,
+                                   Node* l_quantity_ref,
+                                   std::pair<int32_t, int32_t>
+                                      l_quantity_between) -> Node* {
+      auto l_quantity_pred_1 = pred_nodes.emplace_back(
+                                            std::make_unique<ComputeNode>(
+                                               ComputeNode::Type::GreaterEqual,
+                                               IR::F8::build(l_quantity_between.second + 0.001),
+                                               l_quantity_ref))
+                                  .get();
+      auto l_quantity_pred_2 = pred_nodes.emplace_back(
+                                            std::make_unique<ComputeNode>(
+                                               ComputeNode::Type::LessEqual,
+                                               IR::F8::build(l_quantity_between.first - 0.001),
+                                               l_quantity_ref))
+                                  .get();
+
+      return Andify(pred_nodes,
+                    {l_quantity_pred_1, l_quantity_pred_2});
+   };
+
+   // 1. Scan part.
+   auto& rel_p = schema.at("part");
+   std::vector<std::string> cols_p{
+      "p_partkey",
+      "p_brand",
+      "p_container",
+      "p_size",
+   };
+   auto scan_p = TableScan::build(*rel_p, cols_p, "scan_part");
+   auto& scan_p_ref = *scan_p;
+
+   // 2. Pushed down filter on part.
+   std::vector<ExpressionOp::NodePtr> pred_nodes_p;
+   auto p_partkey_ref = pred_nodes_p.emplace_back(std::make_unique<IURefNode>(
+                                                     scan_p_ref.getOutput()[getScanIndex("p_partkey", cols_p)]))
+                           .get();
+   auto p_brand_ref = pred_nodes_p.emplace_back(std::make_unique<IURefNode>(
+                                                   scan_p_ref.getOutput()[getScanIndex("p_brand", cols_p)]))
+                         .get();
+   auto p_container_ref = pred_nodes_p.emplace_back(std::make_unique<IURefNode>(
+                                                       scan_p_ref.getOutput()[getScanIndex("p_container", cols_p)]))
+                             .get();
+   auto p_size_ref = pred_nodes_p.emplace_back(std::make_unique<IURefNode>(
+                                                  scan_p_ref.getOutput()[getScanIndex("p_size", cols_p)]))
+                        .get();
+
+   // OR branch 1
+   Node* scan_p_branch_1 = build_part_branch(
+      pred_nodes_p,
+      p_brand_ref,
+      p_size_ref,
+      p_container_ref,
+      "Brand#12",
+      {1, 5},
+      {"SM CASE", "SM BOX", "SM PACK", "SM PKG"});
+   // OR branch 1
+   Node* scan_p_branch_2 = build_part_branch(
+      pred_nodes_p,
+      p_brand_ref,
+      p_size_ref,
+      p_container_ref,
+      "Brand#23",
+      {1, 10},
+      {"MED BAG", "MED BOX", "MED PKG", "MED PACK"});
+   // OR branch 1
+   Node* scan_p_branch_3 = build_part_branch(
+      pred_nodes_p,
+      p_brand_ref,
+      p_size_ref,
+      p_container_ref,
+      "Brand#34",
+      {1, 15},
+      {"LG CASE", "LG BOX", "LG PACK", "LG PKG"});
+
+   // OR it all together.
+   auto scan_p_filter = Orify(
+      pred_nodes_p, {scan_p_branch_1, scan_p_branch_2, scan_p_branch_3});
+
+   std::vector<RelAlgOpPtr> expr_p_children;
+   expr_p_children.push_back(std::move(scan_p));
+   auto expr_p_node = ExpressionOp::build(
+      std::move(expr_p_children),
+      "part_filter",
+      std::vector<Node*>{scan_p_filter},
+      std::move(pred_nodes_p));
+   auto& expr_p_ref = *expr_p_node;
+   assert(expr_p_ref.getOutput().size() == 1);
+
+   std::vector<RelAlgOpPtr> filter_p_children;
+   filter_p_children.push_back(std::move(expr_p_node));
+   std::vector<const IU*> filter_p_redefined{
+      scan_p_ref.getOutput()[0],
+      scan_p_ref.getOutput()[1],
+      scan_p_ref.getOutput()[2],
+      scan_p_ref.getOutput()[3],
+   };
+   auto filter_p = Filter::build(
+      std::move(filter_p_children),
+      "filter_p",
+      std::move(filter_p_redefined),
+      *expr_p_ref.getOutput()[0]);
+   auto& filter_p_ref = *filter_p;
+   assert(filter_p->getOutput().size() == 4);
+
+   // 3. Scan lineitem.
+   auto& rel_l = schema.at("lineitem");
+   std::vector<std::string> cols_l{
+      "l_partkey",
+      "l_shipmode",
+      "l_quantity",
+      "l_shipinstruct",
+      "l_discount",
+      "l_extendedprice",
+   };
+
+   // 4. Pushed down lineitem filter.
+   auto scan_l = TableScan::build(*rel_l, cols_l, "scan_lineitem");
+   auto& scan_l_ref = *scan_l;
+
+   std::vector<ExpressionOp::NodePtr> pred_nodes_l;
+   auto l_partkey_ref = pred_nodes_l.emplace_back(std::make_unique<IURefNode>(
+                                                     scan_l_ref.getOutput()[getScanIndex("l_partkey", cols_l)]))
+                           .get();
+   auto l_shipmode_ref = pred_nodes_l.emplace_back(std::make_unique<IURefNode>(
+                                                      scan_l_ref.getOutput()[getScanIndex("l_shipmode", cols_l)]))
+                            .get();
+   auto l_quantity_ref = pred_nodes_l.emplace_back(std::make_unique<IURefNode>(
+                                                      scan_l_ref.getOutput()[getScanIndex("l_quantity", cols_l)]))
+                            .get();
+   auto l_shipinstruct_ref = pred_nodes_l.emplace_back(std::make_unique<IURefNode>(
+                                                          scan_l_ref.getOutput()[getScanIndex("l_shipinstruct", cols_l)]))
+                                .get();
+
+   auto l_shipinstruct_pred = pred_nodes_l.emplace_back(
+                                             std::make_unique<ComputeNode>(
+                                                ComputeNode::Type::StrEquals,
+                                                IR::StringVal::build("DELIVER IN PERSON"),
+                                                l_shipinstruct_ref))
+                                 .get();
+   auto l_shipmode_pred = pred_nodes_l.emplace_back(
+                                         std::make_unique<ComputeNode>(
+                                            ComputeNode::Type::InList,
+                                            IR::StringList::build({"AIR", "AIR REG"}),
+                                            l_shipmode_ref))
+                             .get();
+
+   // OR branch 1
+   Node* scan_l_branch_1 = build_lineitem_branch(
+      pred_nodes_l,
+      l_quantity_ref,
+      {1, 11});
+   // OR branch 1
+
+   // OR branch 2
+   Node* scan_l_branch_2 = build_lineitem_branch(
+      pred_nodes_l,
+      l_quantity_ref,
+      {10, 20});
+
+   Node* scan_l_branch_3 = build_lineitem_branch(
+      pred_nodes_l,
+      l_quantity_ref,
+      {20, 30});
+
+   auto l_common_or = Orify(pred_nodes_l, {scan_l_branch_1, scan_l_branch_2, scan_l_branch_3});
+
+   auto l_common_and = Andify(pred_nodes_l, {l_shipinstruct_pred, l_shipmode_pred, l_common_or});
+
+   std::vector<RelAlgOpPtr> expr_l_children;
+   expr_l_children.push_back(std::move(scan_l));
+   auto expr_l_node = ExpressionOp::build(
+      std::move(expr_l_children),
+      "lineitem_filter",
+      std::vector<Node*>{l_common_and},
+      std::move(pred_nodes_l));
+   auto& expr_l_ref = *expr_l_node;
+   assert(expr_l_ref.getOutput().size() == 1);
+
+   std::vector<RelAlgOpPtr> filter_l_children;
+   filter_l_children.push_back(std::move(expr_l_node));
+   std::vector<const IU*> filter_l_redefined{
+      scan_l_ref.getOutput()[0],
+      scan_l_ref.getOutput()[2],
+      // l_shipinstruct and l_shipmode are no longer needed
+      scan_l_ref.getOutput()[4],
+      scan_l_ref.getOutput()[5],
+   };
+   auto filter_l = Filter::build(
+      std::move(filter_l_children),
+      "filter_l",
+      std::move(filter_l_redefined),
+      *expr_l_ref.getOutput()[0]);
+   auto& filter_l_ref = *filter_l;
+   assert(filter_l->getOutput().size() == 4);
+
+   // 5. Join the two
+   std::vector<RelAlgOpPtr> p_l_join_children;
+   p_l_join_children.push_back(std::move(filter_p));
+   p_l_join_children.push_back(std::move(filter_l));
+   auto p_l_join = Join::build(
+      std::move(p_l_join_children),
+      "p_l_join",
+      // Keys left (p_partkey)
+      {filter_p_ref.getOutput()[0]},
+      // Payload left (p_brand, p_container, p_size)
+      {
+         filter_p_ref.getOutput()[1],
+         filter_p_ref.getOutput()[2],
+         filter_p_ref.getOutput()[3],
+      },
+      // Keys right (l_partkey)
+      {filter_l_ref.getOutput()[0]},
+      // Payload right (l_quantity, l_discount, l_extendedprice)
+      {
+         filter_l_ref.getOutput()[1],
+         filter_l_ref.getOutput()[2],
+         filter_l_ref.getOutput()[3],
+      },
+      JoinType::Inner,
+      true);
+   auto& p_l_join_ref = *p_l_join;
+
+   // 6. Filter again, we need to make sure the right tuples survived.
+   std::vector<ExpressionOp::NodePtr> pred_nodes_p_l;
+   auto p_l_brand_ref = pred_nodes_p_l.emplace_back(std::make_unique<IURefNode>(
+                                                       p_l_join_ref.getOutput()[1]))
+                           .get();
+   auto p_l_container_ref = pred_nodes_p_l.emplace_back(std::make_unique<IURefNode>(
+                                                           p_l_join_ref.getOutput()[2]))
+                               .get();
+   auto p_l_size_ref = pred_nodes_p_l.emplace_back(std::make_unique<IURefNode>(
+                                                      p_l_join_ref.getOutput()[3]))
+                          .get();
+   auto p_l_quantity_ref = pred_nodes_p_l.emplace_back(std::make_unique<IURefNode>(
+                                                          p_l_join_ref.getOutput()[5]))
+                              .get();
+
+   // Or branch 1
+   Node* p_l_branch_1_l = build_lineitem_branch(
+      pred_nodes_p_l,
+      p_l_quantity_ref,
+      {1, 11});
+   Node* p_l_branch_1_p = build_part_branch(
+      pred_nodes_p_l,
+      p_l_brand_ref,
+      p_l_size_ref,
+      p_l_container_ref,
+      "Brand#12",
+      {1, 5},
+      {"SM CASE", "SM BOX", "SM PACK", "SM PKG"});
+   auto p_l_branch_1 = Andify(pred_nodes_p_l, {p_l_branch_1_l, p_l_branch_1_p});
+
+   // Or branch 2
+   Node* p_l_branch_2_l = build_lineitem_branch(
+      pred_nodes_p_l,
+      p_l_quantity_ref,
+      {10, 20});
+   Node* p_l_branch_2_p = build_part_branch(
+      pred_nodes_p_l,
+      p_l_brand_ref,
+      p_l_size_ref,
+      p_l_container_ref,
+      "Brand#23",
+      {1, 10},
+      {"MED BAG", "MED BOX", "MED PKG", "MED PACK"});
+   auto p_l_branch_2 = Andify(pred_nodes_p_l, {p_l_branch_2_l, p_l_branch_2_p});
+
+   // Or branch 3
+   Node* p_l_branch_3_l = build_lineitem_branch(
+      pred_nodes_p_l,
+      p_l_quantity_ref,
+      {20, 30});
+   Node* p_l_branch_3_p = build_part_branch(
+      pred_nodes_p_l,
+      p_l_brand_ref,
+      p_l_size_ref,
+      p_l_container_ref,
+      "Brand#34",
+      {1, 15},
+      {"LG CASE", "LG BOX", "LG PACK", "LG PKG"});
+   auto p_l_branch_3 = Andify(pred_nodes_p_l, {p_l_branch_3_l, p_l_branch_3_p});
+
+   auto p_l_common_or = Orify(pred_nodes_p_l, {p_l_branch_1, p_l_branch_2, p_l_branch_3});
+
+   std::vector<RelAlgOpPtr> expr_p_l_children;
+   expr_p_l_children.push_back(std::move(p_l_join));
+   auto expr_p_l_node = ExpressionOp::build(
+      std::move(expr_p_l_children),
+      "final_filter",
+      std::vector<Node*>{p_l_common_or},
+      std::move(pred_nodes_p_l));
+   auto& expr_p_l_ref = *expr_p_l_node;
+   assert(expr_p_l_ref.getOutput().size() == 1);
+
+   std::vector<RelAlgOpPtr> filter_p_l_children;
+   filter_p_l_children.push_back(std::move(expr_p_l_node));
+   std::vector<const IU*> filter_p_l_redefined{
+      // l_discount, l_extendedprice
+      p_l_join_ref.getOutput()[6],
+      p_l_join_ref.getOutput()[7],
+   };
+   auto filter_p_l = Filter::build(
+      std::move(filter_p_l_children),
+      "filter_p_l",
+      std::move(filter_p_l_redefined),
+      *expr_p_l_ref.getOutput()[0]);
+   auto& filter_p_l_ref = *filter_p_l;
+   assert(filter_p_l->getOutput().size() == 2);
+
+   // 7. Aggregate the result.
+   // 7.1 Compute (l_extendedprice * (1 - l_discount))
+   std::vector<ExpressionOp::NodePtr> agg_nodes;
+   agg_nodes.emplace_back(std::make_unique<IURefNode>(filter_p_l_ref.getOutput()[0]));
+   agg_nodes.emplace_back(std::make_unique<IURefNode>(filter_p_l_ref.getOutput()[1]));
+   agg_nodes.emplace_back(std::make_unique<ComputeNode>(ComputeNode::Type::Subtract, IR::F8::build(1.0), agg_nodes[0].get()));
+   agg_nodes.emplace_back(std::make_unique<ComputeNode>(ComputeNode::Type::Multiply, std::vector<Node*>{agg_nodes[1].get(), agg_nodes[2].get()}));
+   auto agg_nodes_root = agg_nodes[3].get();
+   std::vector<RelAlgOpPtr> agg_e_children;
+   agg_e_children.push_back(std::move(filter_p_l));
+   auto agg_e = ExpressionOp::build(
+      std::move(agg_e_children),
+      "agg_expr",
+      {agg_nodes_root},
+      std::move(agg_nodes));
+   auto& agg_e_ref = *agg_e;
+
+   // 7.2 Perform the aggregation
+   std::vector<RelAlgOpPtr> agg_children;
+   agg_children.push_back(std::move(agg_e));
+   // Empty group-by key 
+   std::vector<const IU*> group_by{};
+   std::vector<AggregateFunctions::Description> aggregates{
+      {*agg_e_ref.getOutput()[0], AggregateFunctions::Opcode::Sum}};
+   auto agg = Aggregation::build(
+      std::move(agg_children),
+      "agg",
+      std::move(group_by),
+      std::move(aggregates));
+
+   // Print result.
+   std::vector<const IU*> out_ius{
+      agg->getOutput()[0],
+   };
+   std::vector<std::string> colnames = {
+      "revenue",
+   };
+   std::vector<RelAlgOpPtr> print_children;
+   print_children.push_back(std::move(agg));
+   return Print::build(std::move(print_children),
+                       std::move(out_ius), std::move(colnames));
+
+}
+
 std::unique_ptr<Print> l_count(const inkfuse::Schema& schema) {
    // 1. Scan from lineitem.
    auto& rel = schema.at("lineitem");
@@ -1436,5 +1860,4 @@ std::unique_ptr<Print> l_point(const inkfuse::Schema& schema) {
    return Print::build(std::move(print_children),
                        std::move(out_ius), std::move(colnames));
 }
-
 }

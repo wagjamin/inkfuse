@@ -22,7 +22,7 @@ IR::TypeArc ExpressionOp::derive(ComputeNode::Type code, const std::vector<IR::T
       ComputeNode::Type::Less, ComputeNode::Type::LessEqual,
       ComputeNode::Type::Greater, ComputeNode::Type::GreaterEqual,
       ComputeNode::Type::StrEquals, ComputeNode::Type::And,
-      ComputeNode::Type::Or};
+      ComputeNode::Type::Or, ComputeNode::Type::InList};
    if (bool_returning.contains(code)) {
       return IR::Bool::build();
    }
