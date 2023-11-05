@@ -7,6 +7,7 @@
 #include "runtime/MemoryRuntime.h"
 
 #include <chrono>
+#include <iostream>
 
 namespace inkfuse {
 
@@ -31,6 +32,33 @@ std::pair<size_t, size_t> computeTrials(double interpreted_throughput, double co
    // Otherwise try out both 10% of the time.
    return {4, 4};
 }
+
+/// Try to pin the current thread to a specific core.
+void setCpuAffinity(size_t target_cpu) {
+   if (target_cpu >= std::thread::hardware_concurrency()) {
+      std::cerr << "Too many threads to set CPU affinity.\n";
+      return;
+   }
+   cpu_set_t cpuset;
+   CPU_ZERO(&cpuset);
+   CPU_SET(target_cpu, &cpuset);
+   int rc = pthread_setaffinity_np(pthread_self(),
+                                   sizeof(cpu_set_t), &cpuset);
+   if (rc != 0) {
+      std::cerr << "Could not set worker thread affinity: " << rc << "\n";
+   }
+}
+
+void resetCpuAffinity() {
+   cpu_set_t cpuset;
+   std::memset(&cpuset, ~0, sizeof(cpu_set_t));
+   int rc = pthread_setaffinity_np(pthread_self(),
+                                   sizeof(cpu_set_t), &cpuset);
+   if (rc != 0) {
+      std::cerr << "Could not reset worker thread affinity: " << rc << "\n";
+   }
+}
+
 };
 
 using ROFStrategy = Suboperator::OptimizationProperties::ROFStrategy;
@@ -78,6 +106,8 @@ void PipelineExecutor::preparePipeline(ExecutionMode prep_mode) {
 }
 
 void PipelineExecutor::threadSwimlane(size_t thread_id, OnceBarrier& compile_prep_barrier) {
+   // Set the CPU affinity to make sure the thread doesn't jump across cores.
+   setCpuAffinity(thread_id);
    // Scope guard for memory compile_state->context and flags.
    ExecutionContext::RuntimeGuard guard{*context, thread_id};
    if (mode == ExecutionMode::Fused) {
@@ -170,6 +200,7 @@ void PipelineExecutor::threadSwimlane(size_t thread_id, OnceBarrier& compile_pre
          it_counter++;
       }
    }
+   resetCpuAffinity();
 }
 
 void PipelineExecutor::runSwimlanes() {
