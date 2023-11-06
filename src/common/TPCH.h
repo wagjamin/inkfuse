@@ -34,6 +34,7 @@ std::unique_ptr<Print> q18(const Schema& schema);
 std::unique_ptr<Print> q19(const Schema& schema);
 
 /// Some interesting custom queries. See /tpch for query text.
+std::unique_ptr<Print> q_bigjoin(const Schema& schema);
 std::unique_ptr<Print> l_count(const Schema& schema);
 std::unique_ptr<Print> l_point(const Schema& schema);
 

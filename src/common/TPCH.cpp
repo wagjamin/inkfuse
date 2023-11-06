@@ -1784,6 +1784,59 @@ std::unique_ptr<Print> q19(const Schema& schema) {
 
 }
 
+std::unique_ptr<Print> q_bigjoin(const inkfuse::Schema& schema) {
+   // Join orders onto lineitem.
+   auto& rel_o = schema.at("orders");
+   std::vector<std::string> cols_o{
+      "o_orderkey"};
+   auto scan_o = TableScan::build(*rel_o, cols_o, "scan_o");
+   auto& scan_ref_o = *scan_o;
+
+   auto& rel_l = schema.at("lineitem");
+   std::vector<std::string> cols_l{
+      "l_orderkey"};
+   auto scan_l = TableScan::build(*rel_l, cols_l, "scan_l");
+   auto& scan_ref_l = *scan_l;
+
+   std::vector<RelAlgOpPtr> o_l_join_children;
+   o_l_join_children.push_back(std::move(scan_o));
+   o_l_join_children.push_back(std::move(scan_l));
+   auto o_l_join = Join::build(
+      std::move(o_l_join_children),
+      "o_l_join",
+      // Keys left (o_orderkey)
+      {scan_ref_o.getOutput()[0]},
+      // Payload left ()
+      {},
+      // Keys right (l_orderkey)
+      {scan_ref_l.getOutput()[0]},
+      {},
+      JoinType::Inner,
+      true);
+   auto& o_l_join_ref = *o_l_join;
+
+   // 2. Aggregate count(*).
+   std::vector<RelAlgOpPtr> agg_children;
+   agg_children.push_back(std::move(o_l_join));
+   // Don't group by anything on this query.
+   std::vector<const IU*> group_by{};
+   std::vector<AggregateFunctions::Description> aggregates{
+      {*o_l_join_ref.getOutput()[0], AggregateFunctions::Opcode::Count}};
+   auto agg = Aggregation::build(
+      std::move(agg_children),
+      "agg",
+      std::move(group_by),
+      std::move(aggregates));
+
+   // 6. Print
+   std::vector<const IU*> out_ius{agg->getOutput()[0]};
+   std::vector<std::string> colnames = {"num_rows"};
+   std::vector<RelAlgOpPtr> print_children;
+   print_children.push_back(std::move(agg));
+   return Print::build(std::move(print_children),
+                       std::move(out_ius), std::move(colnames));
+}
+
 std::unique_ptr<Print> l_count(const inkfuse::Schema& schema) {
    // 1. Scan from lineitem.
    auto& rel = schema.at("lineitem");

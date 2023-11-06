@@ -198,6 +198,9 @@ int main(int argc, char* argv[]) {
                } else if (split[1] == "q19") {
                   auto q = tpch::q19(*loaded);
                   runQuery("q19", std::move(q), mode, thread_count);
+               } else if (split[1] == "q_bigjoin") {
+                  auto q = tpch::q_bigjoin(*loaded);
+                  runQuery("q_bigjoin", std::move(q), mode, thread_count);
                } else if (split[1] == "l_count") {
                   auto q = tpch::l_count(*loaded);
                   runQuery("l_count", std::move(q), mode, thread_count);

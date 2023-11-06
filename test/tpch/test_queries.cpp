@@ -38,6 +38,7 @@ const std::unordered_map<std::string, FunctionT> generator_map{
    {"q14", tpch::q14},
    {"q18", tpch::q18},
    {"q19", tpch::q19},
+   {"q_bigjoin", tpch::q_bigjoin},
    {"l_count", tpch::l_count},
    {"l_point", tpch::l_point},
 };
@@ -53,6 +54,7 @@ std::unordered_map<std::string, size_t> expected_rows{
    {"q14", 1},
    {"q18", 0},
    {"q19", 0},
+   {"q_bigjoin", 1},
    {"l_count", 1},
    {"l_point", 6},
 };
@@ -76,7 +78,7 @@ INSTANTIATE_TEST_CASE_P(
    tpch_queries,
    TPCHQueriesTestT,
    ::testing::Combine(
-      ::testing::Values("q1", "q3", "q4", "q5", "q6", "q14", "q18", "q19", "l_count", "l_point"),
+      ::testing::Values("q1", "q3", "q4", "q5", "q6", "q14", "q18", "q19", "l_count", "q_bigjoin", "l_point"),
       ::testing::Values(
          PipelineExecutor::ExecutionMode::Fused,
          PipelineExecutor::ExecutionMode::Interpreted,
