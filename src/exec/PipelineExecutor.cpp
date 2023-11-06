@@ -7,6 +7,7 @@
 #include "runtime/MemoryRuntime.h"
 
 #include <chrono>
+#include <cstring>
 #include <iostream>
 
 namespace inkfuse {
@@ -58,7 +59,6 @@ void resetCpuAffinity() {
       std::cerr << "Could not reset worker thread affinity: " << rc << "\n";
    }
 }
-
 };
 
 using ROFStrategy = Suboperator::OptimizationProperties::ROFStrategy;

@@ -4,7 +4,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cstring>
-#include <iostream>
+#include <thread>
 #include <vector>
 
 using namespace inkfuse;
@@ -285,6 +285,86 @@ void BM_ht_perf_vectorized_inkfuse(benchmark::State& state) {
    state.SetItemsProcessed(state.iterations() * num_elems);
 }
 
+void BM_ht_perf_tat_inkfuse_mt(benchmark::State& state) {
+   const uint64_t num_elems = state.range(0);
+   const uint64_t num_threads = 16;
+   inkfuse::SimpleKeyComparator comp{8};
+   AtomicHashTable<inkfuse::SimpleKeyComparator> ht{comp, 16, 2 * num_elems};
+   for (uint64_t k = 1; k <= num_elems; ++k) {
+      const uint64_t key = 7 * k;
+      char* value = ht.insert<true>(reinterpret_cast<const char*>(&key));
+      reinterpret_cast<uint64_t*>(value)[1] = k;
+   }
+   for (auto _ : state) {
+      auto start = std::chrono::high_resolution_clock::now();
+      std::vector<std::thread> threads;
+      for (size_t th = 0; th < num_threads; ++th) {
+         threads.emplace_back([&, th]() {
+            size_t offset = th * (num_elems / num_threads);
+            for (uint64_t k = 1; k <= num_elems; ++k) {
+               const uint64_t key = 7 * (((k + offset) % num_elems) + 1);
+               const uint64_t hash = ht.compute_hash_and_prefetch_fixed<8>(reinterpret_cast<const char*>(&key));
+               const auto res = ht.lookup(reinterpret_cast<const char*>(&key), hash);
+               if (reinterpret_cast<const uint64_t*>(res)[1] > num_elems) {
+                  throw std::runtime_error("bad ht lookup for " + std::to_string(k));
+               }
+            }
+         });
+      }
+      for (auto& thread : threads) {
+         thread.join();
+      }
+      auto stop = std::chrono::high_resolution_clock::now();
+      auto elapsed_s = std::chrono::duration_cast<std::chrono::duration<double>>(stop - start);
+      state.SetIterationTime(elapsed_s.count());
+   }
+   state.SetItemsProcessed(state.iterations() * num_elems * num_threads);
+}
+
+void BM_ht_perf_vectorized_inkfuse_mt(benchmark::State& state) {
+   const uint64_t num_elems = state.range(0);
+   const uint64_t batch_size = state.range(1);
+   const uint64_t num_threads = 16;
+   inkfuse::SimpleKeyComparator comp{8};
+   AtomicHashTable<inkfuse::SimpleKeyComparator> ht{comp, 16, 2 * num_elems};
+   for (uint64_t k = 1; k <= num_elems; ++k) {
+      const uint64_t key = 7 * k;
+      char* value = ht.insert<true>(reinterpret_cast<const char*>(&key));
+      reinterpret_cast<uint64_t*>(value)[1] = k;
+   }
+   for (auto _ : state) {
+      auto start = std::chrono::high_resolution_clock::now();
+      std::vector<std::thread> threads;
+      for (size_t th = 0; th < num_threads; ++th) {
+         threads.emplace_back([&, th]() {
+            std::vector<uint64_t> keys(batch_size);
+            std::vector<uint64_t> hashes(batch_size);
+            std::vector<char*> results(batch_size);
+            size_t offset = th * (num_elems / num_threads);
+            for (uint64_t k = 1; k <= num_elems; k += batch_size) {
+               const auto curr_batch = std::min(batch_size, num_elems - k + 1);
+               for (uint64_t tid = 0; tid < curr_batch; ++tid) {
+                  keys[tid] = 7 * (((k + tid + offset) % num_elems) + 1);
+               }
+               for (uint64_t tid = 0; tid < curr_batch; ++tid) {
+                  hashes[tid] = ht.compute_hash_and_prefetch_fixed<8>(reinterpret_cast<const char*>(&keys[tid]));
+               }
+               for (uint64_t tid = 0; tid < curr_batch; ++tid) {
+                  results[tid] = ht.lookup(reinterpret_cast<const char*>(&keys[tid]), hashes[tid]);
+               }
+            }
+         });
+      }
+      for (auto& thread : threads) {
+         thread.join();
+      }
+      auto stop = std::chrono::high_resolution_clock::now();
+      auto elapsed_s = std::chrono::duration_cast<std::chrono::duration<double>>(stop - start);
+      state.SetIterationTime(elapsed_s.count());
+   }
+   state.SetItemsProcessed(state.iterations() * num_elems * num_threads);
+}
+
 BENCHMARK(BM_ht_perf_tat)->Arg(1 << 9)->Arg(1 << 13)->Arg(1 << 15)->Arg(1 << 19)->Arg(1 << 21)->Arg(1 << 25)->Arg(1 << 30);
 BENCHMARK(BM_ht_perf_tat_inkfuse)->Arg(1 << 9)->Arg(1 << 13)->Arg(1 << 15)->Arg(1 << 19)->Arg(1 << 21)->Arg(1 << 25)->Arg(1 << 30);
 
@@ -299,5 +379,9 @@ BENCHMARK(BM_ht_perf_vectorized_rof)->ArgPair(1 << 25, 64)->ArgPair(1 << 25, 128
 BENCHMARK(BM_ht_perf_vectorized_inkfuse)->ArgPair(1 << 9, 256)->ArgPair(1 << 13, 256)->ArgPair(1 << 15, 256)->ArgPair(1 << 19, 256)->ArgPair(1 << 21, 256)->ArgPair(1 << 25, 256)->ArgPair(1 << 30, 256);
 // Different internal batch sizes. 256 is a good value.
 BENCHMARK(BM_ht_perf_vectorized_inkfuse)->ArgPair(1 << 25, 64)->ArgPair(1 << 25, 128)->ArgPair(1 << 25, 256)->ArgPair(1 << 25, 512)->ArgPair(1 << 25, 1024)->ArgPair(1 << 25, 2024)->ArgPair(1 << 25, 4048)->ArgPair(1 << 25, 8096)->ArgPair(1 << 25, 16192);
+
+// Multithreaded hash table benchmarks.
+BENCHMARK(BM_ht_perf_tat_inkfuse_mt)->ArgPair(1 << 9, 256)->ArgPair(1 << 13, 256)->ArgPair(1 << 15, 256)->ArgPair(1 << 19, 256)->ArgPair(1 << 21, 256)->ArgPair(1 << 25, 256)->UseManualTime();
+BENCHMARK(BM_ht_perf_vectorized_inkfuse_mt)->ArgPair(1 << 9, 256)->ArgPair(1 << 13, 256)->ArgPair(1 << 15, 256)->ArgPair(1 << 19, 256)->ArgPair(1 << 21, 256)->ArgPair(1 << 25, 256)->UseManualTime();
 
 } // namespace
