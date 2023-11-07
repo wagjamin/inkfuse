@@ -28,7 +28,7 @@ if [[ ! -f umbra_data/tpch_${1} ]]; then
 fi
 
 # Run queries
-for q in 'q1' 'q3' 'q4' 'q6' 'q14' 'q18'
+for q in 'q1' 'q3' 'q4' 'q5' 'q6' 'q13' 'q14' 'q18' 'q19' 'q_bigjoin'
 do
     # LLVM JIT Compilation
     COMPILATIONMODE=o ${UMBRA_BIN} umbra_data/tpch_${1} `for i in $(seq 1 10); do echo sql/${q}.sql; done` | grep 'execution' > umbra_data/${q}_o_res_${1}.csv
