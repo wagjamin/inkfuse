@@ -5,6 +5,11 @@ if [[ $# < 1 ]]; then
   exit 1
 fi
 
+file_shuffle () {
+  shuf $1.tbl > $1_shuffled.tbl
+  mv $1_shuffled.tbl $1.tbl
+}
+
 # Clone TPC-H dbgen tool
 git clone https://github.com/electrum/tpch-dbgen.git
 cd tpch-dbgen
@@ -18,6 +23,16 @@ mkdir -p data
 mv -f tpch-dbgen/*.tbl data
 # Drop tpch-dbgen again
 rm -rf tpch-dbgen
+
+# Shuffle data.
+cd data 
+echo "Shuffling Generated Data"
+file_shuffle "lineitem"
+file_shuffle "orders"
+file_shuffle "partsupp"
+file_shuffle "part"
+file_shuffle "customer"
+cd -
 
 # Normalize data for system ingest
 if [[ $# -ge 2 ]]; then

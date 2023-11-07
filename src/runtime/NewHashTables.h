@@ -57,6 +57,10 @@ struct AtomicHashTable {
    /// Already requires the hash was computed.
    char* lookup(const char* key, uint64_t hash) const;
    /// Get the pointer to a given key, or nullptr if the group does not exist.
+   /// Already requires the hash was computed.
+   /// Variation for outer joins.
+   char* lookupOuter(const char* key, uint64_t hash) const;
+   /// Get the pointer to a given key, or nullptr if the group does not exist.
    /// If it finds a slot, disables it. Needed for e.g. left semi joins.
    /// Already requires the hash was computed.
    char* lookupDisable(const char* key, uint64_t hash);
@@ -74,12 +78,20 @@ struct AtomicHashTable {
    /// Insert variation when we already computed the hash.
    template <bool copy_only_key = true>
    char* insert(const char* key, uint64_t hash);
+   /// Insert variation when we already computed the hash.
+   template <bool copy_only_key = true>
+   char* insertOuter(const char* key, uint64_t hash);
+
+   /// Hash table outer join iterator for init the HashTableSource.
+   void iteratorStart(char** it_data, size_t* it_idx);
+   /// Hash table outer join iterator advance for the HashTableSource.
+   void iteratorAdvance(char** it_data, size_t* it_idx);
 
    private:
    /// An iterator within the atomic hash table.
    struct IteratorState {
       /// Index in the linear probing hash table.
-      size_t idx;
+      uint64_t idx;
       /// Key.
       char* data_ptr;
       /// Tag.
@@ -90,7 +102,6 @@ struct AtomicHashTable {
    /// Get an iterator to the beginning of the hash table. Points to the first
    /// element in the hash table.
    inline IteratorState itStart() const;
-   /// Advance an iterator within the hash table by one slot.
    /// Advance an iterator within the hash table by one slot.
    inline void itAdvance(IteratorState& it) const;
    /// Advance an iterator within the hash table. Sets the pointer to nullptr when the end of the hash table is reached.

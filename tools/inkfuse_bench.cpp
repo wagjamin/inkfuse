@@ -44,8 +44,6 @@ const std::vector<std::pair<std::string, decltype(tpch::q1)*>> queries = {
    {"q18", tpch::q18},
    {"q19", tpch::q19},
    {"q_bigjoin", tpch::q_bigjoin},
-   {"l_count", tpch::l_count},
-   {"l_point", tpch::l_point},
 };
 
 /// The execution modes used for benchmarking.

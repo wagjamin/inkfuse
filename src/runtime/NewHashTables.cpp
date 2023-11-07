@@ -13,6 +13,13 @@ const uint8_t tag_fill_mask = 1u << 7u;
 const uint8_t fingerprint_inversion_mask = tag_fill_mask - 1;
 /// Lower order 7 bits in the hash slot store salt of the hash.
 const uint8_t tag_hash_mask = tag_fill_mask - 1;
+
+/// Same masks, just for outer joins where we need an extra bit for marking.
+/// Highest order bit in the tag slot indicates if slot is filled.
+const uint8_t outer_tag_fill_mask = 1u << 6u;
+const uint8_t outer_tag_fill_mask_inverted = ~outer_tag_fill_mask;
+/// Lower order 6 bits in the hash slot store salt of the hash for outer joins.
+const uint8_t outer_tag_hash_mask = outer_tag_fill_mask - 1;
 }
 
 template <>
@@ -150,6 +157,37 @@ char* AtomicHashTable<Comparator>::lookup(const char* key, uint64_t hash) const 
 }
 
 template <class Comparator>
+char* AtomicHashTable<Comparator>::lookupOuter(const char* key, uint64_t hash) const {
+   const uint64_t slot_id = hash & mod_mask;
+   // Look up the initial slot in the linear probing chain.
+   IteratorState it{
+      .idx = slot_id,
+      .data_ptr = &data[slot_id * total_slot_size],
+      .tag_ptr = &tags[slot_id],
+   };
+   // The tag we are looking for.
+   const uint8_t target_tag = outer_tag_hash_mask & static_cast<uint8_t>(hash >> 56ul);
+   for (;;) {
+      const uint8_t curr_tag = it.tag_ptr->load();
+      const uint8_t curr_tag_fingerprint = outer_tag_hash_mask & curr_tag;
+      if (!(curr_tag & tag_fill_mask)) {
+         // End of the linear probing chain - the key does not exist.
+         return nullptr;
+      }
+      if (curr_tag_fingerprint == target_tag && comp.eq(key, it.data_ptr)) {
+         // Mark the tuple to indicate that it found a join partner.
+         const uint8_t target_tag_marked = tag_fill_mask | outer_tag_fill_mask | target_tag;
+         it.tag_ptr->store(target_tag_marked);
+         // Same tag and key, we found the value.
+         return it.data_ptr;
+      }
+      // Different tag in the chain, move on to the next key.
+      itAdvance(it);
+   }
+   return it.data_ptr;
+}
+
+template <class Comparator>
 char* AtomicHashTable<Comparator>::lookup(const char* key) const {
    const uint64_t hash = comp.hash(key);
    return lookup(key, hash);
@@ -201,7 +239,7 @@ char* AtomicHashTable<Comparator>::lookupDisable(const char* key) {
 template <class Comparator>
 template <bool copy_only_key>
 char* AtomicHashTable<Comparator>::insert(const char* key, uint64_t hash) {
-   // Look up the initial slot in the linear probing chain .
+   // Look up the initial slot in the linear probing chain.
    const auto idx = hash & mod_mask;
    IteratorState it{
       .idx = idx,
@@ -210,6 +248,36 @@ char* AtomicHashTable<Comparator>::insert(const char* key, uint64_t hash) {
    };
    // Find the first free slot and mark it.
    const uint8_t target_tag = tag_fill_mask | static_cast<uint8_t>(hash >> 56ul);
+   for (;;) {
+      uint8_t curr_tag = it.tag_ptr->load();
+      const uint8_t tag_fill = curr_tag & tag_fill_mask;
+      if (!tag_fill && it.tag_ptr->compare_exchange_strong(curr_tag, target_tag)) {
+         // We managed to claim the slot. Populate it.
+         if constexpr (copy_only_key) {
+            std::memcpy(it.data_ptr, key, comp.keySize());
+         } else {
+            std::memcpy(it.data_ptr, key, total_slot_size);
+         }
+         return it.data_ptr;
+      }
+      // Either the slot was already tagged, or got tagged by another thread at the same time.
+      // Move on to the next tag and try again.
+      itAdvance(it);
+   }
+}
+
+template <class Comparator>
+template <bool copy_only_key>
+char* AtomicHashTable<Comparator>::insertOuter(const char* key, uint64_t hash) {
+   // Look up the initial slot in the linear probing chain.
+   const auto idx = hash & mod_mask;
+   IteratorState it{
+      .idx = idx,
+      .data_ptr = &data[idx * total_slot_size],
+      .tag_ptr = &tags[idx],
+   };
+   // Find the first free slot and mark it. Note that marking bit is explicitly set to zero here.
+   const uint8_t target_tag = tag_fill_mask | (outer_tag_hash_mask & static_cast<uint8_t>(hash >> 56ul));
    for (;;) {
       uint8_t curr_tag = it.tag_ptr->load();
       const uint8_t tag_fill = curr_tag & tag_fill_mask;
@@ -284,6 +352,41 @@ void AtomicHashTable<Comparator>::itAdvanceNoWrap(IteratorState& it) const {
       }
 }
 
+template <class Comparator>
+void AtomicHashTable<Comparator>::iteratorStart(char** it_data, uint64_t* it_idx) {
+   IteratorState it;
+   it.idx = 0;
+   it.data_ptr = &data[0];
+   it.tag_ptr = &tags[0];
+   uint8_t it_tag = it.tag_ptr->load();
+   while ((((it_tag & tag_fill_mask) == 0) || ((it_tag & outer_tag_fill_mask) != 0)) && it.data_ptr != nullptr) {
+      // Advance iterator to the first occupied slot that was not tagged.
+      itAdvanceNoWrap(it);
+      it_tag = it.tag_ptr->load();
+   }
+   *it_data = it.data_ptr;
+   *it_idx = it.idx;
+}
+
+template <class Comparator>
+void AtomicHashTable<Comparator>::iteratorAdvance(char** it_data, uint64_t* it_idx) {
+   assert(*it_data != nullptr);
+   IteratorState it;
+   it.idx = *it_idx;
+   it.data_ptr = *it_data;
+   it.tag_ptr = &tags[it.idx];
+   // Advance once to the next slot.
+   itAdvanceNoWrap(it);
+   uint8_t it_tag = it.tag_ptr->load();
+   while ((((it_tag & tag_fill_mask) == 0) || ((it_tag & outer_tag_fill_mask) != 0)) && it.data_ptr != nullptr) {
+      // Advance until a free slot was found.
+      itAdvanceNoWrap(it);
+      it_tag = it.tag_ptr->load();
+   }
+   *it_data = it.data_ptr;
+   *it_idx = it.idx;
+}
+
 // Declare all permitted template instantiations.
 template class AtomicHashTable<SimpleKeyComparator>;
 template char* AtomicHashTable<SimpleKeyComparator>::insert<true>(const char* key);
@@ -291,6 +394,9 @@ template char* AtomicHashTable<SimpleKeyComparator>::insert<false>(const char* k
 
 template char* AtomicHashTable<SimpleKeyComparator>::insert<true>(const char* key, uint64_t hash);
 template char* AtomicHashTable<SimpleKeyComparator>::insert<false>(const char* key, uint64_t hash);
+
+template char* AtomicHashTable<SimpleKeyComparator>::insertOuter<true>(const char* key, uint64_t hash);
+template char* AtomicHashTable<SimpleKeyComparator>::insertOuter<false>(const char* key, uint64_t hash);
 
 template class AtomicHashTable<ComplexKeyComparator>;
 template char* AtomicHashTable<ComplexKeyComparator>::insert<true>(const char* key);
