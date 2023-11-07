@@ -8,7 +8,7 @@ backends = {'a': 'adaptive', 'o': 'optimized'}
 for file in os.listdir('umbra_data'):
     if '_res_' in file:
         print(f'Postprocessing {file}')
-        matched = re.search('^([q0-9]*)_([ao])_res_([0-9.]*).csv', file)
+        matched = re.search('^(q[_a-z0-9]*)_([ao])_res_([0-9.]*).csv', file)
         q_name = matched.group(1)
         mode = matched.group(2)
         sf = matched.group(3).replace('_', '.')
