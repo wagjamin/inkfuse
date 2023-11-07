@@ -69,7 +69,7 @@ create table supplier (
    s_nationkey integer not null,
    s_phone text not null,
    s_acctbal double precision not null,
-   s_comment text not null,
+   s_comment text not null
    -- primary key (s_suppkey)
 );
 
@@ -77,13 +77,13 @@ create table nation (
    n_nationkey integer not null,
    n_name text not null,
    n_regionkey integer not null,
-   n_comment text not null,
+   n_comment text not null
    -- primary key (n_nationkey)
 );
 
 create table region (
    r_regionkey integer not null,
    r_name text not null,
-   r_comment text not null,
+   r_comment text not null
    -- primary key (r_regionkey)
 );
