@@ -79,7 +79,8 @@ StoredRelationPtr tableLineitem() {
    rel->attachPODColumn("l_receiptdate", t_date);
    rel->attachStringColumn("l_shipinstruct");
    rel->attachStringColumn("l_shipmode");
-   rel->attachStringColumn("l_comment");
+   // Remove l_comment for benchmarks at SF 100 - we are not
+   // rel->attachStringColumn("l_comment");
    return rel;
 }
 
@@ -1095,6 +1096,131 @@ std::unique_ptr<Print> q6(const Schema& schema) {
                        std::move(out_ius), std::move(colnames));
 }
 
+std::unique_ptr<Print> q13(const Schema& schema) {
+   // 1. Scan customer.
+   auto& c_rel = schema.at("customer");
+   std::vector<std::string> c_cols{"c_custkey"};
+   auto c_scan = TableScan::build(*c_rel, c_cols, "scan_customer");
+   auto& c_scan_ref = *c_scan;
+
+   // 2. Scan order.
+   auto& orders_rel = schema.at("orders");
+   std::vector<std::string> orders_cols{
+      "o_custkey",
+      "o_comment",
+   };
+   auto orders_scan = TableScan::build(*orders_rel, orders_cols, "scan_orders");
+   auto& orders_scan_ref = *orders_scan;
+
+   // Evaluate the o_comment expression and project constant NULL byte -> always 0.
+   std::vector<ExpressionOp::NodePtr> pred_nodes;
+   auto o_custkey_ref = pred_nodes.emplace_back(std::make_unique<IURefNode>(
+                                                   orders_scan_ref.getOutput()[0]))
+                           .get();
+   auto o_comment_ref = pred_nodes.emplace_back(std::make_unique<IURefNode>(
+                                                   orders_scan_ref.getOutput()[1]))
+                           .get();
+   auto p_null_byte = pred_nodes.emplace_back(
+                                   std::make_unique<ComputeNode>(
+                                      ComputeNode::Type::Constant,
+                                      IR::UI<1>::build(0),
+                                      o_custkey_ref))
+                         .get();
+   auto p_container_pred = pred_nodes.emplace_back(
+                                        std::make_unique<ComputeNode>(
+                                           ComputeNode::Type::NotLikeTokens,
+                                           IR::StringList::build({"special", "request"}),
+                                           o_comment_ref))
+                              .get();
+   std::vector<RelAlgOpPtr> children_expr;
+   children_expr.push_back(std::move(orders_scan));
+   auto expr_node = ExpressionOp::build(
+      std::move(children_expr),
+      "orders_filter",
+      std::vector<Node*>{p_container_pred, p_null_byte},
+      std::move(pred_nodes));
+   auto& expr_ref = *expr_node;
+   assert(expr_ref.getOutput().size() == 2);
+
+   // Filter orders that don't match the predicate.
+   std::vector<RelAlgOpPtr> filter_children;
+   filter_children.push_back(std::move(expr_node));
+   auto filter = Filter::build(
+      std::move(filter_children),
+      "filter_orders",
+      // We need (o_custkey, nullbyte)
+      {
+         orders_scan_ref.getOutput()[0],
+         expr_ref.getOutput()[1],
+      },
+      *expr_ref.getOutput()[0]);
+   auto& filter_ref = *filter;
+
+   // 3. Outer join.
+   std::vector<RelAlgOpPtr> join_children;
+   join_children.push_back(std::move(c_scan));
+   join_children.push_back(std::move(filter));
+   auto join = Join::build(
+      std::move(join_children),
+      "join",
+      // Keys left (c_custkey)
+      {c_scan_ref.getOutput()[0]},
+      // Payload left (none)
+      {},
+      // Keys right (o_custkey)
+      {filter_ref.getOutput()[0]},
+      // Right payload (nullbyte)
+      {
+         filter_ref.getOutput()[1],
+      },
+      JoinType::LeftOuter,
+      true);
+   auto& join_ref = *join;
+   assert(join_ref.getOutput().size() == 3);
+
+   // 4. Aggregate 1.
+   std::vector<RelAlgOpPtr> agg_1_children;
+   agg_1_children.push_back(std::move(join));
+   std::vector<const IU*> group_by_1{
+      join_ref.getOutput()[0],
+   };
+   std::vector<AggregateFunctions::Description> aggregates_1{
+      {*join_ref.getOutput()[1], AggregateFunctions::Opcode::Count}};
+   auto agg_1 = Aggregation::build(
+      std::move(agg_1_children),
+      "agg",
+      std::move(group_by_1),
+      std::move(aggregates_1));
+   auto& agg_1_ref = *agg_1;
+
+   // 4. Aggregate 2.
+   std::vector<RelAlgOpPtr> agg_2_children;
+   agg_2_children.push_back(std::move(agg_1));
+   std::vector<const IU*> group_by_2{
+      agg_1_ref.getOutput()[1],
+   };
+   std::vector<AggregateFunctions::Description> aggregates_2{
+      {*agg_1_ref.getOutput()[0], AggregateFunctions::Opcode::Count}};
+   auto agg_2 = Aggregation::build(
+      std::move(agg_2_children),
+      "agg",
+      std::move(group_by_2),
+      std::move(aggregates_2));
+   auto& agg_2_ref = *agg_2;
+
+   // And output.
+   std::vector<const IU*> out_ius{
+      agg_2_ref.getOutput()[0],
+      agg_2_ref.getOutput()[1],
+   };
+
+   std::vector<std::string> colnames = {"c_count", "custdist"};
+   std::vector<RelAlgOpPtr> print_children;
+   print_children.push_back(std::move(agg_2));
+   return Print::build(std::move(print_children),
+                       std::move(out_ius), std::move(colnames));
+}
+
 // No support for case when - only aggregate
 // sum(l_extendedprice * (1 - l_discount)) as promo_revenue
 // Note that we swap build + probe side compared to DuckDB/Umbra.
@@ -1760,7 +1886,7 @@ std::unique_ptr<Print> q19(const Schema& schema) {
    // 7.2 Perform the aggregation
    std::vector<RelAlgOpPtr> agg_children;
    agg_children.push_back(std::move(agg_e));
-   // Empty group-by key 
+   // Empty group-by key
    std::vector<const IU*> group_by{};
    std::vector<AggregateFunctions::Description> aggregates{
       {*agg_e_ref.getOutput()[0], AggregateFunctions::Opcode::Sum}};
@@ -1781,7 +1907,6 @@ std::unique_ptr<Print> q19(const Schema& schema) {
    print_children.push_back(std::move(agg));
    return Print::build(std::move(print_children),
                        std::move(out_ius), std::move(colnames));
-
 }
 
 std::unique_ptr<Print> q_bigjoin(const inkfuse::Schema& schema) {

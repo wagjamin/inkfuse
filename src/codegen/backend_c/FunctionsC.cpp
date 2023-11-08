@@ -17,6 +17,28 @@ bool in_strlist(const char* strlist, char* arg) {
     }
     return res;
 }
-)PRE";
 
+bool not_like_tokens(const char* strlist, char* arg) {
+    const struct InLiteralList* literal_list = (const struct InLiteralList*) strlist;
+
+    // Iterate through each token in the literal list
+    for (uint64_t i = 0; i < literal_list->size; i++) {
+        const char* token = literal_list->start[i];
+
+        // Check if the token is found in the argument
+        char* token_in_arg = strstr(arg, token);
+
+        // If the token is not found in the argument, return true 
+        if (token_in_arg == NULL) {
+            return true;
+        }
+
+        // Move the argument pointer to the character after the token
+        arg = token_in_arg + strlen(token);
+    }
+
+    // If all tokens were found in the argument, return false 
+    return false;
+}
+)PRE";
 };

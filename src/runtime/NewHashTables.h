@@ -42,6 +42,7 @@ struct AtomicHashTable {
    static const std::string ID;
 
    AtomicHashTable(Comparator comp_, uint16_t total_slot_size_, size_t num_slots_);
+   size_t capacity() const { return num_slots; };
 
    /// Compute the hash for a given key and prefetch the corresponding hash table slot.
    uint64_t compute_hash_and_prefetch(const char* key) const;

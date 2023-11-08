@@ -62,14 +62,21 @@ void RuntimeExpressionSubop::consumeAllChildren(CompilationContext& context) {
    }
 
    // Then, compute the expression in the current scope based on the loaded constant.
-   const IR::Stmt& child = context.getIUDeclaration(*source_ius[0]);
-   builder.appendStmt(
-      IR::AssignmentStmt::build(
-         declare,
-         IR::ArithmeticExpr::build(
-            IR::VarRefExpr::build(*rt_c_declare),
-            IR::VarRefExpr::build(child),
-            ExpressionHelpers::code_map.at(type))));
+   if (type == ExpressionOp::ComputeNode::Type::Constant) {
+      builder.appendStmt(
+         IR::AssignmentStmt::build(
+            declare,
+            IR::VarRefExpr::build(*rt_c_declare)));
+   } else {
+      const IR::Stmt& child = context.getIUDeclaration(*source_ius[0]);
+      builder.appendStmt(
+         IR::AssignmentStmt::build(
+            declare,
+            IR::ArithmeticExpr::build(
+               IR::VarRefExpr::build(*rt_c_declare),
+               IR::VarRefExpr::build(child),
+               ExpressionHelpers::code_map.at(type))));
+   }
 
    context.notifyIUsReady(*this);
 }

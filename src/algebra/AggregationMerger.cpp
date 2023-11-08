@@ -67,19 +67,18 @@ void AggregationMerger<HashTableType>::mergeSingleTable(ExecutionContext& ctx, H
    ExecutionContext::RuntimeGuard guard{ctx, thread_id};
    assert(!ExecutionContext::getInstalledRestartFlag());
    // First move over the keys into the merge table.
-   while (it_data != nullptr) {
-      const uint64_t slot_hash = src.computeHash(it_data);
-      if (slot_hash % total_threads == thread_id) {
-         // This thread is responsible for merging this tuple.
-         merge_pairs.emplace_back(it_data, target.lookupOrInsert(it_data));
+   do {
+      ExecutionContext::getInstalledRestartFlag() = false;
+      while (it_data != nullptr) {
+         const uint64_t slot_hash = src.computeHash(it_data);
+         if (slot_hash % total_threads == thread_id) {
+            // This thread is responsible for merging this tuple.
+            merge_pairs.emplace_back(it_data, target.lookupOrInsert(it_data));
+         }
+         src.iteratorAdvance(&it_data, &it_idx);
       }
-      src.iteratorAdvance(&it_data, &it_idx);
-   }
-   if (ExecutionContext::getInstalledRestartFlag()) {
-      // We resized the hash table during the insert. This usually shouldn't happen.
-      // TODO(benjamin): Supporting this is easy - just go through the hash tables once more.
-      throw std::runtime_error("Hash table grew during mergeSingleTable()");
-   }
+      // It could happen that we resized the hash table during the insert. This usually shouldn't happen.
+   } while (ExecutionContext::getInstalledRestartFlag());
    ExecutionContext::getInstalledRestartFlag() = false;
    // Now perform the actual merge based on the previously identified pointers.
    size_t curr_offset = agg.key_size + agg.payload_offset;

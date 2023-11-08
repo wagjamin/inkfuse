@@ -26,6 +26,8 @@ std::unique_ptr<Print> q4(const Schema& schema);
 std::unique_ptr<Print> q5(const Schema& schema);
 /// Selective filters
 std::unique_ptr<Print> q6(const Schema& schema);
+/// Outer join customer <-> order
+std::unique_ptr<Print> q13(const Schema& schema);
 /// Join (moderate build, moderate probe) ~2x difference
 std::unique_ptr<Print> q14(const Schema& schema);
 /// High cardinality aggregation.

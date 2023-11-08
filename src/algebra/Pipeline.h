@@ -84,6 +84,9 @@ struct Pipeline {
    void setPrettyPrinter(PrettyPrinter& printer);
    PrettyPrinter* getPrettyPrinter();
 
+   void disallowParallelCodegen() { parallel_codegen = false; };
+   bool supportsParallelCodegen() const { return parallel_codegen; };
+
    private:
    friend class CompilationContext;
    friend class ExecutionContext;
@@ -98,6 +101,9 @@ struct Pipeline {
    PipelineGraph graph;
    /// The IU providers.
    std::unordered_map<const IU*, Suboperator*> iu_providers;
+   /// Can this pipeline have code generated concurrently with others? The only
+   /// case this is not possible is if the pipeline has or is a continuation.
+   bool parallel_codegen = true;
 
    /// An optional PrettyPrinter that can be used to render the pipeline results.
    PrettyPrinter* printer;
@@ -112,6 +118,8 @@ struct PipelineDAG {
    Pipeline& getCurrentPipeline() const;
 
    Pipeline& buildNewPipeline();
+
+   Pipeline& attachContinuation();
 
    struct RuntimeTask {
       /// After what pipeline should this task be run?
@@ -149,6 +157,8 @@ struct PipelineDAG {
    private:
    /// Internally the PipelineDAG is represented as a vector of pipelines within a topological order.
    std::vector<PipelinePtr> pipelines;
+   /// Continuation pipelines to be attached after the current pipeline.
+   std::vector<std::pair<size_t, PipelinePtr>> continuations;
    /// Runtime tasks to schedule once certain pipelines are fully executed.
    std::vector<RuntimeTask> runtime_tasks;
 

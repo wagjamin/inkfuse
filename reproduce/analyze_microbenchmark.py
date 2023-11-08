@@ -34,32 +34,16 @@ if __name__ == '__main__':
         f"GROUP BY backend, query, sf " \
         f"ORDER BY query")
 
-    con.execute("CREATE TABLE normalizer(query text, tuples int);")
+    con.execute("CREATE TABLE normalizer(query text, tuples bigint);")
 
     # Normalization Factor Calculations - Taking Card. Esimates from Umbra at SF1, and summing
     # up cardinality per relational algebra operator.
-    # Q1: 6 Million for: Scan + Filter + Aggregate
-    # Q3: 7.75 Million for Scans
-    #     7.75 Million for Filters
-    #     4 Million for Joins
-    #     300k for final Agg
-    # Q4: 7.5 Million for Scans
-    #     7.5 Million for Filters
-    #     4 Million for Joins
-    # Q6: 6 Million for Scans
-    #     6 Million for Filters
-    #     200k for final Agg 
-    # Q14: 6.2 Million for Scans
-    #      6 Million for Filters
-    #      250k for Join
-    #      50k for final Agg
-    # Q18: 13.5 Million for Scans
-    #      6 Million for Lineitem Aggregation
-    #      1.5 Million for Filter on Agg result
-    #      1.7 Million for cheap joins
-    #      6 Million for final lineitem join
-    #      200k for final Agg
-    con.execute("INSERT INTO normalizer VALUES ('q1', 18000000), ('q3', 19800000), ('q4', 19000000), ('q6', 12200000), ('q14', 12500000), ('q18', 27900000);")
+    # Q1: 6 Million table scan 
+    # Q3: 8 Million table scan
+    # Q4: 7.5 Million table scan
+    # Q6: 6 Million table scan
+    # Q14: 6.2 Million table scan 
+    con.execute(f"INSERT INTO normalizer VALUES ('q1', {args.scale_factor} * 600000), ('q3', {args.scale_factor} * 800000), ('q4', {args.scale_factor} * 750000), ('q6', {args.scale_factor} * 600000), ('q14', {args.scale_factor} * 620000);")
 
     res = con.execute(
             "SELECT ltrim(backend) as backend, n.query as query, " \

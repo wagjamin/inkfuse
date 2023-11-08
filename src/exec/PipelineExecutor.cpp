@@ -369,6 +369,7 @@ std::vector<std::thread> PipelineExecutor::setUpFusedAsync(ExecutionMode mode) {
    // Create a compile state for the respective JIT interval.
    auto attach_compile_state = [&](size_t start, size_t end) {
       auto repiped = pipe.repipeRequired(start, end);
+      const bool with_parallel_codegen = repiped->supportsParallelCodegen();
       std::pair<size_t, size_t> jit_interval{start, end};
       // Create a fragment name that will be unique across different ROF intervals in the pipeline.
       std::string fragment_name = full_name + "_" + std::to_string(start) + "_" + std::to_string(end);
@@ -377,9 +378,15 @@ std::vector<std::thread> PipelineExecutor::setUpFusedAsync(ExecutionMode mode) {
       // In the hybrid mode we detach the runner thread so that we don't have to wait on subprocess termination.
       // This makes things much faster, but requires that the async thread does not access any member
       // of this PipelineExecutor. The thread might be alive longer.
-      return std::thread([runner = std::move(runner), state = compile_state.back()]() mutable {
-         // Generate C code in the backend.
+      // Generate C code in the backend.
+      if (!with_parallel_codegen) {
+         // Compilation cannot be moved into the async thread if parallel compilation is disallowed.
          runner->generateC();
+      }
+      return std::thread([runner = std::move(runner), state = compile_state.back(), with_parallel_codegen]() mutable {
+         if (with_parallel_codegen) {
+            runner->generateC();
+         }
          // Turn the generated C into machine code.
          bool done = runner->generateMachineCode(state->interrupt);
          if (done) {

@@ -7,6 +7,7 @@ namespace ExpressionHelpers {
 const std::unordered_map<Type, std::string> expr_names{
    {Type::Add, "add"},
    {Type::Cast, "cast"},
+   {Type::Constant, "const"},
    {Type::Subtract, "sub"},
    {Type::Multiply, "mul"},
    {Type::Divide, "div"},
@@ -20,6 +21,7 @@ const std::unordered_map<Type, std::string> expr_names{
    {Type::Neq, "neq"},
    {Type::StrEquals, "streq"},
    {Type::InList, "string_in"},
+   {Type::NotLikeTokens, "string_like"},
 };
 
 /// Map from algebra expression types to IR expressions in the jitted code.
@@ -37,9 +39,8 @@ const std::unordered_map<Type, IR::ArithmeticExpr::Opcode> code_map{
    {Type::Or, IR::ArithmeticExpr::Opcode::Or},
    {Type::Neq, IR::ArithmeticExpr::Opcode::Neq},
    {Type::StrEquals, IR::ArithmeticExpr::Opcode::StrEquals},
-   {Type::InList, IR::ArithmeticExpr::Opcode::StrInList}
-};
-
+   {Type::InList, IR::ArithmeticExpr::Opcode::StrInList},
+   {Type::NotLikeTokens, IR::ArithmeticExpr::Opcode::NotLikeTokens}};
 }
 
 }
