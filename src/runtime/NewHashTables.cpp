@@ -175,9 +175,13 @@ char* AtomicHashTable<Comparator>::lookupOuter(const char* key, uint64_t hash) c
          return nullptr;
       }
       if (curr_tag_fingerprint == target_tag && comp.eq(key, it.data_ptr)) {
-         // Mark the tuple to indicate that it found a join partner.
          const uint8_t target_tag_marked = tag_fill_mask | outer_tag_fill_mask | target_tag;
-         it.tag_ptr->store(target_tag_marked);
+         if (curr_tag != target_tag_marked) {
+            // Mark the tuple to indicate that it found a join partner.
+            // Relaxed memory order is okay here - writers can compete in arbitrary ways.
+            // Reads down the line will be sequentially consistent again.
+            it.tag_ptr->store(target_tag_marked, std::memory_order_relaxed);
+         }
          // Same tag and key, we found the value.
          return it.data_ptr;
       }
@@ -320,18 +324,17 @@ template <class Comparator>
 void AtomicHashTable<Comparator>::itAdvance(IteratorState& it) const {
    assert(it.data_ptr != nullptr && it.tag_ptr != nullptr);
    if (it.idx == mod_mask) [[unlikely]] {
-         // Wrap around.
-         it.idx = 0;
-         it.data_ptr = &data[0];
-         it.tag_ptr = &tags[0];
-      }
-   else
+      // Wrap around.
+      it.idx = 0;
+      it.data_ptr = &data[0];
+      it.tag_ptr = &tags[0];
+   } else
       [[likely]] {
-         // Regular advance.
-         it.data_ptr += total_slot_size;
-         it.tag_ptr++;
-         it.idx++;
-      }
+      // Regular advance.
+      it.data_ptr += total_slot_size;
+      it.tag_ptr++;
+      it.idx++;
+   }
 }
 
 template <class Comparator>
@@ -340,16 +343,15 @@ void AtomicHashTable<Comparator>::itAdvanceNoWrap(IteratorState& it) const {
    assert(it.data_ptr != nullptr && it.tag_ptr != nullptr);
    assert(it.idx <= mod_mask);
    if (it.idx == mod_mask) [[unlikely]] {
-         // Reached end. Set the data to null.
-         it.data_ptr = nullptr;
-      }
-   else
+      // Reached end. Set the data to null.
+      it.data_ptr = nullptr;
+   } else
       [[likely]] {
-         // Regular advance.
-         it.data_ptr += total_slot_size;
-         it.tag_ptr++;
-         it.idx++;
-      }
+      // Regular advance.
+      it.data_ptr += total_slot_size;
+      it.tag_ptr++;
+      it.idx++;
+   }
 }
 
 template <class Comparator>
