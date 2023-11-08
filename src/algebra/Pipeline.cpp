@@ -60,6 +60,10 @@ std::unique_ptr<Pipeline> Pipeline::repipeRequired(size_t start, size_t end) con
 
 std::unique_ptr<Pipeline> Pipeline::repipe(size_t start, size_t end, const std::unordered_set<const IU*>& materialize) const {
    auto new_pipe = std::make_unique<Pipeline>();
+   if (!supportsParallelCodegen()) {
+      // New pipeline inherits the code generation properties of the old one.
+      new_pipe->disallowParallelCodegen();
+   }
    if (start == end) {
       // We are creating an empty pipe, return.
       return new_pipe;
@@ -263,8 +267,36 @@ Pipeline& PipelineDAG::getCurrentPipeline() const {
 }
 
 Pipeline& PipelineDAG::buildNewPipeline() {
+   for (auto& [subop_idx, pipe] : continuations) {
+      // Attach the pipeline continuations.
+      assert(!pipelines.empty());
+      auto& curr_pipe = pipelines.back();
+      auto& curr_subops = curr_pipe->getSubops();
+      for (size_t k = subop_idx; k < curr_subops.size(); ++k) {
+         // Attach all subops that were added after the continuation was crated.
+         pipe->attachSuboperator(curr_subops[k]);
+      }
+      pipelines.push_back(std::move(pipe));
+   }
+   continuations.clear();
    pipelines.push_back(std::make_unique<Pipeline>());
    return *pipelines.back();
+}
+
+Pipeline& PipelineDAG::attachContinuation() {
+   assert(!pipelines.empty());
+   const size_t curr_idx = pipelines.back()->getSubops().size();
+   auto new_pipe = std::make_unique<Pipeline>();
+
+   // Both the current and the continuation pipeline cannot generate concurrently.
+   // We added outer join support retrospectively and our suboperators have internal
+   // state tied to a single compilation. We could support cloning suboperators, or detach
+   // state in a clean way.
+   new_pipe->disallowParallelCodegen();
+   pipelines.back()->disallowParallelCodegen();
+
+   continuations.push_back({curr_idx, std::move(new_pipe)});
+   return *continuations.back().second;
 }
 
 void PipelineDAG::addRuntimeTask(PipelineDAG::RuntimeTask task) {

@@ -48,6 +48,7 @@ struct ExpressionOp : public RelAlgOp {
          Constant,
          StrEquals,
          InList,
+         NotLikeTokens,
       };
 
       // Constructor for regular binary operations.

@@ -37,6 +37,15 @@ RuntimeExpressionFragmentizer::RuntimeExpressionFragmentizer()
          auto& op = pipe.attachSuboperator(RuntimeExpressionSubop::build(nullptr, {&iu_out}, {&iu_1}, operation, type));
          name = op.id();
       }
+      // Null map generator.
+      {
+         auto& [name, pipe] = pipes.emplace_back();
+         auto& iu_1 = generated_ius.emplace_back(type, "");
+         auto null_target_type = IR::UnsignedInt::build(1);
+         auto& iu_out = generated_ius.emplace_back(null_target_type);
+         auto& op = pipe.attachSuboperator(RuntimeExpressionSubop::build(nullptr, {&iu_out}, {&iu_1}, Type::Constant, null_target_type));
+         name = op.id();
+      }
    }
    {
       // strcmp
@@ -53,8 +62,18 @@ RuntimeExpressionFragmentizer::RuntimeExpressionFragmentizer()
       auto type = IR::String::build();
       auto& [name, pipe] = pipes.emplace_back();
       auto& iu_1 = generated_ius.emplace_back(type, "");
-      auto& iu_out = generated_ius.emplace_back(ExpressionOp::derive(Type::StrEquals, {type}), "");
+      auto& iu_out = generated_ius.emplace_back(ExpressionOp::derive(Type::InList, {type}), "");
       auto& op = pipe.attachSuboperator(RuntimeExpressionSubop::build(nullptr, {&iu_out}, {&iu_1}, Type::InList, type_runtime_param));
+      name = op.id();
+   }
+   {
+      // like tokens strings
+      auto type_runtime_param = IR::Pointer::build(IR::Char::build());
+      auto type = IR::String::build();
+      auto& [name, pipe] = pipes.emplace_back();
+      auto& iu_1 = generated_ius.emplace_back(type, "");
+      auto& iu_out = generated_ius.emplace_back(ExpressionOp::derive(Type::NotLikeTokens, {type}), "");
+      auto& op = pipe.attachSuboperator(RuntimeExpressionSubop::build(nullptr, {&iu_out}, {&iu_1}, Type::NotLikeTokens, type_runtime_param));
       name = op.id();
    }
 }

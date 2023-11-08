@@ -80,6 +80,10 @@ extern "C" uint64_t HashTableRuntime::ht_at_sk_compute_hash_and_prefetch_fixed_4
    return reinterpret_cast<AtomicHashTable<SimpleKeyComparator>*>(table)->compute_hash_and_prefetch_fixed<4>(key);
 }
 
+extern "C" void HashTableRuntime::ht_at_sk_it_advance(void* table, char** it_data, uint64_t* it_idx) {
+   reinterpret_cast<AtomicHashTable<SimpleKeyComparator>*>(table)->iteratorAdvance(it_data, it_idx);
+}
+
 extern "C" uint64_t HashTableRuntime::ht_at_sk_compute_hash_and_prefetch_fixed_8(void* table, char* key) {
    return reinterpret_cast<AtomicHashTable<SimpleKeyComparator>*>(table)->compute_hash_and_prefetch_fixed<8>(key);
 }

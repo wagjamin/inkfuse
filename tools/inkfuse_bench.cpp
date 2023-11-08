@@ -40,8 +40,8 @@ const std::vector<std::pair<std::string, decltype(tpch::q1)*>> queries = {
    {"q4", tpch::q4},
    {"q5", tpch::q5},
    {"q6", tpch::q6},
+   {"q13", tpch::q13},
    {"q14", tpch::q14},
-   {"q18", tpch::q18},
    {"q19", tpch::q19},
    {"q_bigjoin", tpch::q_bigjoin},
 };

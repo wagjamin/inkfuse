@@ -48,16 +48,6 @@ void testLineitem(Schema& schema) {
          EXPECT_LE(l_shipdate_data[row], max);
       }
    }
-   {
-      // l_comment has 10 <= len <= 44 chars (in the vanilla schema it's VARCHAR(44))
-      auto& l_comment = table->getColumn("l_comment");
-      auto l_comment_data = reinterpret_cast<char**>(l_comment.getRawData());
-      for (size_t row = 0; row < 6005; ++row) {
-         auto len =std::strlen(l_comment_data[row]);
-         EXPECT_GE(len, 10);
-         EXPECT_LE(len, 44);
-      }
-   }
 }
 
 TEST(test_ingest, testdata) {

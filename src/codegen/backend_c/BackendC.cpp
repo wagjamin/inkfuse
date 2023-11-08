@@ -490,6 +490,10 @@ void BackendC::compileExpression(const IR::Expr& expr, ScopedWriter::Statement& 
             {IR::ArithmeticExpr::Opcode::Eq, "=="},
             {IR::ArithmeticExpr::Opcode::Neq, "!="},
          };
+         static const std::unordered_map<IR::ArithmeticExpr::Opcode, std::string> function_call_map{
+            {IR::ArithmeticExpr::Opcode::StrInList, "in_strlist"},
+            {IR::ArithmeticExpr::Opcode::NotLikeTokens, "not_like_tokens"},
+         };
          if (type.code == IR::ArithmeticExpr::Opcode::StrEquals) {
             // Strcmp needs to return 0 for two strings to be equal.
             stmt.stream() << "(strcmp(";
@@ -497,8 +501,8 @@ void BackendC::compileExpression(const IR::Expr& expr, ScopedWriter::Statement& 
             stmt.stream() << ", ";
             compileExpression(*type.children[1], stmt);
             stmt.stream() << ") == 0)";
-         } else if (type.code == IR::ArithmeticExpr::Opcode::StrInList) {
-             stmt.stream() << "in_strlist(";
+         } else if (function_call_map.contains(type.code)) {
+            stmt.stream() << function_call_map.at(type.code) << "(";
             compileExpression(*type.children[0], stmt);
             stmt.stream() << ", ";
             compileExpression(*type.children[1], stmt);

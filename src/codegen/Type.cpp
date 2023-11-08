@@ -10,7 +10,9 @@ namespace IR {
 void UnsignedInt::print(std::ostream& stream, char* data) const
 {
    if (size == 1) {
-      stream << *reinterpret_cast<uint8_t*>(data);
+      // Need to turn it to uint32_t as otherwise we end up printing the raw byte as ASCII.
+      uint32_t val = *reinterpret_cast<uint8_t*>(data);
+      stream << val;
    } else if (size == 2) {
       stream << *reinterpret_cast<uint16_t*>(data);
    } else if (size == 4) {

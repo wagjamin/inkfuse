@@ -3,6 +3,7 @@
 #include "algebra/suboperators/RuntimeFunctionSubop.h"
 #include "algebra/suboperators/row_layout/KeyPackerSubop.h"
 #include "algebra/suboperators/row_layout/KeyUnpackerSubop.h"
+#include "algebra/suboperators/sources/HashTableSource.h"
 #include "algebra/suboperators/sources/ScratchPadIUProvider.h"
 #include <algorithm>
 
@@ -278,6 +279,14 @@ void Join::decayPkJoin(inkfuse::PipelineDAG& dag) const {
          }
       }
 
+      if (type == JoinType::LeftOuter) {
+         // If this is a left outer join we need to add a continuation to the pipeline.
+         // We will have to replicate all suboperators after this one down the line and attach
+         // a new HashTableSouce.
+         Pipeline& continuation = dag.attachContinuation();
+         continuation.attachSuboperator(AtomicHashTableSource::buildForOuterJoin(this, *lookup_right, *scratch_pad_right, &ht_state));
+      }
+
       // 2.3 Filter on probe matches.
       auto& filter_scope_subop = probe_pipe.attachSuboperator(ColumnFilterScope::build(this, *lookup_right, *filter_pseudo_iu));
       auto& filter_scope = reinterpret_cast<ColumnFilterScope&>(filter_scope_subop);
@@ -327,7 +336,6 @@ void Join::decayPkJoin(inkfuse::PipelineDAG& dag) const {
             probe_unpack_offset += iu.type->numBytes();
          }
       }
-      // End vectorized Block.
    }
 }
 }

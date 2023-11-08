@@ -1,5 +1,6 @@
 .idea
 inkfuse_bench
+inkfuse_bench_perf_result*
 hyperd.log
 __pycache__
 data
@@ -9,3 +10,4 @@ result_**
 tpch.hyper
 raw_data
 umbra_data
+mount

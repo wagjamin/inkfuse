@@ -124,6 +124,8 @@ struct ArithmeticExpr : public BinaryExpr {
       StrEquals,
       /// In list with strings - not really an arithmetic function, but easiest to put here for now.
       StrInList,
+      /// Not Like with some tokens - not really an arithmetic function, but easiest to put here for now.
+      NotLikeTokens,
    };
 
    /// Opcode of this expression.

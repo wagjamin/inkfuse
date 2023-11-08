@@ -5,6 +5,7 @@
 #include "algebra/RelAlgOp.h"
 #include "algebra/suboperators/Suboperator.h"
 #include "codegen/IRBuilder.h"
+#include "runtime/NewHashTables.h"
 
 namespace inkfuse {
 
@@ -34,6 +35,7 @@ struct HashTableSourceState {
 template <class HashTable>
 struct HashTableSource : public TemplatedSuboperator<HashTableSourceState> {
    static SuboperatorArc build(const RelAlgOp* source, const IU& produced_iu, DefferredStateInitializer* deferred_state_);
+   static SuboperatorArc buildForOuterJoin(const RelAlgOp* source, const IU& produced_iu, const IU& null_marker, DefferredStateInitializer* deferred_state_);
 
    /// Keep running as long as we have cells to read from in the backing hash table.
    PickMorselResult pickMorsel(size_t thread_id) override;
@@ -45,7 +47,7 @@ struct HashTableSource : public TemplatedSuboperator<HashTableSourceState> {
    std::string id() const override;
 
    protected:
-   HashTableSource(const RelAlgOp* source, const IU& produced_iu, DefferredStateInitializer* deferred_state_);
+   HashTableSource(const RelAlgOp* source, const IU& produced_iu, const IU* produced_null_markers, DefferredStateInitializer* deferred_state_);
 
    void setUpStateImpl(const ExecutionContext& context) override;
 
@@ -62,7 +64,7 @@ struct HashTableSource : public TemplatedSuboperator<HashTableSourceState> {
 using SimpleHashTableSource = HashTableSource<HashTableSimpleKey>;
 using ComplexHashTableSource = HashTableSource<HashTableComplexKey>;
 using DirectLookupHashTableSource = HashTableSource<HashTableDirectLookup>;
-
+using AtomicHashTableSource = HashTableSource<AtomicHashTable<SimpleKeyComparator>>;
 }
 
 #endif //INKFUSE_HASHTABLESOURCE_H

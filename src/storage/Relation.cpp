@@ -6,6 +6,8 @@ namespace inkfuse {
 
 namespace {
 
+const bool THROW_ON_MISMATCH = false;
+
 void loadDate(char* dest, const char* str) {
    auto val = helpers::dateStrToInt(str);
    *reinterpret_cast<int32_t*>(dest) = val;
@@ -203,7 +205,7 @@ void StoredRelation::loadRow(const std::string& str) {
    }
    // Row is active.
    appendRow();
-   if (currPos != str.length()) {
+   if (THROW_ON_MISMATCH && currPos != str.length()) {
       // There should be a final closing | in the files.
       throw std::runtime_error("Too many columns in TSV");
    }

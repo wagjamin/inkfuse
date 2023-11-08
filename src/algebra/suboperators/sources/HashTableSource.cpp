@@ -16,8 +16,12 @@ void HashTableSourceState::registerRuntime() {
 }
 
 template <class HashTable>
-HashTableSource<HashTable>::HashTableSource(const RelAlgOp* source, const IU& produced_iu, DefferredStateInitializer* deferred_state_)
+HashTableSource<HashTable>::HashTableSource(const RelAlgOp* source, const IU& produced_iu, const IU* produced_null_markers, DefferredStateInitializer* deferred_state_)
    : TemplatedSuboperator<HashTableSourceState>(source, {&produced_iu}, {}), deferred_state(deferred_state_) {
+   if (produced_null_markers) {
+      // If we provide null markers, add this to the provided IUs.
+      provided_ius.push_back(produced_null_markers);
+   }
 }
 
 template <class HashTable>
@@ -28,7 +32,12 @@ std::string HashTableSource<HashTable>::id() const {
 
 template <class HashTable>
 SuboperatorArc HashTableSource<HashTable>::build(const RelAlgOp* source, const IU& produced_iu, DefferredStateInitializer* deferred_state_) {
-   return std::unique_ptr<HashTableSource>{new HashTableSource(source, produced_iu, deferred_state_)};
+   return std::unique_ptr<HashTableSource>{new HashTableSource(source, produced_iu, nullptr, deferred_state_)};
+}
+
+template <class HashTable>
+SuboperatorArc HashTableSource<HashTable>::buildForOuterJoin(const RelAlgOp* source, const IU& produced_iu, const IU& null_marker, DefferredStateInitializer* deferred_state_) {
+   return std::unique_ptr<HashTableSource>{new HashTableSource(source, produced_iu, &null_marker, deferred_state_)};
 }
 
 template <class HashTable>
@@ -86,6 +95,23 @@ void HashTableSource<HashTable>::open(CompilationContext& context) {
          auto access_expr = IR::StructAccessExpr::build(std::move(state_cast), std::move(member));
          preamble_stmts.push_back(IR::AssignmentStmt::build(stmt, std::move(access_expr)));
       };
+
+      if (provided_ius.size() == 2) {
+         // We're providing for an outer join. Also create the proper marking IU.
+         auto& marked_iu = provided_ius[1];
+         auto& declare = preamble_stmts.emplace_back(IR::DeclareStmt::build(context.buildIUIdentifier(*marked_iu), marked_iu->type));
+         context.declareIU(*marked_iu, *declare);
+         // Allocate backing memory for the target IU.
+         auto fct = context.getRuntimeFunction("inkfuse_malloc");
+         // Warning: this could not be done for a suboperator which supports interpretation,
+         // as the actual number of bytes might be unknown at compilation time.
+         std::vector<IR::ExprPtr> args;
+         // TODO(benjamin): properly resolve the byte count through a runtime parameter.
+         args.push_back(IR::ConstExpr::build(IR::UI<8>::build(5)));
+         auto alloc_call = IR::InvokeFctExpr::build(*fct, std::move(args));
+         preamble_stmts.emplace_back(IR::AssignmentStmt::build(*declare, std::move(alloc_call)));
+      }
+
       gstate_extract_into("it_ptr_start", *iu_decl);
       gstate_extract_into("it_ptr_end", *decl_it_end_ptr);
       gstate_extract_into("it_idx_start", *decl_it_idx);
@@ -151,5 +177,5 @@ void HashTableSource<HashTable>::setUpStateImpl(const ExecutionContext& context)
 template class HashTableSource<HashTableSimpleKey>;
 template class HashTableSource<HashTableComplexKey>;
 template class HashTableSource<HashTableDirectLookup>;
-
+template class HashTableSource<AtomicHashTable<SimpleKeyComparator>>;
 }
