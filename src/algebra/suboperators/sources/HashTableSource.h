@@ -17,13 +17,13 @@ struct HashTableSourceState {
    static void registerRuntime();
 
    /// Backing hash table from which we want to read.
-   void* hash_table;
+   void* hash_table = nullptr;
    /// Iterator pointer at which to start.
-   char* it_ptr_start;
+   char* it_ptr_start = nullptr;
    /// Current iterator index.
    uint64_t it_idx_start;
    /// Iterator pointer at which to end.
-   char* it_ptr_end;
+   char* it_ptr_end = nullptr;
    /// Iterator end index.
    uint64_t it_idx_end;
 };
