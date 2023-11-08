@@ -159,9 +159,10 @@ template <class HashTable>
 void HashTableSource<HashTable>::setUpStateImpl(const ExecutionContext& context) {
    assert(deferred_state);
 
-   for (size_t k = 0; k < context.getNumThreads(); ++k) {
-      auto& state = (*states)[k];
-      void* ht_ptr = deferred_state->access(k);
+   if constexpr (std::is_same_v<HashTable, AtomicHashTable<SimpleKeyComparator>>) {
+      // Only the first thread produces the null marked tuples.
+      auto& state = (*states)[0];
+      void* ht_ptr = deferred_state->access(0);
       state.hash_table = ht_ptr;
       assert(ht_ptr);
       HashTable* hash_table = reinterpret_cast<HashTable*>(ht_ptr);
@@ -170,6 +171,20 @@ void HashTableSource<HashTable>::setUpStateImpl(const ExecutionContext& context)
       // Set the end iterator to the same value. This way the first pickMorsel will work.
       state.it_ptr_end = state.it_ptr_start;
       state.it_idx_end = state.it_idx_start;
+   } else {
+      // All threads pin themselves to their hash table.
+      for (size_t k = 0; k < context.getNumThreads(); ++k) {
+         auto& state = (*states)[k];
+         void* ht_ptr = deferred_state->access(k);
+         state.hash_table = ht_ptr;
+         assert(ht_ptr);
+         HashTable* hash_table = reinterpret_cast<HashTable*>(ht_ptr);
+         // Initialize start to point to the first slot of the hash table.
+         hash_table->iteratorStart(&(state.it_ptr_start), &(state.it_idx_start));
+         // Set the end iterator to the same value. This way the first pickMorsel will work.
+         state.it_ptr_end = state.it_ptr_start;
+         state.it_idx_end = state.it_idx_start;
+      }
    }
 }
 
