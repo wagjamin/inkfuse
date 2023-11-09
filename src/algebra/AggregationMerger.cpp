@@ -35,9 +35,10 @@ void AggregationMerger<HashTableType>::prepareState(ExecutionContext&, size_t nu
 
    pre_merge = std::move(rt_state.hash_tables);
 
-   // Set up the merge tables into which every thread will write the merged tuples.
-   std::deque<std::unique_ptr<HashTableType>> merged = HashTableType::buildMergeTables(pre_merge, num_threads);
-   rt_state.hash_tables = std::move(merged);
+   // Compute the size of the merge tables into which every thread will write the merged tuples.
+   const size_t merge_table_size = HashTableType::getMergeTableSize(pre_merge, num_threads);
+   rt_state.merge_table_size = merge_table_size;
+   rt_state.hash_tables.resize(num_threads);
 
    // Store information required for the later merge phase.
    strategy = MergeStrategy::MultiThreaded;
@@ -48,6 +49,21 @@ template <class HashTableType>
 void AggregationMerger<HashTableType>::mergeTables(ExecutionContext& ctx, size_t thread_id) {
    if (strategy == MergeStrategy::NoMergeRequired) {
       return;
+   }
+
+   const size_t merge_table_size = rt_state.merge_table_size;
+
+   // Only perform the hash table allocation once we are in the multi-threaded phase. We used to allocate
+   // all hash tables in the prepare phase, but this caused excessive page faulting & zero setting on a single thread.
+   if constexpr (std::is_same_v<HashTableType, HashTableSimpleKey>) {
+      HashTableSimpleKey& original_table = *pre_merge[0];
+      rt_state.hash_tables[thread_id] = std::make_unique<HashTableSimpleKey>(original_table.keySize(), original_table.payloadSize(), merge_table_size);
+   } else if constexpr (std::is_same_v<HashTableType, HashTableComplexKey>) {
+      HashTableComplexKey& original_table = *pre_merge[0];
+      rt_state.hash_tables[thread_id] = std::make_unique<HashTableComplexKey>(original_table.simpleKeySize(), original_table.complexKeySlots(), original_table.payloadSize(), merge_table_size);
+   } else {
+      HashTableDirectLookup& original_table = *pre_merge[0];
+      rt_state.hash_tables[thread_id] = std::make_unique<HashTableDirectLookup>(original_table.slot_size - 2);
    }
 
    auto& merge_into = rt_state.hash_tables[thread_id];
@@ -76,6 +92,60 @@ void AggregationMerger<HashTableType>::mergeSingleTable(ExecutionContext& ctx, H
             merge_pairs.emplace_back(it_data, target.lookupOrInsert(it_data));
          }
          src.iteratorAdvance(&it_data, &it_idx);
+      }
+      // It could happen that we resized the hash table during the insert. This usually shouldn't happen.
+   } while (ExecutionContext::getInstalledRestartFlag());
+   ExecutionContext::getInstalledRestartFlag() = false;
+   // Now perform the actual merge based on the previously identified pointers.
+   size_t curr_offset = agg.key_size + agg.payload_offset;
+   for (const auto& [agg_iu, agg_state] : agg.granules) {
+      const IR::TypeArc& agg_type = agg_iu->type;
+      // Dispatch onto the right merge primitive.
+      if (agg_type->id() == "UI4") {
+         mergeSum<uint32_t>(merge_pairs, curr_offset);
+      } else if (agg_type->id() == "UI8") {
+         mergeSum<uint64_t>(merge_pairs, curr_offset);
+      } else if (agg_type->id() == "I4") {
+         mergeSum<int32_t>(merge_pairs, curr_offset);
+      } else if (agg_type->id() == "I8") {
+         mergeSum<int64_t>(merge_pairs, curr_offset);
+      } else if (agg_type->id() == "F4") {
+         mergeSum<float>(merge_pairs, curr_offset);
+      } else if (agg_type->id() == "F8") {
+         mergeSum<double>(merge_pairs, curr_offset);
+      } else if (agg_state->id() == "agg_state_count") {
+         // Count can go over any type - it always has a summable 8 byte integer state.
+         mergeSum<int64_t>(merge_pairs, curr_offset);
+      } else {
+         throw std::runtime_error("Unsupported merge type for aggregate hash table");
+      }
+      // Update the offset - the next aggregation state granule lives next to this one.
+      curr_offset += agg_state->getStateSize();
+   }
+}
+
+// More efficient merge implementation for the HashTableSimpleKey.
+template <>
+void AggregationMerger<HashTableSimpleKey>::mergeSingleTable(ExecutionContext& ctx, HashTableSimpleKey& src, HashTableSimpleKey& target, size_t thread_id) {
+   const size_t total_threads = ctx.getNumThreads();
+   char* it_data;
+   uint64_t next_jump_point;
+   uint64_t it_idx;
+   src.partitionedIteratorStart(&it_data, &it_idx, &next_jump_point, total_threads, thread_id);
+   std::vector<std::pair<const char*, char*>> merge_pairs;
+   merge_pairs.reserve(src.size());
+   ExecutionContext::RuntimeGuard guard{ctx, thread_id};
+   assert(!ExecutionContext::getInstalledRestartFlag());
+   // First move over the keys into the merge table.
+   do {
+      ExecutionContext::getInstalledRestartFlag() = false;
+      while (it_data != nullptr) {
+         const uint64_t slot_hash = src.computeHash(it_data);
+         if (slot_hash % total_threads == thread_id) {
+            // This thread is responsible for merging this tuple.
+            merge_pairs.emplace_back(it_data, target.lookupOrInsert(it_data));
+         }
+         src.partitionedIteratorAdvance(&it_data, &it_idx, &next_jump_point, total_threads, thread_id);
       }
       // It could happen that we resized the hash table during the insert. This usually shouldn't happen.
    } while (ExecutionContext::getInstalledRestartFlag());

@@ -168,7 +168,7 @@ char* AtomicHashTable<Comparator>::lookupOuter(const char* key, uint64_t hash) c
    // The tag we are looking for.
    const uint8_t target_tag = outer_tag_hash_mask & static_cast<uint8_t>(hash >> 56ul);
    for (;;) {
-      const uint8_t curr_tag = it.tag_ptr->load();
+      const uint8_t curr_tag = it.tag_ptr->load(std::memory_order_relaxed);
       const uint8_t curr_tag_fingerprint = outer_tag_hash_mask & curr_tag;
       if (!(curr_tag & tag_fill_mask)) {
          // End of the linear probing chain - the key does not exist.

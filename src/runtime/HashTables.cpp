@@ -62,6 +62,24 @@ void SharedHashTableState::advanceNoWrap(size_t& idx, char*& data_ptr, uint8_t*&
    }
 }
 
+void SharedHashTableState::advanceWithJump(size_t& idx, char*& data_ptr, uint8_t*& tag_ptr, uint64_t& jump_point, size_t num_threads) const {
+   // Should not be called after it returned a nullptr.
+   assert(data_ptr != nullptr && tag_ptr != nullptr);
+   assert(idx <= mod_mask);
+
+   if (jump_point >= mod_mask) [[unlikely]] {
+      // Reached end. Set the data to null.
+      data_ptr = nullptr;
+      return;
+   }
+
+   // Advance to the next jump point.
+   data_ptr = &data[total_slot_size * jump_point];
+   tag_ptr = &tags[jump_point];
+   idx = jump_point;
+   jump_point += num_threads;
+}
+
 HashTableSimpleKey::HashTableSimpleKey(uint16_t key_size_, uint16_t payload_size_, size_t start_slots_)
    : state(key_size_ + payload_size_, start_slots_), simple_key_size(key_size_) {
    if (key_size_ == 0) {
@@ -71,7 +89,7 @@ HashTableSimpleKey::HashTableSimpleKey(uint16_t key_size_, uint16_t payload_size
    }
 }
 
-std::deque<std::unique_ptr<HashTableSimpleKey>> HashTableSimpleKey::buildMergeTables(std::deque<std::unique_ptr<HashTableSimpleKey>>& preagg, size_t thread_count) {
+size_t HashTableSimpleKey::getMergeTableSize(std::deque<std::unique_ptr<HashTableSimpleKey>>& preagg, size_t thread_count) {
    assert(!preagg.empty());
    assert(thread_count);
    std::deque<std::unique_ptr<HashTableSimpleKey>> merge_tables;
@@ -83,16 +101,7 @@ std::deque<std::unique_ptr<HashTableSimpleKey>> HashTableSimpleKey::buildMergeTa
    // 2x slack to make sure that we only have half capacity, also 20% capacity for skew.
    const size_t per_thread = 1.2 * 2 * std::max(static_cast<size_t>(8), total_keys / thread_count);
    const size_t slots_per_merge_table = 1ull << (64 - __builtin_clzl(per_thread - 1));
-
-   auto& original_table = preagg[0];
-   const size_t key_size = original_table->simple_key_size;
-   const size_t payload_size = original_table->state.total_slot_size - key_size;
-
-   for (size_t k = 0; k < thread_count; ++k) {
-      merge_tables.push_back(std::make_unique<HashTableSimpleKey>(key_size, payload_size, slots_per_merge_table));
-   }
-
-   return merge_tables;
+   return 2 * slots_per_merge_table;
 }
 
 uint64_t HashTableSimpleKey::computeHash(const char* key) const {
@@ -201,6 +210,44 @@ void HashTableSimpleKey::iteratorAdvance(char** it_data, size_t* it_idx) {
    }
 }
 
+void HashTableSimpleKey::partitionedIteratorStart(
+   char** it_data,
+   uint64_t* it_idx,
+   uint64_t* next_jump_point,
+   size_t num_threads,
+   size_t thread_id) {
+
+   if (thread_id > state.mod_mask) {
+      // Hash table too small.
+      *it_data = nullptr;
+      return;
+   }
+   *it_idx = thread_id;
+   *next_jump_point = thread_id + num_threads;
+   *it_data = &state.data[state.total_slot_size * thread_id];
+   uint8_t* tag_ptr = &state.tags[thread_id];
+   while (((*tag_ptr & tag_fill_mask) == 0) && *it_data != nullptr) {
+      // Advance iterator to the first occupied slot.
+      state.advanceWithJump(*it_idx, *it_data, tag_ptr, *next_jump_point, num_threads);
+   }
+}
+
+void HashTableSimpleKey::partitionedIteratorAdvance(
+   char** it_data,
+   uint64_t* it_idx,
+   uint64_t* next_jump_point,
+   size_t num_threads,
+   size_t thread_id) {
+   assert(*it_data != nullptr);
+   uint8_t* tag_ptr = &state.tags[*it_idx];
+   // Advance once to the next slot trying to traverse the chain.
+   state.advanceNoWrap(*it_idx, *it_data, tag_ptr);
+   while (((*tag_ptr & tag_fill_mask) == 0) && *it_data != nullptr) {
+      // Advance until a free slot was found.
+      state.advanceWithJump(*it_idx, *it_data, tag_ptr, *next_jump_point, num_threads);
+   }
+}
+
 size_t HashTableSimpleKey::size() const {
    return state.inserted;
 }
@@ -293,7 +340,7 @@ HashTableComplexKey::HashTableComplexKey(uint16_t simple_key_size, uint16_t comp
    }
 }
 
-std::deque<std::unique_ptr<HashTableComplexKey>> HashTableComplexKey::buildMergeTables(
+size_t HashTableComplexKey::getMergeTableSize(
    std::deque<std::unique_ptr<HashTableComplexKey>>& preagg, size_t thread_count) {
    assert(!preagg.empty());
    assert(thread_count);
@@ -306,17 +353,7 @@ std::deque<std::unique_ptr<HashTableComplexKey>> HashTableComplexKey::buildMerge
    // 2x slack to make sure that we only have half capacity, also 20% capacity for skew.
    const size_t per_thread = 1.2 * 2 * std::max(static_cast<size_t>(8), total_keys / thread_count);
    const size_t slots_per_merge_table = 1ull << (64 - __builtin_clzl(per_thread - 1));
-
-   auto& original_table = preagg[0];
-   const size_t simple_key_size = original_table->simple_key_size;
-   const size_t complex_key_slots = original_table->complex_key_slots;
-   const size_t payload_size = original_table->payload_size;
-
-   for (size_t k = 0; k < thread_count; ++k) {
-      merge_tables.push_back(std::make_unique<HashTableComplexKey>(simple_key_size, complex_key_slots, payload_size, slots_per_merge_table));
-   }
-
-   return merge_tables;
+   return slots_per_merge_table;
 }
 
 uint64_t HashTableComplexKey::computeHash(const char* key) const {
@@ -476,15 +513,11 @@ HashTableDirectLookup::HashTableDirectLookup(uint16_t payload_size_)
    tags = std::make_unique<bool[]>(1 << 16);
 }
 
-std::deque<std::unique_ptr<HashTableDirectLookup>> HashTableDirectLookup::buildMergeTables(
+size_t HashTableDirectLookup::getMergeTableSize(
    std::deque<std::unique_ptr<HashTableDirectLookup>>& preagg, size_t thread_count) {
    assert(!preagg.empty());
    assert(thread_count);
-   std::deque<std::unique_ptr<HashTableDirectLookup>> result;
-   for (size_t k = 0; k < thread_count; k++) {
-      result.push_back(std::make_unique<HashTableDirectLookup>(preagg[0]->slot_size - 2));
-   }
-   return result;
+   return preagg[0]->slot_size - 2;
 }
 
 uint64_t HashTableDirectLookup::computeHash(const char* key) const {

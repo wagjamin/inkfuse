@@ -35,6 +35,9 @@ if __name__ == '__main__':
         for sf in scale_factors:
             f_name = f'result_{engine}_{sf}.csv'
             con.execute(f"INSERT INTO results SELECT * FROM read_csv_auto('{f_name}', header=False)")
+            if 'inkfuse' in engine:
+                # TMP hack to allow reading from multiple inkfuse runs
+                con.execute(f"INSERT INTO results SELECT * FROM read_csv_auto('res_inkfuse/{f_name}', header=False)")
             con.execute(f"DELETE FROM results WHERE query in ('l_count', 'l_point', 'q_bigjoin')")
             # Kinda nasty, change ordering so Q1x come last.
             con.execute(f"UPDATE results SET query = case when query = 'q13' then 'q87' else query end")
@@ -42,7 +45,7 @@ if __name__ == '__main__':
             con.execute(f"UPDATE results SET query = case when query = 'q18' then 'q98' else query end")
             con.execute(f"UPDATE results SET query = case when query = 'q19' then 'q99' else query end")
 
-    queries = ['Q1', 'Q3', 'Q4', 'Q5', 'Q6', 'Q14', 'Q19']
+    queries = ['Q1', 'Q3', 'Q4', 'Q5', 'Q6', 'Q13', 'Q14', 'Q19']
 
     # Plot 1: Backends at Different Scale Factors
     fig, axs = plt.subplots(1, 1)
@@ -51,7 +54,7 @@ if __name__ == '__main__':
     plt.set_cmap('Set3')
     axs.set_ylim(bottom=0.6)
     axs.set_ylim(top=1.5)
-    x_vals = np.array([0, 1.5, 3, 4.5, 6, 7.5, 9])
+    x_vals = np.array([0, 1.5, 3, 4.5, 6, 7.5, 9, 10.5])
     for idx, sf in enumerate(scale_factors):
         offset = -0.25
         for engine_idx, engine in enumerate(systems):

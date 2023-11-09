@@ -88,6 +88,7 @@ struct ExclusiveHashTableState<HashTableSimpleKey> : public DefferredStateInitia
 
    size_t key_size;
    size_t payload_size;
+   size_t merge_table_size;
    /// The hash tables - first the thread local ones with duplicates, then the
    /// fully merged ones assigned to different threads.
    std::deque<std::unique_ptr<HashTableSimpleKey>> hash_tables;
@@ -113,6 +114,7 @@ struct ExclusiveHashTableState<HashTableComplexKey> : public DefferredStateIniti
 
    size_t slots;
    size_t payload_size;
+   size_t merge_table_size;
    /// The hash tables - first the thread local ones with duplicates, then the
    /// fully merged ones assigned to different threads.
    std::deque<std::unique_ptr<HashTableComplexKey>> hash_tables;
@@ -137,6 +139,7 @@ struct ExclusiveHashTableState<HashTableDirectLookup> : public DefferredStateIni
    };
 
    uint16_t payload_size;
+   size_t merge_table_size;
    /// The hash tables - first the thread local ones with duplicates, then the
    /// fully merged ones assigned to different threads.
    std::deque<std::unique_ptr<HashTableDirectLookup>> hash_tables;

@@ -1,6 +1,7 @@
 #ifndef INKFUSE_RUNTIMEFUNCTIONSUBOP_H
 #define INKFUSE_RUNTIMEFUNCTIONSUBOP_H
 
+#include "algebra/Join.h"
 #include "algebra/suboperators/Suboperator.h"
 #include "exec/DeferredState.h"
 
@@ -63,11 +64,13 @@ struct RuntimeFunctionSubop : public TemplatedSuboperator<RuntimeFunctionSubopSt
    }
 
    /// Build a hash table lookup function.
-   template <class HashTable, bool disable_slot>
+   template <class HashTable, JoinType join_type>
    static std::unique_ptr<RuntimeFunctionSubop> htLookupWithHash(const RelAlgOp* source, const IU& pointers_, const IU& key_, const IU& hash_, const IU* prefetch_pseudo_, DefferredStateInitializer* state_init_ = nullptr) {
       std::string fct_name = "ht_" + HashTable::ID + "_lookup_with_hash";
-      if constexpr (disable_slot) {
+      if constexpr (join_type == JoinType::LeftSemi) {
          fct_name += "_disable";
+      } else if constexpr (join_type == JoinType::LeftOuter) {
+         fct_name += "_outer";
       }
       std::vector<const IU*> in_ius{&key_, &hash_};
       if (prefetch_pseudo_) {

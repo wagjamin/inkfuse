@@ -100,6 +100,10 @@ extern "C" char* HashTableRuntime::ht_at_sk_lookup_with_hash_disable(void* table
    return reinterpret_cast<AtomicHashTable<SimpleKeyComparator>*>(table)->lookupDisable(key, hash);
 }
 
+extern "C" char* ht_at_sk_lookup_with_hash_outer(void* table, char* key, uint64_t hash) {
+   return reinterpret_cast<AtomicHashTable<SimpleKeyComparator>*>(table)->lookupOuter(key, hash);
+}
+
 extern "C" uint64_t HashTableRuntime::ht_at_ck_compute_hash_and_prefetch(void* table, char* key) {
    return reinterpret_cast<AtomicHashTable<ComplexKeyComparator>*>(table)->compute_hash_and_prefetch(key);
 }

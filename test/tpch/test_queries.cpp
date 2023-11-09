@@ -80,7 +80,7 @@ INSTANTIATE_TEST_CASE_P(
    tpch_queries,
    TPCHQueriesTestT,
    ::testing::Combine(
-      ::testing::Values("q1", "q3", "q4", "q5", "q6", "q14", "q18", "q19", "l_count", "q_bigjoin", "l_point"),
+      ::testing::Values("q1", "q3", "q4", "q5", "q6", "q13", "q14", "q18", "q19", "l_count", "q_bigjoin", "l_point"),
       ::testing::Values(
          PipelineExecutor::ExecutionMode::Fused,
          PipelineExecutor::ExecutionMode::Interpreted,

@@ -19,6 +19,8 @@ struct SharedHashTableState {
    inline void advance(size_t& idx, char*& curr, uint8_t*& tag) const;
    /// Advance an iterator within the hash table. Sets the pointer to nullptr when the end of the hash table is reached.
    inline void advanceNoWrap(size_t& idx, char*& curr, uint8_t*& tag) const;
+   /// Advance an iterator within the hash table. Sets the pointer to nullptr when the end of the hash table is reached.
+   inline void advanceWithJump(size_t& idx, char*& curr, uint8_t*& tag, uint64_t& jump_point, size_t num_threads) const;
 
    /// Occupied tags containing parts of the key hash.
    /// Similar approach as in folly f14 (just less fast and generic).
@@ -41,7 +43,7 @@ struct alignas(64) HashTableSimpleKey {
    static const std::string ID;
 
    HashTableSimpleKey(uint16_t key_size_, uint16_t payload_size_, size_t start_slots_ = 2048);
-   static std::deque<std::unique_ptr<HashTableSimpleKey>> buildMergeTables(
+   static size_t getMergeTableSize(
       std::deque<std::unique_ptr<HashTableSimpleKey>>& preagg, size_t thread_count);
 
    /// Compute the hash of some serialized key.
@@ -69,6 +71,25 @@ struct alignas(64) HashTableSimpleKey {
    size_t size() const;
    /// Get the current capacity. Mainly used for testing.
    size_t capacity() const;
+
+   /// Efficient iterator that allows iterating over only some hash bit
+   /// partitions.
+   void partitionedIteratorStart(
+           char** it_data, 
+           uint64_t* it_idx,
+           uint64_t* next_jump_point,
+           size_t num_threads, 
+           size_t thread_id);
+   void partitionedIteratorAdvance(
+           char** it_data, 
+           uint64_t* it_idx,
+           uint64_t* next_jump_point,
+           size_t num_threads, 
+           size_t thread_id);
+
+
+   size_t keySize() const { return simple_key_size; }
+   size_t payloadSize() const { return state.total_slot_size - simple_key_size; }
 
    /// Special function if we know this hash table is only ever called with a single key.
    char* lookupOrInsertSingleKey();
@@ -101,7 +122,7 @@ struct alignas(64) HashTableComplexKey {
    static const std::string ID;
 
    HashTableComplexKey(uint16_t simple_key_size, uint16_t complex_key_slots, uint16_t payload_size, size_t start_slots = 64);
-   static std::deque<std::unique_ptr<HashTableComplexKey>> buildMergeTables(
+   static size_t getMergeTableSize(
       std::deque<std::unique_ptr<HashTableComplexKey>>& preagg, size_t thread_count);
 
    /// Compute the hash of some serialized key.
@@ -126,6 +147,10 @@ struct alignas(64) HashTableComplexKey {
    size_t size() const;
    /// Get the current capacity. Mainly used for testing.
    size_t capacity() const;
+
+   size_t simpleKeySize() const { return simple_key_size; }
+   size_t complexKeySlots() const { return complex_key_slots; }
+   size_t payloadSize() const { return payload_size; }
 
    private:
    SharedHashTableState state;
@@ -160,7 +185,7 @@ struct alignas(64) HashTableDirectLookup {
    static const std::string ID;
 
    HashTableDirectLookup(uint16_t payload_size_);
-   static std::deque<std::unique_ptr<HashTableDirectLookup>> buildMergeTables(
+   static size_t getMergeTableSize(
       std::deque<std::unique_ptr<HashTableDirectLookup>>& preagg, size_t thread_count);
 
    /// Get the pointer to a given key, or nullptr if the group does not exist.

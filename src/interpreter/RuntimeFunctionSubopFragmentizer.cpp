@@ -64,21 +64,30 @@ RuntimeFunctionSubopFragmentizer::RuntimeFunctionSubopFragmentizer() {
          name = op.id();
       }
       {
-         // Lookup don't disable slot:
+         // Lookup inner join:
          auto& [name, pipe] = pipes.emplace_back();
          const auto& hash = generated_ius.emplace_back(IR::UnsignedInt::build(8));
          const auto& key = generated_ius.emplace_back(in_type);
          const auto& result = generated_ius.emplace_back(IR::Pointer::build(IR::Char::build()));
-         const auto& op = pipe.attachSuboperator(RuntimeFunctionSubop::htLookupWithHash<AtomicHashTable<SimpleKeyComparator>, false>(nullptr, result, key, hash, nullptr));
+         const auto& op = pipe.attachSuboperator(RuntimeFunctionSubop::htLookupWithHash<AtomicHashTable<SimpleKeyComparator>, JoinType::Inner>(nullptr, result, key, hash, nullptr));
          name = op.id();
       }
       {
-         // Lookup disable slot:
+         // Lookup left semi join:
          auto& [name, pipe] = pipes.emplace_back();
          const auto& hash = generated_ius.emplace_back(IR::UnsignedInt::build(8));
          const auto& key = generated_ius.emplace_back(in_type);
          const auto& result = generated_ius.emplace_back(IR::Pointer::build(IR::Char::build()));
-         const auto& op = pipe.attachSuboperator(RuntimeFunctionSubop::htLookupWithHash<AtomicHashTable<SimpleKeyComparator>, true>(nullptr, result, key, hash, nullptr));
+         const auto& op = pipe.attachSuboperator(RuntimeFunctionSubop::htLookupWithHash<AtomicHashTable<SimpleKeyComparator>, JoinType::LeftSemi>(nullptr, result, key, hash, nullptr));
+         name = op.id();
+      }
+      {
+         // Lookup outer join:
+         auto& [name, pipe] = pipes.emplace_back();
+         const auto& hash = generated_ius.emplace_back(IR::UnsignedInt::build(8));
+         const auto& key = generated_ius.emplace_back(in_type);
+         const auto& result = generated_ius.emplace_back(IR::Pointer::build(IR::Char::build()));
+         const auto& op = pipe.attachSuboperator(RuntimeFunctionSubop::htLookupWithHash<AtomicHashTable<SimpleKeyComparator>, JoinType::LeftOuter>(nullptr, result, key, hash, nullptr));
          name = op.id();
       }
 

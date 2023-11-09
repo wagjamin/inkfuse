@@ -272,10 +272,14 @@ void Join::decayPkJoin(inkfuse::PipelineDAG& dag) const {
          // 2.2.2 Perfom the lookup.
          if (type == JoinType::LeftSemi) {
             // Lookup on a slot disables the slot, giving semi-join behaviour.
-            probe_pipe.attachSuboperator(RuntimeFunctionSubop::htLookupWithHash<AtomicHashTable<SimpleKeyComparator>, true>(this, *lookup_right, *scratch_pad_right, *hash_right, /* prefetch_pseudo = */ nullptr, &ht_state));
-         } else {
+            probe_pipe.attachSuboperator(RuntimeFunctionSubop::htLookupWithHash<AtomicHashTable<SimpleKeyComparator>, JoinType::LeftSemi>(this, *lookup_right, *scratch_pad_right, *hash_right, /* prefetch_pseudo = */ nullptr, &ht_state));
+         } else if (type == JoinType::Inner){
             // Regular lookup that does not disable slots.
-            probe_pipe.attachSuboperator(RuntimeFunctionSubop::htLookupWithHash<AtomicHashTable<SimpleKeyComparator>, false>(this, *lookup_right, *scratch_pad_right, *hash_right, /* prefetch_pseudo = */ nullptr, &ht_state));
+            probe_pipe.attachSuboperator(RuntimeFunctionSubop::htLookupWithHash<AtomicHashTable<SimpleKeyComparator>, JoinType::Inner>(this, *lookup_right, *scratch_pad_right, *hash_right, /* prefetch_pseudo = */ nullptr, &ht_state));
+         } else {
+             assert(type == JoinType::LeftOuter);
+             // Lookup that tags the build keys that found probe partners.
+            probe_pipe.attachSuboperator(RuntimeFunctionSubop::htLookupWithHash<AtomicHashTable<SimpleKeyComparator>, JoinType::LeftOuter>(this, *lookup_right, *scratch_pad_right, *hash_right, /* prefetch_pseudo = */ nullptr, &ht_state));
          }
       }
 
